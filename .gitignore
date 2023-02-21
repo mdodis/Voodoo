@@ -1,0 +1,17 @@
+.vs
+*.vcxproj*
+*.sln
+**.cod
+**.ilk
+**.log
+**.recipe
+**.cap
+**.lib
+**.obj
+**.pdb
+**.exp
+**.exe
+**.idb
+Build/
+
+**/CMakeSettings.json
