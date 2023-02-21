@@ -7,7 +7,7 @@ add_executable(vkx
     "./App.cpp"
     "./App.h"
     "./VulkanCommon.h"
-    )
+     "VulkanCommon.cpp")
 
 target_include_directories(vkx 
     PUBLIC
