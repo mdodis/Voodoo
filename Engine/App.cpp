@@ -1,19 +1,21 @@
 #include "App.h"
+
+#include <set>
+
 #include "VulkanCommon.h"
 
-auto Validation_Layers = arr<const char*>(
-    "VK_LAYER_KHRONOS_validation"
-);
+auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
 
-static VK_PROC_DEBUG_CALLBACK(debug_callback) {
+static VK_PROC_DEBUG_CALLBACK(debug_callback)
+{
     if (severity < VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         print(LIT("Vulkan: {}\n"), Str(callback_data->pMessage));
     }
     return VK_FALSE;
 }
 
-Result<void, VkResult> App::init_vulkan() {
-
+Result<void, VkResult> App::init_vulkan()
+{
     CREATE_SCOPED_ARENA(&System_Allocator, temp_alloc, KILOBYTES(4));
 
     // Get available extensions
@@ -24,11 +26,13 @@ Result<void, VkResult> App::init_vulkan() {
         TArray<VkExtensionProperties> properties(&System_Allocator);
         properties.init_range(count);
 
-        VK_RETURN_IF_ERR(vkEnumerateInstanceExtensionProperties(0, &count, properties.data));
+        VK_RETURN_IF_ERR(
+            vkEnumerateInstanceExtensionProperties(0, &count, properties.data));
 
         print(LIT("Extensions:\n"));
-        for (auto &property : properties) {
-            print(LIT("\t {}: {}\n"), 
+        for (auto& property : properties) {
+            print(
+                LIT("\t {}: {}\n"),
                 property.specVersion,
                 Str(property.extensionName));
         }
@@ -36,7 +40,7 @@ Result<void, VkResult> App::init_vulkan() {
 
     // Create instance
     {
-        Slice<const char*> extensions = get_win32_required_extensions();
+        Slice<const char*> extensions = win32_get_required_extensions();
 
         if (config.validation_layers) {
             if (!check_validation_layers(temp_alloc)) {
@@ -46,51 +50,49 @@ Result<void, VkResult> App::init_vulkan() {
 
         VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {
             .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .messageSeverity =
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-            .messageType =
-                VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
             .pfnUserCallback = debug_callback,
-            .pUserData = 0,
+            .pUserData       = 0,
         };
 
         VkApplicationInfo app_info = {
-            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-            .pApplicationName = "VKX",
+            .sType              = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pApplicationName   = "VKX",
             .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
-            .pEngineName = "VKX",
-            .engineVersion = VK_MAKE_VERSION(0, 1, 0),
-            .apiVersion = VK_API_VERSION_1_0,
+            .pEngineName        = "VKX",
+            .engineVersion      = VK_MAKE_VERSION(0, 1, 0),
+            .apiVersion         = VK_API_VERSION_1_0,
         };
 
         VkInstanceCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
             .pNext = config.validation_layers ? &debug_create_info : 0,
             .pApplicationInfo = &app_info,
-            .enabledLayerCount = (config.validation_layers) ? Validation_Layers.count() : 0,
-            .ppEnabledLayerNames = Validation_Layers.elements,
-            .enabledExtensionCount = (u32)extensions.count,
+            .enabledLayerCount =
+                (config.validation_layers) ? Validation_Layers.count() : 0,
+            .ppEnabledLayerNames     = Validation_Layers.elements,
+            .enabledExtensionCount   = (u32)extensions.count,
             .ppEnabledExtensionNames = extensions.ptr,
         };
 
-        VK_RETURN_IF_ERR(vkCreateInstance(
-            &create_info,
-            0,
-            &instance));
+        VK_RETURN_IF_ERR(vkCreateInstance(&create_info, 0, &instance));
     }
 
     // Pick physical device
     {
         u32 device_count;
-        VK_RETURN_IF_ERR(vkEnumeratePhysicalDevices(instance, &device_count, 0));
+        VK_RETURN_IF_ERR(
+            vkEnumeratePhysicalDevices(instance, &device_count, 0));
 
         TArray<VkPhysicalDevice> physical_devices(&temp_alloc);
         physical_devices.init_range(device_count);
-        VK_RETURN_IF_ERR(vkEnumeratePhysicalDevices(instance, &device_count, physical_devices.data));
+        VK_RETURN_IF_ERR(vkEnumeratePhysicalDevices(
+            instance, &device_count, physical_devices.data));
 
         for (VkPhysicalDevice& device : physical_devices) {
             if (is_physical_device_suitable(device)) {
@@ -104,46 +106,73 @@ Result<void, VkResult> App::init_vulkan() {
         }
     }
 
-    // Create logical device
+    // Create surface
     {
-        auto family_indices_result = find_queue_family_indices(temp_alloc, physical_device);
+        auto create_surface_result = window.create_surface(instance);
+        if (!create_surface_result.ok()) {
+            return Err(create_surface_result.err());
+        }
+
+        surface = create_surface_result.value();
+    }
+
+    // Create logical device & queues
+    {
+        auto family_indices_result =
+            find_queue_family_indices(temp_alloc, physical_device);
         if (!family_indices_result.ok()) {
             return Err(family_indices_result.err());
         }
 
         QueueFamilyIndices family_indices = family_indices_result.value();
-
-        float queue_priority = 1.0f;
-        VkDeviceQueueCreateInfo queue_create_info = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-            .queueFamilyIndex = (u32)family_indices.graphics,
-            .queueCount = 1,
-            .pQueuePriorities = &queue_priority
+        std::set<int>      unique_indices = {
+            family_indices.graphics,
+            family_indices.present,
         };
 
-        VkPhysicalDeviceFeatures features = {0};
-        VkDeviceCreateInfo create_info = {
-            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-            .queueCreateInfoCount = 1,
-            .pQueueCreateInfos = &queue_create_info,
-            .enabledLayerCount = (config.validation_layers) ? Validation_Layers.count() : 0,
-            .ppEnabledLayerNames = Validation_Layers.elements,
-            .pEnabledFeatures = &features,
+        float                           queue_priority = 1.0f;
+        TArray<VkDeviceQueueCreateInfo> queue_create_infos(&temp_alloc);
+
+        for (int index : unique_indices) {
+            VkDeviceQueueCreateInfo queue_create_info = {
+                .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = (u32)index,
+                .queueCount       = 1,
+                .pQueuePriorities = &queue_priority};
+            queue_create_infos.add(queue_create_info);
+        }
+
+        VkPhysicalDeviceFeatures features    = {0};
+        VkDeviceCreateInfo       create_info = {
+                  .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                  .queueCreateInfoCount = (u32)queue_create_infos.size,
+                  .pQueueCreateInfos    = queue_create_infos.data,
+                  .enabledLayerCount =
+                config.validation_layers ? Validation_Layers.count() : 0,
+                  .ppEnabledLayerNames = Validation_Layers.elements,
+                  .pEnabledFeatures    = &features,
         };
 
-        VK_RETURN_IF_ERR(vkCreateDevice(physical_device, &create_info, 0, &device));
+        VK_RETURN_IF_ERR(
+            vkCreateDevice(physical_device, &create_info, 0, &device));
+
+        vkGetDeviceQueue(device, family_indices.graphics, 0, &graphics_queue);
+        vkGetDeviceQueue(device, family_indices.present, 0, &present_queue);
     }
 
     return Ok<void>();
 }
 
-void App::deinit() {
+void App::deinit()
+{
+    vkDestroySurfaceKHR(instance, surface, 0);
     window.destroy();
     vkDestroyDevice(device, 0);
     vkDestroyInstance(instance, 0);
 }
 
-bool App::check_validation_layers(IAllocator &allocator) {
+bool App::check_validation_layers(IAllocator& allocator)
+{
     TArray<VkLayerProperties> props(&allocator);
     DEFER(props.release());
 
@@ -171,9 +200,10 @@ bool App::check_validation_layers(IAllocator &allocator) {
     return true;
 }
 
-bool App::is_physical_device_suitable(VkPhysicalDevice& device) {
+bool App::is_physical_device_suitable(VkPhysicalDevice& device)
+{
     VkPhysicalDeviceProperties properties;
-    VkPhysicalDeviceFeatures features;
+    VkPhysicalDeviceFeatures   features;
 
     vkGetPhysicalDeviceProperties(device, &properties);
     vkGetPhysicalDeviceFeatures(device, &features);
@@ -185,10 +215,10 @@ bool App::is_physical_device_suitable(VkPhysicalDevice& device) {
     }
 }
 
-Result<QueueFamilyIndices, VkResult> App::find_queue_family_indices(IAllocator &allocator, VkPhysicalDevice device) {
-    QueueFamilyIndices families = {
-        .graphics = -1
-    };
+Result<QueueFamilyIndices, VkResult> App::find_queue_family_indices(
+    IAllocator& allocator, VkPhysicalDevice device)
+{
+    QueueFamilyIndices families = {.graphics = -1, .present = -1};
 
     u32 family_count;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, 0);
@@ -197,16 +227,28 @@ Result<QueueFamilyIndices, VkResult> App::find_queue_family_indices(IAllocator &
     properties.init_range(family_count);
     DEFER(properties.release());
 
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, properties.data);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        device, &family_count, properties.data);
 
     for (int i = 0; i < properties.size; ++i) {
         VkQueueFamilyProperties& family = properties[i];
+
+        // Graphics
         if (family.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
             families.graphics = i;
         }
+
+        // Presentation
+        VkBool32 surface_supported = 0;
+        vkGetPhysicalDeviceSurfaceSupportKHR(
+            device, i, surface, &surface_supported);
+
+        if (surface_supported) {
+            families.present = i;
+        }
     }
 
-    if (families.graphics == -1) {
+    if ((families.graphics == -1) || (families.present == -1)) {
         return Err(VK_ERROR_UNKNOWN);
     }
 

@@ -1,0 +1,29 @@
+---
+BasedOnStyle: "Google"
+BreakBeforeBraces: "Custom"
+BraceWrapping:
+  AfterEnum: "true"
+  AfterStruct: "false"
+  SplitEmptyFunction: "false"
+  AfterFunction: "true"
+  AfterControlStatement: "MultiLine"
+AlignAfterOpenBracket: "AlwaysBreak"
+IndentWidth: 4
+TabWidth: 4
+BreakConstructorInitializers: "BeforeComma"
+BreakBeforeTernaryOperators: "false"
+UseTab: "false"
+PointerAlignment: "Left"
+AlignConsecutiveDeclarations:
+  Enabled: "true"
+  AcrossEmptyLines: "false"
+  AcrossComments: "true"
+AlignConsecutiveAssignments:
+  Enabled: "true"
+  AcrossEmptyLines: "false"
+  AcrossComments: "true"
+AllowAllArgumentsOnNextLine: "true"
+BinPackArguments: "false"
+BinPackParameters: "false"
+ColumnLimit: 80
+NamespaceIndentation: "All"
