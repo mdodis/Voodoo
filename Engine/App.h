@@ -2,6 +2,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Containers/Array.h"
+#include "Memory/Arena.h"
 #include "Reflection.h"
 #include "Result.h"
 #include "Serialization/Base.h"
@@ -40,8 +41,13 @@ struct Shader {
 };
 
 struct App {
-    Window                window;
-    AppConfig             config;
+    Window      window;
+    AppConfig   config;
+    int         max_frames_in_flight = 2;
+    IAllocator& allocator;
+
+    int                   current_frame = 0;
+    Arena                 arena;
     VkInstance            instance        = VK_NULL_HANDLE;
     VkPhysicalDevice      physical_device = VK_NULL_HANDLE;
     VkDevice              device          = VK_NULL_HANDLE;
@@ -60,16 +66,16 @@ struct App {
     VkPipelineLayout pipeline_layout;
     VkPipeline       graphics_pipeline;
     VkCommandPool    cmd_pool;
-    VkCommandBuffer  cmd_buffer;
 
     Shader sh_vertex;
     Shader sh_fragment;
 
-    VkSemaphore sem_image_available;
-    VkSemaphore sem_render_finished;
-    VkFence     fence_in_flight;
+    TArray<VkCommandBuffer> cmd_buffers;
+    TArray<VkSemaphore>     sems_image_available;
+    TArray<VkSemaphore>     sems_render_finished;
+    TArray<VkFence>         fences_in_flight;
 
-    Result<void, VkResult>            init_vulkan();
+    Result<void, VkResult>            init();
     void                              init_pipeline();
     Result<VkCommandBuffer, VkResult> create_cmd_buffer(VkCommandPool pool);
     void                              recompile_shaders();

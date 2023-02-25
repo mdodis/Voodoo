@@ -31,31 +31,33 @@ void draw(App &app)
     vkWaitForFences(
         app.device,
         1,
-        &app.fence_in_flight,
+        &app.fences_in_flight[app.current_frame],
         VK_TRUE,
         NumProps<u64>::max);
 
-    vkResetFences(app.device, 1, &app.fence_in_flight);
+    vkResetFences(app.device, 1, &app.fences_in_flight[app.current_frame]);
 
     u32 image_index;
     vkAcquireNextImageKHR(
         app.device,
         app.swap_chain,
         NumProps<u64>::max,
-        app.sem_image_available,
+        app.sems_image_available[app.current_frame],
         VK_NULL_HANDLE,
         &image_index);
 
-    vkResetCommandBuffer(app.cmd_buffer, 0);
+    vkResetCommandBuffer(app.cmd_buffers[app.current_frame], 0);
 
-    app.record_cmd_buffer(app.cmd_buffer, image_index);
+    app.record_cmd_buffer(app.cmd_buffers[app.current_frame], image_index);
 
-    VkSemaphore wait_semaphores[] = {app.sem_image_available};
+    VkSemaphore wait_semaphores[] = {
+        app.sems_image_available[app.current_frame]};
 
     VkPipelineStageFlags wait_stages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    VkSemaphore signal_semaphores[] = {app.sem_render_finished};
+    VkSemaphore signal_semaphores[] = {
+        app.sems_render_finished[app.current_frame]};
 
     VkSubmitInfo submit_info = {
         .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -63,7 +65,7 @@ void draw(App &app)
         .pWaitSemaphores      = wait_semaphores,
         .pWaitDstStageMask    = wait_stages,
         .commandBufferCount   = 1,
-        .pCommandBuffers      = &app.cmd_buffer,
+        .pCommandBuffers      = &app.cmd_buffers[app.current_frame],
         .signalSemaphoreCount = ARRAY_COUNT(signal_semaphores),
         .pSignalSemaphores    = signal_semaphores,
     };
@@ -72,7 +74,7 @@ void draw(App &app)
         app.graphics_queue,
         1,
         &submit_info,
-        app.fence_in_flight));
+        app.fences_in_flight[app.current_frame]));
 
     VkSwapchainKHR swap_chains[] = {app.swap_chain};
 
@@ -89,6 +91,8 @@ void draw(App &app)
     VK_CHECK(vkQueuePresentKHR(app.present_queue, &present_info));
 
     VK_CHECK(vkDeviceWaitIdle(app.device));
+
+    app.current_frame = (app.current_frame + 1) % app.max_frames_in_flight;
 }
 
 int main(int argc, char const *argv[])
@@ -102,13 +106,14 @@ int main(int argc, char const *argv[])
     window.init(640, 480).unwrap();
 
     App app = {
-        .window = window,
-        .config = app_config,
+        .window               = window,
+        .config               = app_config,
+        .max_frames_in_flight = 2,
+        .allocator            = System_Allocator,
     };
-    DEFER(app.deinit());
-
-    app.init_vulkan().unwrap();
+    app.init().unwrap();
     app.init_pipeline();
+    DEFER(app.deinit());
 
     // app.record_cmd_buffer(app.cmd_buffer, 0);
 

@@ -15,13 +15,19 @@ static VK_PROC_DEBUG_CALLBACK(debug_callback)
     return VK_FALSE;
 }
 
-Result<void, VkResult> App::init_vulkan()
+Result<void, VkResult> App::init()
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp_alloc, KILOBYTES(4));
+    arena = Arena(&allocator, KILOBYTES(4));
 
-    swap_chain_images = TArray<VkImage>(&System_Allocator);
-    swap_chain_views  = TArray<VkImageView>(&System_Allocator);
-    framebuffers      = TArray<VkFramebuffer>(&System_Allocator);
+    swap_chain_images.alloc    = &arena;
+    swap_chain_views.alloc     = &arena;
+    framebuffers.alloc         = &arena;
+    cmd_buffers.alloc          = &arena;
+    sems_image_available.alloc = &arena;
+    sems_render_finished.alloc = &arena;
+    fences_in_flight.alloc     = &arena;
+
+    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     // Get available extensions
     {
@@ -534,7 +540,7 @@ void App::init_pipeline()
 
     // Create command pool
     QueueFamilyIndices families =
-        find_queue_family_indices(System_Allocator, physical_device).unwrap();
+        find_queue_family_indices(arena, physical_device).unwrap();
 
     VkCommandPoolCreateInfo cmd_pool_create_info = {
         .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
@@ -544,43 +550,54 @@ void App::init_pipeline()
 
     VK_CHECK(vkCreateCommandPool(device, &cmd_pool_create_info, 0, &cmd_pool));
 
-    // Create cmd buffer
-    cmd_buffer = create_cmd_buffer(cmd_pool).unwrap();
+    // Create cmd buffers
+    {
+        cmd_buffers.init(max_frames_in_flight);
+        for (int i = 0; i < max_frames_in_flight; ++i) {
+            cmd_buffers.add(create_cmd_buffer(cmd_pool).unwrap());
+        }
+    }
 
     // Create sync objects
 
     {
+        sems_image_available.init(max_frames_in_flight);
+
         VkSemaphoreCreateInfo sem_create_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
 
-        VK_CHECK(vkCreateSemaphore(
-            device,
-            &sem_create_info,
-            0,
-            &sem_image_available));
+        for (int i = 0; i < max_frames_in_flight; ++i) {
+            VkSemaphore sem;
+            VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem));
+            sems_image_available.add(sem);
+        }
     }
 
     {
+        sems_render_finished.init(max_frames_in_flight);
         VkSemaphoreCreateInfo sem_create_info = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         };
-
-        VK_CHECK(vkCreateSemaphore(
-            device,
-            &sem_create_info,
-            0,
-            &sem_render_finished));
+        for (int i = 0; i < max_frames_in_flight; ++i) {
+            VkSemaphore sem;
+            VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem));
+            sems_render_finished.add(sem);
+        }
     }
 
     {
+        fences_in_flight.init(max_frames_in_flight);
+
         VkFenceCreateInfo fence_create_info = {
             .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             .flags = VK_FENCE_CREATE_SIGNALED_BIT,
         };
-
-        VK_CHECK(
-            vkCreateFence(device, &fence_create_info, 0, &fence_in_flight));
+        for (int i = 0; i < max_frames_in_flight; ++i) {
+            VkFence fence;
+            VK_CHECK(vkCreateFence(device, &fence_create_info, 0, &fence));
+            fences_in_flight.add(fence);
+        }
     }
 }
 
@@ -666,6 +683,12 @@ void App::record_cmd_buffer(VkCommandBuffer buffer, u32 image_idx)
 
 void App::deinit()
 {
+    for (int i = 0; i < max_frames_in_flight; ++i) {
+        vkDestroySemaphore(device, sems_image_available[i], 0);
+        vkDestroySemaphore(device, sems_render_finished[i], 0);
+        vkDestroyFence(device, fences_in_flight[i], 0);
+    }
+
     vkDestroyCommandPool(device, cmd_pool, 0);
     for (auto fb : framebuffers) {
         vkDestroyFramebuffer(device, fb, 0);
@@ -681,6 +704,7 @@ void App::deinit()
     window.destroy();
     vkDestroyDevice(device, 0);
     vkDestroyInstance(instance, 0);
+    arena.release_base();
 }
 
 bool App::check_validation_layers(IAllocator& allocator)
