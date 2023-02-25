@@ -4,8 +4,9 @@
 
 #include "VulkanCommon.h"
 
-auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
-auto Device_Extensions = arr<const char*>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+static auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
+static auto Device_Extensions =
+    arr<const char*>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
 static VK_PROC_DEBUG_CALLBACK(debug_callback)
 {
@@ -180,7 +181,7 @@ Result<void, VkResult> App::init()
     {
         u32 num_images;
 
-        SwapChainSupportDetails details =
+        SwapChainSupportInfo details =
             query_swap_chain_support(temp_alloc, physical_device);
         DEFER(details.release());
 
@@ -375,10 +376,31 @@ void App::init_pipeline()
         .pDynamicStates    = dynamic_states.elements,
     };
 
+    VkVertexInputBindingDescription input_desc = {
+        .binding   = 0,
+        .stride    = sizeof(float) * 5,
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
+    const auto attr_desc = arr<VkVertexInputAttributeDescription>(
+        VkVertexInputAttributeDescription{
+            .location = 0,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32_SFLOAT,
+            .offset   = 0,
+        },
+        VkVertexInputAttributeDescription{
+            .location = 1,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = sizeof(float) * 2,
+        });
+
     VkPipelineVertexInputStateCreateInfo vertex_input_create_info = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount   = 0,
-        .vertexAttributeDescriptionCount = 0,
+        .vertexBindingDescriptionCount   = 1,
+        .pVertexBindingDescriptions      = &input_desc,
+        .vertexAttributeDescriptionCount = attr_desc.count(),
+        .pVertexAttributeDescriptions    = attr_desc.elements,
     };
 
     VkPipelineInputAssemblyStateCreateInfo input_asm_create_info = {
@@ -599,6 +621,54 @@ void App::init_pipeline()
             fences_in_flight.add(fence);
         }
     }
+
+    const float vertices[] = {
+        0.0f,
+        -0.5f,
+        1.0f,
+        1.0f,
+        1.0f,
+        0.5f,
+        0.5f,
+        0.0f,
+        1.0f,
+        0.0f,
+        -0.5f,
+        0.5f,
+        0.0f,
+        0.0f,
+        1.0f,
+    };
+    VkDeviceMemory     vertex_memory;
+    VkBufferCreateInfo buffer_create_info = {
+        .sType       = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size        = sizeof(vertices),
+        .usage       = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+
+    VK_CHECK(vkCreateBuffer(device, &buffer_create_info, 0, &vertex_buffer));
+
+    VkMemoryRequirements mem_requirements;
+    vkGetBufferMemoryRequirements(device, vertex_buffer, &mem_requirements);
+
+    VkMemoryAllocateInfo alloc_info = {
+        .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize  = mem_requirements.size,
+        .memoryTypeIndex = find_memory_type(
+            mem_requirements.memoryTypeBits,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+    };
+
+    VK_CHECK(vkAllocateMemory(device, &alloc_info, 0, &vertex_memory));
+
+    vkBindBufferMemory(device, vertex_buffer, vertex_memory, 0);
+
+    void* data;
+    vkMapMemory(device, vertex_memory, 0, buffer_create_info.size, 0, &data);
+    memcpy(data, vertices, buffer_create_info.size);
+    vkUnmapMemory(device, vertex_memory);
 }
 
 Result<VkCommandBuffer, VkResult> App::create_cmd_buffer(VkCommandPool pool)
@@ -653,6 +723,13 @@ void App::record_cmd_buffer(VkCommandBuffer buffer, u32 image_idx)
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         graphics_pipeline);
 
+    VkBuffer vertex_buffers[] = {
+        vertex_buffer,
+    };
+    VkDeviceSize offsets[] = {0};
+
+    vkCmdBindVertexBuffers(buffer, 0, 1, vertex_buffers, offsets);
+
     VkViewport viewport = {
         .x        = 0.f,
         .y        = 0.f,
@@ -679,6 +756,20 @@ void App::record_cmd_buffer(VkCommandBuffer buffer, u32 image_idx)
     vkCmdEndRenderPass(buffer);
 
     VK_CHECK(vkEndCommandBuffer(buffer));
+}
+
+u32 App::find_memory_type(u32 filter, VkMemoryPropertyFlags flags)
+{
+    VkPhysicalDeviceMemoryProperties props;
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &props);
+
+    for (u32 i = 0; i < props.memoryTypeCount; ++i) {
+        if ((filter & (1 << i)) &&
+            (props.memoryTypes[i].propertyFlags & flags) == flags)
+        {
+            return i;
+        }
+    }
 }
 
 void App::deinit()
@@ -771,8 +862,7 @@ bool App::is_physical_device_suitable(
         }
     }
 
-    SwapChainSupportDetails details =
-        query_swap_chain_support(allocator, device);
+    SwapChainSupportInfo details = query_swap_chain_support(allocator, device);
     DEFER(details.release());
 
     if ((details.formats.size == 0) || (details.present_modes.size == 0)) {
@@ -831,10 +921,10 @@ Result<QueueFamilyIndices, VkResult> App::find_queue_family_indices(
     return Ok(families);
 }
 
-SwapChainSupportDetails App::query_swap_chain_support(
+SwapChainSupportInfo App::query_swap_chain_support(
     IAllocator& allocator, VkPhysicalDevice qdevice)
 {
-    SwapChainSupportDetails result(allocator);
+    SwapChainSupportInfo result(allocator);
 
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         qdevice,

@@ -15,15 +15,25 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
         return Err(Win32::GetLastError());
     }
 
+    auto        style = Win32::Style::OverlappedWindowNonResizeable;
+    Win32::RECT rect  = {
+         .left   = 0,
+         .top    = 0,
+         .right  = width,
+         .bottom = height,
+    };
+
+    Win32::AdjustWindowRect(&rect, style, 0);
+
     hwnd = Win32::CreateWindowExA(
         0,
         wnd_class.class_name,
         "VKX",
-        Win32::Style::OverlappedWindowNonResizeable,
+        style,
         Win32::DefaultWindowPos,
         Win32::DefaultWindowPos,
-        width,
-        height,
+        rect.right - rect.left,
+        rect.bottom - rect.top,
         NULL,
         NULL,
         wnd_class.instance,

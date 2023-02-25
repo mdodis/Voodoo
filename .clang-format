@@ -15,6 +15,8 @@ BreakConstructorInitializers: "BeforeComma"
 BreakBeforeTernaryOperators: "true"
 UseTab: "false"
 PointerAlignment: "Left"
+ReferenceAlignment: "Left"
+DerivePointerAlignment: "false"
 AlignConsecutiveDeclarations:
   Enabled: "true"
   AcrossEmptyLines: "false"
@@ -32,3 +34,5 @@ ExperimentalAutoDetectBinPacking: "false"
 AlignOperands: "AlignAfterOperator"
 AlignEscapedNewlines: "Left"
 AccessModifierOffset: -4
+PenaltyBreakBeforeFirstCallParameter: 100
+PenaltyIndentedWhitespace: 1

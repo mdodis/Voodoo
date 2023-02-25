@@ -19,22 +19,6 @@ struct QueueFamilyIndices {
     int present;
 };
 
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR   capabilities;
-    TArray<VkSurfaceFormatKHR> formats;
-    TArray<VkPresentModeKHR>   present_modes;
-
-    SwapChainSupportDetails(IAllocator& allocator)
-        : formats(&allocator), present_modes(&allocator)
-    {}
-
-    void release()
-    {
-        formats.release();
-        present_modes.release();
-    }
-};
-
 struct Shader {
     VkShaderModule        module;
     VkShaderStageFlagBits stage;
@@ -67,8 +51,9 @@ struct App {
     VkPipeline       graphics_pipeline;
     VkCommandPool    cmd_pool;
 
-    Shader sh_vertex;
-    Shader sh_fragment;
+    Shader   sh_vertex;
+    Shader   sh_fragment;
+    VkBuffer vertex_buffer;
 
     TArray<VkCommandBuffer> cmd_buffers;
     TArray<VkSemaphore>     sems_image_available;
@@ -82,13 +67,15 @@ struct App {
     void                              deinit();
     void record_cmd_buffer(VkCommandBuffer buffer, u32 image_idx);
 
+    u32 find_memory_type(u32 filter, VkMemoryPropertyFlags flags);
+
 private:
     bool check_validation_layers(IAllocator& allocator);
     bool is_physical_device_suitable(
         VkPhysicalDevice& device, IAllocator& allocator);
     Result<QueueFamilyIndices, VkResult> find_queue_family_indices(
         IAllocator& allocator, VkPhysicalDevice device);
-    SwapChainSupportDetails query_swap_chain_support(
+    SwapChainSupportInfo query_swap_chain_support(
         IAllocator& allocator, VkPhysicalDevice qdevice);
     Shader load_shader(Str path, VkShaderStageFlagBits stage);
 };

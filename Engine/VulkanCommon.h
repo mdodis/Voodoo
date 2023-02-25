@@ -28,12 +28,65 @@
     VkBool32 VKAPI_CALL name(                                      \
         VkDebugUtilsMessageSeverityFlagBitsEXT      severity,      \
         VkDebugUtilsMessageTypeFlagsEXT             type,          \
-        const VkDebugUtilsMessengerCallbackDataEXT *callback_data, \
-        void                                       *user_data)
+        const VkDebugUtilsMessengerCallbackDataEXT* callback_data, \
+        void*                                       user_data)
 
-Slice<const char *> win32_get_required_extensions();
-
-Result<VkSurfaceKHR, VkResult> win32_create_surface(
-    VkInstance vk_instance, Win32::HWND hwnd, Win32::HINSTANCE instance);
+/* Helpers */
 
 PROC_FMT_INL(VkResult) { tape->write_str(Str(string_VkResult(type))); }
+
+bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers);
+
+struct PickPhysicalDeviceInfo {
+    Slice<const char*>   device_extentions;
+    VkPhysicalDeviceType prefered_device_type;
+    VkSurfaceKHR         surface;
+};
+
+Result<VkPhysicalDevice, VkResult> pick_physical_device(
+    IAllocator& allocator, VkInstance instance, PickPhysicalDeviceInfo& info);
+
+struct SwapChainSupportInfo {
+    VkSurfaceCapabilitiesKHR   capabilities;
+    TArray<VkSurfaceFormatKHR> formats;
+    TArray<VkPresentModeKHR>   present_modes;
+
+    SwapChainSupportInfo(IAllocator& allocator)
+        : formats(&allocator), present_modes(&allocator)
+    {}
+
+    void release()
+    {
+        formats.release();
+        present_modes.release();
+    }
+};
+
+Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
+    IAllocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface);
+
+struct CreateDeviceFamilyRequirement {
+    /** Any valid flag bit for requirement, 0 for don't care */
+    VkQueueFlagBits flag_bits;
+    /** True for support, false for don't care */
+    bool            presentation;
+};
+
+struct CreateDeviceWithQueuesInfo {
+    VkPhysicalDevice                     physical_device;      // In
+    VkSurfaceKHR                         surface;              // In
+    Slice<const char*>                   validation_layers;    // In
+    Slice<const char*>                   extensions;           // In
+    Slice<CreateDeviceFamilyRequirement> family_requirements;  // In
+
+    TArray<u32> families;  // Out
+};
+
+Result<VkDevice, VkResult> create_device_with_queues(
+    IAllocator& allocator, CreateDeviceWithQueuesInfo& info);
+
+/* Win32 */
+
+Slice<const char*>             win32_get_required_extensions();
+Result<VkSurfaceKHR, VkResult> win32_create_surface(
+    VkInstance vk_instance, Win32::HWND hwnd, Win32::HINSTANCE instance);

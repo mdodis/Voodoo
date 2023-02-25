@@ -6,6 +6,8 @@ add_executable(vkx
     "./Window.h"
     "./App.cpp"
     "./App.h"
+    "./Engine.h"
+    "./Engine.cpp"
     "./VulkanCommon.h"
      "VulkanCommon.cpp")
 
