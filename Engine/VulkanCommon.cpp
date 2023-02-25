@@ -7,8 +7,7 @@
 auto Win32_Required_Extensions = arr<const char*>(
     VK_KHR_SURFACE_EXTENSION_NAME,
     VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-    VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
 Slice<const char*> win32_get_required_extensions()
 {

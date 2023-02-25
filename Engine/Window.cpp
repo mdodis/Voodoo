@@ -19,7 +19,7 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
         0,
         wnd_class.class_name,
         "VKX",
-        Win32::Style::OverlappedWindow,
+        Win32::Style::OverlappedWindowNonResizeable,
         Win32::DefaultWindowPos,
         Win32::DefaultWindowPos,
         width,
@@ -30,7 +30,9 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
         0);
 
     Win32::SetWindowLongPtrA(
-        hwnd, Win32::WindowLongPointer::UserData, (Win32::LONG_PTR)this);
+        hwnd,
+        Win32::WindowLongPointer::UserData,
+        (Win32::LONG_PTR)this);
 
     if (!hwnd) {
         return Err(Win32::GetLastError());
@@ -47,7 +49,11 @@ void Window::poll()
 {
     Win32::MSG message;
     if (Win32::PeekMessageA(
-            &message, 0, 0, 0, Win32::PeekMessageOption::Remove))
+            &message,
+            0,
+            0,
+            0,
+            Win32::PeekMessageOption::Remove))
     {
         Win32::TranslateMessage(&message);
         Win32::DispatchMessageA(&message);
@@ -80,6 +86,14 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
 WIN32_DECLARE_WNDPROC(wnd_proc_handler)
 {
     Window *w = (Window *)Win32::GetWindowLongPtrA(
-        hwnd, Win32::WindowLongPointer::UserData);
+        hwnd,
+        Win32::WindowLongPointer::UserData);
     return w->wnd_proc(hwnd, msg, wparam, lparam);
+}
+
+Vec2i Window::get_extents() const
+{
+    Win32::RECT r;
+    Win32::GetClientRect(hwnd, &r);
+    return Vec2i{r.right - r.left, r.bottom - r.top};
 }

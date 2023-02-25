@@ -1,4 +1,5 @@
 ---
+Language: Cpp
 BasedOnStyle: "Google"
 BreakBeforeBraces: "Custom"
 BraceWrapping:
@@ -11,7 +12,7 @@ AlignAfterOpenBracket: "AlwaysBreak"
 IndentWidth: 4
 TabWidth: 4
 BreakConstructorInitializers: "BeforeComma"
-BreakBeforeTernaryOperators: "false"
+BreakBeforeTernaryOperators: "true"
 UseTab: "false"
 PointerAlignment: "Left"
 AlignConsecutiveDeclarations:
@@ -22,8 +23,12 @@ AlignConsecutiveAssignments:
   Enabled: "true"
   AcrossEmptyLines: "false"
   AcrossComments: "true"
-AllowAllArgumentsOnNextLine: "true"
+AllowAllArgumentsOnNextLine: "false"
 BinPackArguments: "false"
 BinPackParameters: "false"
 ColumnLimit: 80
 NamespaceIndentation: "All"
+ExperimentalAutoDetectBinPacking: "false"
+AlignOperands: "AlignAfterOperator"
+AlignEscapedNewlines: "Left"
+AccessModifierOffset: -4

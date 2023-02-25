@@ -12,6 +12,7 @@
 **.exp
 **.exe
 **.idb
+**.spv
 Build/
 
 **/CMakeSettings.json

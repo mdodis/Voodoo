@@ -1,9 +1,11 @@
 #pragma once
+#include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
 
 #include "Compat/Win32Base.h"
 #include "Containers/Slice.h"
 #include "Result.h"
+#include "Types.h"
 
 #define VK_RETURN_IF_ERR(x)           \
     do {                              \
@@ -11,6 +13,15 @@
         if (__result != VK_SUCCESS) { \
             return Err(__result);     \
         }                             \
+    } while (0)
+
+#define VK_CHECK(x)                                                    \
+    do {                                                               \
+        VkResult __result = (x);                                       \
+        if (__result != VK_SUCCESS) {                                  \
+            print(LIT("Error: {}\n"), Str(string_VkResult(__result))); \
+        }                                                              \
+        ASSERT(__result == VK_SUCCESS);                                \
     } while (0)
 
 #define VK_PROC_DEBUG_CALLBACK(name)                               \
@@ -24,3 +35,5 @@ Slice<const char *> win32_get_required_extensions();
 
 Result<VkSurfaceKHR, VkResult> win32_create_surface(
     VkInstance vk_instance, Win32::HWND hwnd, Win32::HINSTANCE instance);
+
+PROC_FMT_INL(VkResult) { tape->write_str(Str(string_VkResult(type))); }

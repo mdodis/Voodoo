@@ -1,3 +1,4 @@
+#include "Math/CG.h"
 #include "Result.h"
 #include "VulkanCommon.h"
 
@@ -7,6 +8,7 @@ struct Window {
     bool               is_open;
 
     Result<void, Win32::DWORD>     init(i32 width, i32 height);
+    Vec2i                          get_extents() const;
     void                           poll();
     void                           destroy();
     Result<VkSurfaceKHR, VkResult> create_surface(VkInstance instance);
