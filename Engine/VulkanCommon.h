@@ -73,7 +73,6 @@ struct CreateDeviceFamilyRequirement {
 };
 
 struct CreateDeviceWithQueuesInfo {
-    VkPhysicalDevice                     physical_device;      // In
     VkSurfaceKHR                         surface;              // In
     Slice<const char*>                   validation_layers;    // In
     Slice<const char*>                   extensions;           // In
@@ -83,7 +82,27 @@ struct CreateDeviceWithQueuesInfo {
 };
 
 Result<VkDevice, VkResult> create_device_with_queues(
-    IAllocator& allocator, CreateDeviceWithQueuesInfo& info);
+    IAllocator&                 allocator,
+    VkPhysicalDevice            device,
+    CreateDeviceWithQueuesInfo& info);
+
+struct CreateSwapchainInfo {
+    VkPhysicalDevice    physical_device;  // In
+    VkFormat            format;           // In
+    VkColorSpaceKHR     color_space;      // In
+    VkSurfaceKHR        surface;          // In
+    u32                 graphics_family;  // In
+    u32                 present_family;   // In
+    VkExtent2D&         extent;           // In/Out
+    VkSurfaceFormatKHR& surface_format;   // Out
+    VkPresentModeKHR&   present_mode;     // Out
+    u32&                num_images;       // Out
+};
+
+Result<VkSwapchainKHR, VkResult> create_swapchain(
+    IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info);
+
+void print_physical_device_queue_families(VkPhysicalDevice device);
 
 /* Win32 */
 

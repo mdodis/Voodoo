@@ -210,35 +210,38 @@ Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
 }
 
 Result<VkDevice, VkResult> create_device_with_queues(
-    IAllocator& allocator, CreateDeviceWithQueuesInfo& info)
+    IAllocator&                 allocator,
+    VkPhysicalDevice            device,
+    CreateDeviceWithQueuesInfo& info)
 {
     info.families.alloc = &allocator;
     info.families.init(info.family_requirements.count);
 
     u32 family_count;
-    vkGetPhysicalDeviceQueueFamilyProperties(
-        info.physical_device,
-        &family_count,
-        0);
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, 0);
 
     TArray<VkQueueFamilyProperties> properties(&allocator);
     properties.init_range(family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        device,
+        &family_count,
+        properties.data);
     DEFER(properties.release());
 
     for (auto& family_requirement : info.family_requirements) {
         bool found = false;
-        for (int i = 0; i < family_count; ++i) {
+        for (u32 i = 0; i < family_count; ++i) {
             VkQueueFamilyProperties& family = properties[i];
 
             VkBool32 surface_supported = 0;
             vkGetPhysicalDeviceSurfaceSupportKHR(
-                info.physical_device,
+                device,
                 i,
                 info.surface,
                 &surface_supported);
 
             if (family_requirement.flag_bits != 0) {
-                if (!(family_requirement.flag_bits & family.queueFlags))
+                if (!(family.queueFlags & family_requirement.flag_bits))
                     continue;
             }
 
@@ -276,15 +279,132 @@ Result<VkDevice, VkResult> create_device_with_queues(
     VkPhysicalDeviceFeatures features = {};
 
     VkDeviceCreateInfo create_info = {
-        .sType                = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = (u32)queue_create_infos.size,
-        .pQueueCreateInfos    = queue_create_infos.data,
-
+        .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .queueCreateInfoCount    = (u32)queue_create_infos.size,
+        .pQueueCreateInfos       = queue_create_infos.data,
+        .enabledLayerCount       = (u32)info.validation_layers.count,
+        .ppEnabledLayerNames     = info.validation_layers.ptr,
+        .enabledExtensionCount   = (u32)info.extensions.count,
+        .ppEnabledExtensionNames = info.extensions.ptr,
+        .pEnabledFeatures        = &features,
     };
 
     VkDevice result;
-    VK_RETURN_IF_ERR(
-        vkCreateDevice(info.physical_device, &create_info, 0, &result));
+    VK_RETURN_IF_ERR(vkCreateDevice(device, &create_info, 0, &result));
 
     return Ok(result);
+}
+
+Result<VkSwapchainKHR, VkResult> create_swapchain(
+    IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info)
+{
+    auto swap_chain_support_result = query_physical_device_swap_chain_support(
+        allocator,
+        info.physical_device,
+        info.surface);
+
+    if (!swap_chain_support_result.ok())
+        return Err(swap_chain_support_result.err());
+
+    SwapChainSupportInfo support = swap_chain_support_result.value();
+
+    info.surface_format = support.formats[0];
+    for (const auto& format : support.formats) {
+        if (format.format == info.format &&
+            format.colorSpace == info.color_space)
+        {
+            info.surface_format = format;
+            break;
+        }
+    }
+
+    // Present mode
+    info.present_mode = VK_PRESENT_MODE_FIFO_KHR;
+    // for (const VkPresentModeKHR& mode : details.present_modes) {
+    //     if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+    //         info.present_mode = mode;
+    //         break;
+    //     }
+    // }
+
+    // Choose extents
+    if (support.capabilities.currentExtent.width != NumProps<u32>::max) {
+        info.extent = support.capabilities.currentExtent;
+    } else {
+        info.extent.width = clamp(
+            info.extent.width,
+            support.capabilities.minImageExtent.width,
+            support.capabilities.maxImageExtent.width);
+
+        info.extent.height = clamp(
+            info.extent.height,
+            support.capabilities.minImageExtent.height,
+            support.capabilities.maxImageExtent.height);
+    }
+
+    info.num_images = support.capabilities.minImageCount + 1;
+    if ((support.capabilities.maxImageCount > 0) &&
+        (info.num_images > support.capabilities.maxImageCount))
+    {
+        info.num_images = support.capabilities.maxImageCount;
+    }
+
+    // Create swap chain
+    VkSwapchainCreateInfoKHR create_info = {
+        .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface          = info.surface,
+        .minImageCount    = info.num_images,
+        .imageFormat      = info.surface_format.format,
+        .imageColorSpace  = info.surface_format.colorSpace,
+        .imageExtent      = info.extent,
+        .imageArrayLayers = 1,
+        .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .preTransform     = support.capabilities.currentTransform,
+        .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode      = info.present_mode,
+        .clipped          = VK_TRUE,
+        .oldSwapchain     = VK_NULL_HANDLE,
+    };
+
+    u32 queue_family_indices[] = {
+        info.graphics_family,
+        info.present_family,
+    };
+
+    if (info.graphics_family != info.present_family) {
+        create_info.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
+        create_info.queueFamilyIndexCount = 2;
+        create_info.pQueueFamilyIndices   = queue_family_indices;
+    } else {
+        create_info.imageSharingMode      = VK_SHARING_MODE_EXCLUSIVE;
+        create_info.queueFamilyIndexCount = 0;
+        create_info.pQueueFamilyIndices   = 0;
+    }
+
+    VkSwapchainKHR swapchain;
+    VK_RETURN_IF_ERR(vkCreateSwapchainKHR(device, &create_info, 0, &swapchain));
+
+    return Ok(swapchain);
+}
+
+void print_physical_device_queue_families(VkPhysicalDevice device)
+{
+    u32 family_count;
+    vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, 0);
+
+    TArray<VkQueueFamilyProperties> properties(&System_Allocator);
+    properties.init_range(family_count);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        device,
+        &family_count,
+        properties.data);
+    DEFER(properties.release());
+
+    for (u32 i = 0; i < properties.size; ++i) {
+        VkQueueFamilyProperties& family = properties[i];
+        print(LIT("Queue Family: {} ({} queues)\n"), i, family.queueCount);
+        print(
+            LIT("\tGraphics: {}\n"),
+            family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
+    }
 }

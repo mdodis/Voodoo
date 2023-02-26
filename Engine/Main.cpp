@@ -23,6 +23,7 @@ int main(int argc, char const* argv[])
 
     while (window.is_open) {
         window.poll();
+        eng.draw();
     }
 
     print(LIT("Closing...\n"));
