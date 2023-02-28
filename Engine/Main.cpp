@@ -21,9 +21,10 @@ int main(int argc, char const* argv[])
     eng.init();
     DEFER(eng.deinit());
 
+    window.poll();
     while (window.is_open) {
-        window.poll();
         eng.draw();
+        window.poll();
     }
 
     print(LIT("Closing...\n"));

@@ -1,24 +1,28 @@
-find_package(Vulkan)
+find_package(Vulkan REQUIRED)
 
 add_executable(vkx
     "./Main.cpp"
     "./Window.cpp"
     "./Window.h"
-    "./App.cpp"
-    "./App.h"
     "./Engine.h"
     "./Engine.cpp"
     "./VulkanCommon.h"
-     "VulkanCommon.cpp")
+    "./VulkanCommon.cpp"
+    "./DeletionQueue.h"
+    "./Mesh.h"
+    "./Mesh.cpp"
+    )
 
 target_include_directories(vkx 
     PUBLIC
     ${Vulkan_INCLUDE_DIRS}
+    ${PROJECT_SOURCE_DIR}/ThirdParty/VMA/
     )
 
 target_link_libraries(vkx
     PUBLIC
     ${Vulkan_LIBRARY}
+    VulkanMemoryAllocator
     "user32"
     MokLib
     )

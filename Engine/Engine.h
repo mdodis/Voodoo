@@ -1,7 +1,15 @@
 #pragma once
+#include "DeletionQueue.h"
 #include "Memory/Base.h"
+#include "Mesh.h"
 #include "VulkanCommon.h"
 #include "Window.h"
+#include "vk_mem_alloc.h"
+
+struct MeshPushConstants {
+    Vec4 data;
+    Mat4 transform;
+};
 
 struct Engine {
     Window*     window;
@@ -27,7 +35,7 @@ struct Engine {
     TArray<VkFramebuffer> framebuffers;
     VkPipelineLayout      triangle_layout;
     VkPipeline            pipeline;
-
+    VmaAllocator          vmalloc;
     // Sync Objects
 
     VkSemaphore sem_render, sem_present;
@@ -35,6 +43,10 @@ struct Engine {
 
     // Statistics
     u32 frame_num = 0;
+
+    DeletionQueue main_deletion_queue;
+
+    Mesh triangle_mesh;
 
     struct {
         u32     family;
@@ -50,12 +62,14 @@ struct Engine {
     void           deinit();
     void           draw();
     VkShaderModule load_shader(Str path);
+    void           upload_mesh(Mesh& mesh);
 
 private:
     void init_default_renderpass();
     void init_pipelines();
     void init_framebuffers();
     void init_sync_objects();
+    void init_default_meshes();
 };
 
 struct PipelineBuilder {
@@ -84,6 +98,11 @@ struct PipelineBuilder {
     PipelineBuilder& set_scissor(i32 x, i32 y, u32 w, u32 h);
     PipelineBuilder& set_render_pass(VkRenderPass render_pass);
     PipelineBuilder& set_layout(VkPipelineLayout layout);
+    PipelineBuilder& set_vertex_input_bindings(
+        Slice<VkVertexInputBindingDescription> bindings);
+    PipelineBuilder& set_vertex_input_attributes(
+        Slice<VkVertexInputAttributeDescription> attributes);
+    PipelineBuilder& set_vertex_input_info(VertexInputInfo& info);
 
     void                         init_defaults();
     Result<VkPipeline, VkResult> build(VkDevice device);

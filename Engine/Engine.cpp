@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+#include "Memory/Extras.h"
+
 static auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
 static auto Device_Extensions =
     arr<const char*>(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
@@ -17,7 +19,7 @@ void Engine::init()
     swap_chain_images.alloc      = &allocator;
     swap_chain_image_views.alloc = &allocator;
     framebuffers.alloc           = &allocator;
-
+    main_deletion_queue          = DeletionQueue(allocator);
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     Slice<const char*> required_window_ext = win32_get_required_extensions();
@@ -115,6 +117,17 @@ void Engine::init()
         vkGetDeviceQueue(device, presentation.family, 0, &presentation.queue);
     }
 
+    // VM Allocator
+    {
+        VmaAllocatorCreateInfo create_info = {
+            .physicalDevice = physical_device,
+            .device         = device,
+            .instance       = instance,
+        };
+
+        VK_CHECK(vmaCreateAllocator(&create_info, &vmalloc));
+    }
+
     // Create swap chain & views
     {
         SAVE_ARENA(temp_alloc);
@@ -174,6 +187,11 @@ void Engine::init()
                 0,
                 &swap_chain_image_views[i]));
         }
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroySwapchainKHR(this->device, this->swap_chain, 0);
+            }));
     }
 
     // Create graphics command pool
@@ -185,6 +203,11 @@ void Engine::init()
         };
 
         VK_CHECK(vkCreateCommandPool(device, &create_info, 0, &cmd_pool));
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroyCommandPool(this->device, this->cmd_pool, 0);
+            }));
     }
 
     // Create main cmd buffer
@@ -203,22 +226,9 @@ void Engine::init()
     init_pipelines();
     init_framebuffers();
     init_sync_objects();
+    init_default_meshes();
 
     is_initialized = true;
-}
-
-VkShaderModule Engine::load_shader(Str path)
-{
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
-    auto load_result = load_shader_binary(temp_alloc, device, path);
-
-    if (!load_result.ok()) {
-        print(LIT("Failed to load & create shader module {}\n"), path);
-        return VK_NULL_HANDLE;
-    }
-
-    print(LIT("Loaded shader module binary {}\n"), path);
-    return load_result.value();
 }
 
 void Engine::init_pipelines()
@@ -231,8 +241,16 @@ void Engine::init_pipelines()
 
     // Create layout
     {
+        VkPushConstantRange push_constant = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset     = 0,
+            .size       = sizeof(MeshPushConstants),
+        };
+
         VkPipelineLayoutCreateInfo create_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges    = &push_constant,
         };
 
         VK_CHECK(
@@ -240,6 +258,8 @@ void Engine::init_pipelines()
     }
 
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+
+    VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
     pipeline =
         PipelineBuilder(temp_alloc)
@@ -251,8 +271,18 @@ void Engine::init_pipelines()
             .set_scissor(0, 0, extent.width, extent.height)
             .set_render_pass(render_pass)
             .set_layout(triangle_layout)
+            .set_vertex_input_info(vertex_input_info)
             .build(device)
             .unwrap();
+
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroyPipeline(device, pipeline, 0);
+            vkDestroyPipelineLayout(device, triangle_layout, 0);
+        }));
+
+    vkDestroyShaderModule(device, basic_shader_vert, 0);
+    vkDestroyShaderModule(device, basic_shader_frag, 0);
 }
 
 void Engine::init_default_renderpass()
@@ -288,6 +318,9 @@ void Engine::init_default_renderpass()
     };
 
     VK_CHECK(vkCreateRenderPass(device, &create_info, 0, &render_pass));
+
+    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+        [this]() { vkDestroyRenderPass(this->device, this->render_pass, 0); }));
 }
 
 void Engine::init_framebuffers()
@@ -308,6 +341,12 @@ void Engine::init_framebuffers()
         create_info.pAttachments = &swap_chain_image_views[i];
         VK_CHECK(
             vkCreateFramebuffer(device, &create_info, 0, &framebuffers[i]));
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
+                vkDestroyFramebuffer(this->device, framebuffers[i], 0);
+                vkDestroyImageView(this->device, swap_chain_image_views[i], 0);
+            }));
     }
 }
 
@@ -320,12 +359,61 @@ void Engine::init_sync_objects()
 
     VK_CHECK(vkCreateFence(device, &fnc_create_info, 0, &fnc_render));
 
+    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+        [this]() { vkDestroyFence(this->device, this->fnc_render, 0); }));
+
     VkSemaphoreCreateInfo sem_create_info = {
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
     };
 
     VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem_present));
     VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem_render));
+
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroySemaphore(this->device, this->sem_render, 0);
+            vkDestroySemaphore(this->device, this->sem_present, 0);
+        }));
+}
+
+VkShaderModule Engine::load_shader(Str path)
+{
+    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+    auto load_result = load_shader_binary(temp_alloc, device, path);
+
+    if (!load_result.ok()) {
+        print(LIT("Failed to load & create shader module {}\n"), path);
+        return VK_NULL_HANDLE;
+    }
+
+    print(LIT("Loaded shader module binary {}\n"), path);
+    return load_result.value();
+}
+
+void Engine::upload_mesh(Mesh& mesh)
+{
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size  = sizeof(Vertex) * mesh.vertices.count,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+    };
+
+    VmaAllocationCreateInfo alloc_info = {
+        .usage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+    };
+
+    VK_CHECK(vmaCreateBuffer(
+        vmalloc,
+        &buffer_info,
+        &alloc_info,
+        &mesh.gpu_buffer.buffer,
+        &mesh.gpu_buffer.allocation,
+        0));
+
+    void* data;
+    vmaMapMemory(vmalloc, mesh.gpu_buffer.allocation, &data);
+    memcpy(data, mesh.vertices.ptr, mesh.vertices.size());
+    vmaUnmapMemory(vmalloc, mesh.gpu_buffer.allocation);
 }
 
 void Engine::draw()
@@ -362,14 +450,13 @@ void Engine::draw()
         .color = {0, 0, flash, 1.0f},
     };
 
-    VkOffset2D            offset        = {};
     VkRenderPassBeginInfo rp_begin_info = {
         .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass  = render_pass,
         .framebuffer = framebuffers[next_image_index],
         .renderArea =
             {
-                .offset = offset,
+                .offset = {0, 0},
                 .extent = extent,
             },
         .clearValueCount = 1,
@@ -378,7 +465,40 @@ void Engine::draw()
     vkCmdBeginRenderPass(cmd, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-    vkCmdDraw(cmd, 3, 1, 0, 0);
+
+    Vec3 camera_pos = {0, 0, 2.f};
+
+    Mat4 view       = translation(camera_pos * -1.0f);
+    Mat4 projection = perspective(
+        70.f * To_Radians,
+        (float(extent.width) / float(extent.height)),
+        0.1f,
+        200.0f);
+
+    Mat4 model = rotation_yaw((0.4f * frame_num) * To_Radians) *
+                 translation(Vec3{0, 0.f, -2.0f});
+    Mat4 transform = model * projection;
+
+    MeshPushConstants constants;
+    constants.transform = transform;
+
+    vkCmdPushConstants(
+        cmd,
+        triangle_layout,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0,
+        sizeof(MeshPushConstants),
+        &constants);
+
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(
+        cmd,
+        0,
+        1,
+        &triangle_mesh.gpu_buffer.buffer,
+        &offset);
+
+    vkCmdDraw(cmd, (u32)triangle_mesh.vertices.count, 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -416,18 +536,36 @@ void Engine::draw()
 void Engine::deinit()
 {
     if (!is_initialized) return;
-    vkDestroyCommandPool(device, cmd_pool, 0);
-    vkDestroySwapchainKHR(device, swap_chain, 0);
-    vkDestroyRenderPass(device, render_pass, 0);
+    VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1000000));
 
-    for (u32 i = 0; i < framebuffers.size; ++i) {
-        vkDestroyFramebuffer(device, framebuffers[i], 0);
-        vkDestroyImageView(device, swap_chain_image_views[i], 0);
-    }
+    main_deletion_queue.flush();
 
     vkDestroyDevice(device, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
     vkDestroyInstance(instance, 0);
+}
+
+void Engine::init_default_meshes()
+{
+    Vertex* vertices = alloc_array<Vertex, 3>(allocator);
+
+    vertices[0] = {
+        .position = {1, 1, 0},
+        .color    = {0, 1, 0},
+    };
+
+    vertices[1] = {
+        .position = {-1, 1, 0},
+        .color    = {0, 1, 0},
+    };
+
+    vertices[2] = {
+        .position = {0, -1, 0},
+        .color    = {0, 1, 0},
+    };
+
+    triangle_mesh.vertices = slice(vertices, 3);
+    upload_mesh(triangle_mesh);
 }
 
 void PipelineBuilder::init_defaults()
@@ -547,6 +685,28 @@ PipelineBuilder& PipelineBuilder::set_render_pass(VkRenderPass render_pass)
 PipelineBuilder& PipelineBuilder::set_layout(VkPipelineLayout layout)
 {
     this->layout = layout;
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::set_vertex_input_bindings(
+    Slice<VkVertexInputBindingDescription> bindings)
+{
+    vertex_input_info.vertexBindingDescriptionCount = bindings.count;
+    vertex_input_info.pVertexBindingDescriptions    = bindings.ptr;
+    return *this;
+}
+PipelineBuilder& PipelineBuilder::set_vertex_input_attributes(
+    Slice<VkVertexInputAttributeDescription> attributes)
+{
+    vertex_input_info.vertexAttributeDescriptionCount = attributes.count;
+    vertex_input_info.pVertexAttributeDescriptions    = attributes.ptr;
+    return *this;
+}
+
+PipelineBuilder& PipelineBuilder::set_vertex_input_info(VertexInputInfo& info)
+{
+    set_vertex_input_bindings(info.bindings);
+    set_vertex_input_attributes(info.attributes);
     return *this;
 }
 
