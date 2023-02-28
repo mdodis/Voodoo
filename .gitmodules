@@ -1,3 +1,6 @@
 [submodule "MokLib"]
 	path = MokLib
 	url = https://github.com/mdodis/MokLib.git
+[submodule "ThirdParty/SFL"]
+	path = ThirdParty/SFL
+	url = https://github.com/mdodis/sfl
