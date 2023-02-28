@@ -3,5 +3,6 @@ project(VKX)
 set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory("MokLib")
+add_subdirectory("Shaders")
 add_subdirectory("ThirdParty/ImGUI")
 add_subdirectory("Engine")

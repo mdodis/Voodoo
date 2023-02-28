@@ -408,3 +408,21 @@ void print_physical_device_queue_families(VkPhysicalDevice device)
             family.queueFlags & VK_QUEUE_GRAPHICS_BIT);
     }
 }
+
+Result<VkShaderModule, VkResult> load_shader_binary(
+    IAllocator& allocator, VkDevice device, Str path)
+{
+    Raw data = dump_file(path, allocator);
+    DEFER(allocator.release(data.buffer));
+
+    VkShaderModuleCreateInfo create_info = {
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = data.size,
+        .pCode    = (u32*)data.buffer,
+    };
+
+    VkShaderModule result;
+    VK_RETURN_IF_ERR(vkCreateShaderModule(device, &create_info, 0, &result));
+
+    return Ok(result);
+}

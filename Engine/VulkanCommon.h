@@ -104,6 +104,9 @@ Result<VkSwapchainKHR, VkResult> create_swapchain(
 
 void print_physical_device_queue_families(VkPhysicalDevice device);
 
+Result<VkShaderModule, VkResult> load_shader_binary(
+    IAllocator& allocator, VkDevice device, Str path);
+
 /* Win32 */
 
 Slice<const char*>             win32_get_required_extensions();
