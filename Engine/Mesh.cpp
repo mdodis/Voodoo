@@ -1,6 +1,7 @@
 #include "Mesh.h"
 
 #include "Containers/Extras.h"
+#include "tiny_obj_loader.h"
 
 VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
 {
@@ -38,4 +39,59 @@ VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
     };
 
     return result;
+}
+
+Result<Mesh, Str> Mesh::load_from_file(IAllocator& allocator, const char* path)
+{
+    std::string                      warn, err;
+    tinyobj::attrib_t                attrib;
+    std::vector<tinyobj::shape_t>    shapes;
+    std::vector<tinyobj::material_t> materials;
+
+    TArray<Vertex> vertices(&allocator);
+
+    if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, path, 0, true)) {
+        return Err(Str(err.c_str()));
+    }
+
+    for (size_t s = 0; s < shapes.size(); ++s) {
+        size_t index_offset = 0;
+        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f) {
+            int fv = 3;
+
+            for (size_t v = 0; v < fv; ++v) {
+                tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+
+                // vertex position
+                tinyobj::real_t vx = attrib.vertices[3 * idx.vertex_index + 0];
+                tinyobj::real_t vy = attrib.vertices[3 * idx.vertex_index + 1];
+                tinyobj::real_t vz = attrib.vertices[3 * idx.vertex_index + 2];
+                // vertex normal
+                tinyobj::real_t nx = attrib.normals[3 * idx.normal_index + 0];
+                tinyobj::real_t ny = attrib.normals[3 * idx.normal_index + 1];
+                tinyobj::real_t nz = attrib.normals[3 * idx.normal_index + 2];
+
+                // copy it into our vertex
+                Vertex new_vert;
+                new_vert.position.x = vx;
+                new_vert.position.y = vy;
+                new_vert.position.z = vz;
+
+                new_vert.normal.x = nx;
+                new_vert.normal.y = ny;
+                new_vert.normal.z = nz;
+
+                // we are setting the vertex color as the vertex normal. This is
+                // just for display purposes
+                new_vert.color = new_vert.normal;
+
+                vertices.add(new_vert);
+            }
+            index_offset += fv;
+        }
+    }
+
+    return Ok(Mesh{
+        .vertices = slice(vertices),
+    });
 }

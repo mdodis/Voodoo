@@ -7,12 +7,11 @@
 **.recipe
 **.cap
 **.lib
-**.obj
 **.pdb
 **.exp
 **.exe
 **.idb
 **.spv
+Build/**.obj
 Build/
-
 **/CMakeSettings.json

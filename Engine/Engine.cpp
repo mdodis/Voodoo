@@ -491,14 +491,9 @@ void Engine::draw()
         &constants);
 
     VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(
-        cmd,
-        0,
-        1,
-        &triangle_mesh.gpu_buffer.buffer,
-        &offset);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &monke_mesh.gpu_buffer.buffer, &offset);
 
-    vkCmdDraw(cmd, (u32)triangle_mesh.vertices.count, 1, 0, 0);
+    vkCmdDraw(cmd, (u32)monke_mesh.vertices.count, 1, 0, 0);
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -566,6 +561,10 @@ void Engine::init_default_meshes()
 
     triangle_mesh.vertices = slice(vertices, 3);
     upload_mesh(triangle_mesh);
+
+    monke_mesh =
+        Mesh::load_from_file(allocator, "Assets/monkey_smooth.obj").unwrap();
+    upload_mesh(monke_mesh);
 }
 
 void PipelineBuilder::init_defaults()

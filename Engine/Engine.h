@@ -11,6 +11,11 @@ struct MeshPushConstants {
     Mat4 transform;
 };
 
+struct AllocatedImage {
+    VkImage       image;
+    VmaAllocation allocation;
+};
+
 struct Engine {
     Window*     window;
     bool        validation_layers = false;
@@ -36,6 +41,12 @@ struct Engine {
     VkPipelineLayout      triangle_layout;
     VkPipeline            pipeline;
     VmaAllocator          vmalloc;
+
+    // Depth Buffer
+    AllocatedImage depth_image;
+    VkImageView    depth_image_view;
+    VkFormat       depth_image_format;
+
     // Sync Objects
 
     VkSemaphore sem_render, sem_present;
@@ -47,6 +58,7 @@ struct Engine {
     DeletionQueue main_deletion_queue;
 
     Mesh triangle_mesh;
+    Mesh monke_mesh;  // monke
 
     struct {
         u32     family;

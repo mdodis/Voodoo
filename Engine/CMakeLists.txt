@@ -23,6 +23,7 @@ target_link_libraries(vkx
     PUBLIC
     ${Vulkan_LIBRARY}
     VulkanMemoryAllocator
+    tinyobjloader
     "user32"
     MokLib
     )
