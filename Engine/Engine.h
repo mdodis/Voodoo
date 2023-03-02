@@ -1,4 +1,5 @@
 #pragma once
+#include "Containers/Map.h"
 #include "DeletionQueue.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
@@ -16,8 +17,25 @@ struct AllocatedImage {
     VmaAllocation allocation;
 };
 
+struct Material {
+    VkPipeline       pipeline        = VK_NULL_HANDLE;
+    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+};
+
+static _inline bool operator==(Material& left, Material& right)
+{
+    return left.pipeline == right.pipeline;
+}
+
+struct RenderObject {
+    Mesh*     mesh;
+    Material* material;
+    Mat4      transform;
+};
+
 struct Engine {
     Window*     window;
+    Input*      input;
     bool        validation_layers = false;
     IAllocator& allocator;
 
@@ -58,6 +76,11 @@ struct Engine {
     DeletionQueue main_deletion_queue;
     DeletionQueue swap_chain_deletion_queue;
 
+    // Scene Management
+    TMap<Str, Mesh>      meshes;
+    TMap<Str, Material>  materials;
+    TArray<RenderObject> render_objects;
+
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
 
@@ -71,11 +94,21 @@ struct Engine {
         VkQueue queue;
     } presentation;
 
+    struct {
+        Vec3  position = {0, 0, 5};
+        Quat  rotation;
+        float yaw = 0.f, pitch = 0.f;
+    } debug_camera;
+
     void           init();
     void           deinit();
     void           draw();
     VkShaderModule load_shader(Str path);
-    void           upload_mesh(Mesh& mesh);
+    Material*      create_material(
+             VkPipeline pipeline, VkPipelineLayout layout, Str id);
+    Mesh*     get_mesh(Str id);
+    Material* get_material(Str id);
+    void      upload_mesh(Mesh& mesh);
 
 private:
     void init_default_renderpass();
@@ -83,10 +116,15 @@ private:
     void init_framebuffers();
     void init_sync_objects();
     void init_default_meshes();
-
+    void init_input();
     void recreate_swapchain();
 
     void on_resize_presentation();
+
+    // Debug Camera
+    void on_debug_camera_forward();
+    void on_debug_camera_mousex(float value);
+    void debug_camera_update_rotation();
 };
 
 struct PipelineBuilder {

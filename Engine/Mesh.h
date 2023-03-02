@@ -5,8 +5,8 @@
 #include "vk_mem_alloc.h"
 
 struct AllocatedBuffer {
-    VkBuffer      buffer;
-    VmaAllocation allocation;
+    VkBuffer      buffer     = VK_NULL_HANDLE;
+    VmaAllocation allocation = VK_NULL_HANDLE;
 };
 
 struct VertexInputInfo {
@@ -30,3 +30,8 @@ struct Mesh {
     static Result<Mesh, Str> load_from_file(
         IAllocator& allocator, const char* path);
 };
+
+static _inline bool operator==(Mesh& left, Mesh& right)
+{
+    return left.gpu_buffer.buffer == right.gpu_buffer.buffer;
+}

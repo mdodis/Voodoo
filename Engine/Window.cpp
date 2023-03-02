@@ -1,5 +1,7 @@
 #include "Window.h"
 
+#include "Compat/Win32VirtualKeycodes.h"
+
 static WIN32_DECLARE_WNDPROC(wnd_proc_handler);
 
 Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
@@ -94,6 +96,22 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
 
         case Win32::Message::Size: {
             needs_resize = true;
+        } break;
+
+        case Win32::Message::KeyDown:
+        case Win32::Message::KeyUp: {
+            bool     down = msg == Win32::Message::KeyDown;
+            InputKey key  = wparam_to_input_key(wparam);
+
+            input->send_input(key, down);
+        } break;
+
+        case Win32::Message::MouseMove: {
+            int x = WIN32_GET_X_LPARAM(lparam);
+            int y = WIN32_GET_Y_LPARAM(lparam);
+
+            input->send_axis(InputAxis::MouseX, (float)x);
+            input->send_axis(InputAxis::MouseY, (float)y);
         } break;
 
         default: {

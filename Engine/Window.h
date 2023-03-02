@@ -1,9 +1,11 @@
 #include "Delegates.h"
+#include "Input.h"
 #include "Math/CG.h"
 #include "Result.h"
 #include "VulkanCommon.h"
 
 struct Window {
+    Input*             input;
     Win32::HWND        hwnd;
     Win32::WNDCLASSEXA wnd_class;
     bool               is_open;

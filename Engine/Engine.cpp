@@ -21,6 +21,9 @@ void Engine::init()
     framebuffers.alloc           = &allocator;
     main_deletion_queue          = DeletionQueue(allocator);
     swap_chain_deletion_queue    = DeletionQueue(allocator);
+    render_objects.alloc         = &allocator;
+    meshes.init(allocator);
+    materials.init(allocator);
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     Slice<const char*> required_window_ext = win32_get_required_extensions();
@@ -160,6 +163,7 @@ void Engine::init()
             vkAllocateCommandBuffers(device, &create_info, &main_cmd_buffer));
     }
 
+    init_input();
     init_default_renderpass();
     init_pipelines();
     init_framebuffers();
@@ -219,6 +223,8 @@ void Engine::init_pipelines()
             vkDestroyPipeline(device, pipeline, 0);
             vkDestroyPipelineLayout(device, triangle_layout, 0);
         }));
+
+    create_material(pipeline, triangle_layout, LIT("default.mesh"));
 
     vkDestroyShaderModule(device, basic_shader_vert, 0);
     vkDestroyShaderModule(device, basic_shader_frag, 0);
@@ -342,13 +348,6 @@ void Engine::init_framebuffers()
     }
 }
 
-void Engine::on_resize_presentation()
-{
-    VK_CHECK(vkDeviceWaitIdle(device));
-    recreate_swapchain();
-    init_framebuffers();
-}
-
 void Engine::init_sync_objects()
 {
     VkFenceCreateInfo fnc_create_info = {
@@ -373,6 +372,50 @@ void Engine::init_sync_objects()
             vkDestroySemaphore(this->device, this->sem_render, 0);
             vkDestroySemaphore(this->device, this->sem_present, 0);
         }));
+}
+
+void Engine::init_input()
+{
+    input->add_digital_continuous_action(
+        LIT("debug.camera.fwd"),
+        InputKey::W,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_forward));
+    input->add_axis_motion_action(
+        LIT("debug.camera.yaw"),
+        InputAxis::MouseX,
+        1.0f,
+        InputAxisMotionAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_mousex));
+}
+
+void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.5f; }
+void Engine::on_debug_camera_mousex(float value)
+{
+    // debug_camera.yaw += value;
+    // if (debug_camera.yaw > 360.0f) {
+    //     debug_camera.yaw -= 360.0f;
+    // } else if (debug_camera.yaw < 0.0f) {
+    //     debug_camera.yaw += 360.0f;
+    // }
+
+    debug_camera.yaw += value > 0 ? 0.01f : -0.01f;
+
+    debug_camera_update_rotation();
+}
+
+void Engine::debug_camera_update_rotation()
+{
+    debug_camera.rotation = Quat(Vec3::up(), debug_camera.yaw * To_Radians);
+}
+
+void Engine::on_resize_presentation()
+{
+    VK_CHECK(vkDeviceWaitIdle(device));
+    recreate_swapchain();
+    init_framebuffers();
 }
 
 VkShaderModule Engine::load_shader(Str path)
@@ -418,7 +461,7 @@ void Engine::upload_mesh(Mesh& mesh)
 void Engine::draw()
 {
     // Wait for previous frame to finish
-    VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1000000));
+    VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1.6e+7));
 
     // Get next image
     u32      next_image_index;
@@ -487,8 +530,6 @@ void Engine::draw()
     };
     vkCmdBeginRenderPass(cmd, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
     VkViewport viewport = {
         .x        = 0,
         .y        = 0,
@@ -503,34 +544,37 @@ void Engine::draw()
     VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    Vec3 camera_pos = {0, 0, 2.f};
+    Vec3 camera_pos = debug_camera.position;
 
-    Mat4 view       = translation(camera_pos * -1.0f);
+    Mat4 rot        = debug_camera.rotation.rotation_matrix();
+    Mat4 view       = transpose(rot) * translation(camera_pos * -1.0f);
     Mat4 projection = perspective(
         70.f * To_Radians,
         (float(extent.width) / float(extent.height)),
         0.1f,
         200.0f);
-
-    Mat4 model = rotation_yaw((0.4f * frame_num) * To_Radians) *
-                 translation(Vec3{0, 0.f, -2.0f});
-    Mat4 transform = model * projection;
-
     MeshPushConstants constants;
-    constants.transform = transform;
 
-    vkCmdPushConstants(
-        cmd,
-        triangle_layout,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof(MeshPushConstants),
-        &constants);
+    for (RenderObject& ro : render_objects) {
+        constants.transform = ro.transform * view * projection;
 
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &monke_mesh.gpu_buffer.buffer, &offset);
+        vkCmdPushConstants(
+            cmd,
+            triangle_layout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            sizeof(MeshPushConstants),
+            &constants);
 
-    vkCmdDraw(cmd, (u32)monke_mesh.vertices.count, 1, 0, 0);
+        vkCmdBindPipeline(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            ro.material->pipeline);
+
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(cmd, 0, 1, &ro.mesh->gpu_buffer.buffer, &offset);
+        vkCmdDraw(cmd, (u32)ro.mesh->vertices.count, 1, 0, 0);
+    }
 
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
@@ -714,6 +758,34 @@ void Engine::deinit()
     vkDestroyInstance(instance, 0);
 }
 
+Material* Engine::create_material(
+    VkPipeline pipeline, VkPipelineLayout layout, Str id)
+{
+    Material mt = {
+        .pipeline        = pipeline,
+        .pipeline_layout = layout,
+    };
+    materials.add(id, mt);
+
+    return &materials[id];
+}
+
+Mesh* Engine::get_mesh(Str id)
+{
+    if (meshes.contains(id)) {
+        return &meshes[id];
+    }
+    return 0;
+}
+
+Material* Engine::get_material(Str id)
+{
+    if (materials.contains(id)) {
+        return &materials[id];
+    }
+    return 0;
+}
+
 void Engine::init_default_meshes()
 {
     Vertex* vertices = alloc_array<Vertex, 3>(allocator);
@@ -739,6 +811,9 @@ void Engine::init_default_meshes()
     monke_mesh =
         Mesh::load_from_file(allocator, "Assets/monkey_smooth.obj").unwrap();
     upload_mesh(monke_mesh);
+
+    meshes.add(LIT("triangle"), triangle_mesh);
+    meshes.add(LIT("monke"), monke_mesh);
 }
 
 void PipelineBuilder::init_defaults()

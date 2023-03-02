@@ -11,6 +11,8 @@ add_executable(vkx
     "./DeletionQueue.h"
     "./Mesh.h"
     "./Mesh.cpp"
+    "./Input.h"
+    "./Input.cpp"
     )
 
 target_include_directories(vkx 
