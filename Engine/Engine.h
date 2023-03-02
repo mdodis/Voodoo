@@ -56,6 +56,7 @@ struct Engine {
     u32 frame_num = 0;
 
     DeletionQueue main_deletion_queue;
+    DeletionQueue swap_chain_deletion_queue;
 
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
@@ -82,15 +83,21 @@ private:
     void init_framebuffers();
     void init_sync_objects();
     void init_default_meshes();
+
+    void recreate_swapchain();
+
+    void on_resize_presentation();
 };
 
 struct PipelineBuilder {
-    PipelineBuilder(IAllocator& allocator) : shader_stages(&allocator)
+    PipelineBuilder(IAllocator& allocator)
+        : shader_stages(&allocator), dynamic_states(&allocator)
     {
         init_defaults();
     }
 
     TArray<VkPipelineShaderStageCreateInfo> shader_stages;
+    TArray<VkDynamicState>                  dynamic_states;
     VkPipelineVertexInputStateCreateInfo    vertex_input_info;
     VkPipelineInputAssemblyStateCreateInfo  asm_create_info;
     VkViewport                              viewport;
@@ -99,6 +106,7 @@ struct PipelineBuilder {
     VkPipelineDepthStencilStateCreateInfo   depth_stencil_state;
     VkPipelineMultisampleStateCreateInfo    multisample_state;
     VkPipelineColorBlendAttachmentState     color_blend_attachment_state;
+    VkPipelineDynamicStateCreateInfo        dynamic_state_info;
     VkPipelineLayout                        layout;
     VkRenderPass                            render_pass;
 
@@ -121,6 +129,7 @@ struct PipelineBuilder {
     PipelineBuilder& set_vertex_input_info(VertexInputInfo& info);
     PipelineBuilder& set_depth_test(
         bool enabled, bool write, VkCompareOp compare_op);
+    PipelineBuilder& add_dynamic_state(VkDynamicState dynamic_state);
 
     void                         init_defaults();
     Result<VkPipeline, VkResult> build(VkDevice device);

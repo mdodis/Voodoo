@@ -15,7 +15,7 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
         return Err(Win32::GetLastError());
     }
 
-    auto        style = Win32::Style::OverlappedWindowNonResizeable;
+    auto        style = Win32::Style::OverlappedWindow;
     Win32::RECT rect  = {
          .left   = 0,
          .top    = 0,
@@ -57,6 +57,8 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
 
 void Window::poll()
 {
+    needs_resize = false;
+
     Win32::MSG message;
     if (Win32::PeekMessageA(
             &message,
@@ -67,6 +69,10 @@ void Window::poll()
     {
         Win32::TranslateMessage(&message);
         Win32::DispatchMessageA(&message);
+    }
+
+    if (needs_resize) {
+        on_resized.call_safe();
     }
 }
 
@@ -86,6 +92,10 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
             is_open = false;
         } break;
 
+        case Win32::Message::Size: {
+            needs_resize = true;
+        } break;
+
         default: {
             result = Win32::DefWindowProcA(hwnd, msg, wparam, lparam);
         } break;
@@ -95,9 +105,8 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
 
 WIN32_DECLARE_WNDPROC(wnd_proc_handler)
 {
-    Window *w = (Window *)Win32::GetWindowLongPtrA(
-        hwnd,
-        Win32::WindowLongPointer::UserData);
+    Window* w = (Window*)
+        Win32::GetWindowLongPtrA(hwnd, Win32::WindowLongPointer::UserData);
     return w->wnd_proc(hwnd, msg, wparam, lparam);
 }
 

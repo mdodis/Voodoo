@@ -20,9 +20,11 @@ void Engine::init()
     swap_chain_image_views.alloc = &allocator;
     framebuffers.alloc           = &allocator;
     main_deletion_queue          = DeletionQueue(allocator);
+    swap_chain_deletion_queue    = DeletionQueue(allocator);
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     Slice<const char*> required_window_ext = win32_get_required_extensions();
+    window->on_resized.bind_raw(this, &Engine::on_resize_presentation);
 
     // Instance
     {
@@ -128,132 +130,7 @@ void Engine::init()
         VK_CHECK(vmaCreateAllocator(&create_info, &vmalloc));
     }
 
-    // Create swap chain & views
-    {
-        SAVE_ARENA(temp_alloc);
-        VkSurfaceFormatKHR  surface_format;
-        VkPresentModeKHR    present_mode;
-        u32                 num_images;
-        CreateSwapchainInfo info = {
-            .physical_device = physical_device,
-            .format          = VK_FORMAT_B8G8R8A8_SRGB,
-            .color_space     = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            .surface         = surface,
-            .graphics_family = graphics.family,
-            .present_family  = presentation.family,
-            .extent          = extent,
-            .surface_format  = surface_format,
-            .present_mode    = present_mode,
-            .num_images      = num_images,
-        };
-        swap_chain = create_swapchain(temp_alloc, device, info).unwrap();
-        swap_chain_image_format = surface_format.format;
-        swap_chain_image_views.init_range(num_images);
-
-        vkGetSwapchainImagesKHR(device, swap_chain, &num_images, 0);
-        swap_chain_images.init_range(num_images);
-        vkGetSwapchainImagesKHR(
-            device,
-            swap_chain,
-            &num_images,
-            swap_chain_images.data);
-
-        for (u32 i = 0; i < num_images; ++i) {
-            VkImageViewCreateInfo create_info = {
-                .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                .image    = swap_chain_images[i],
-                .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                .format   = surface_format.format,
-                .components =
-                    {
-                        .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                        .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    },
-                .subresourceRange =
-                    {
-                        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                        .baseMipLevel   = 0,
-                        .levelCount     = 1,
-                        .baseArrayLayer = 0,
-                        .layerCount     = 1,
-                    },
-            };
-
-            VK_CHECK(vkCreateImageView(
-                device,
-                &create_info,
-                0,
-                &swap_chain_image_views[i]));
-        }
-
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vkDestroySwapchainKHR(this->device, this->swap_chain, 0);
-            }));
-    }
-
-    // Create depth buffer
-    {
-        VkImageCreateInfo image_create_info = {
-            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format    = depth_image_format,
-            .extent =
-                {
-                    .width  = extent.width,
-                    .height = extent.height,
-                    .depth  = 1,
-                },
-            .mipLevels   = 1,
-            .arrayLayers = 1,
-            .samples     = VK_SAMPLE_COUNT_1_BIT,
-            .tiling      = VK_IMAGE_TILING_OPTIMAL,
-            .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        };
-
-        VmaAllocationCreateInfo image_allocation_info = {
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-            .requiredFlags =
-                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-        };
-
-        VK_CHECK(vmaCreateImage(
-            vmalloc,
-            &image_create_info,
-            &image_allocation_info,
-            &depth_image.image,
-            &depth_image.allocation,
-            0));
-
-        VkImageViewCreateInfo view_create_info = {
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image    = depth_image.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = depth_image_format,
-            .subresourceRange =
-                {
-                    .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
-                    .baseMipLevel   = 0,
-                    .levelCount     = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount     = 1,
-                },
-        };
-
-        VK_CHECK(
-            vkCreateImageView(device, &view_create_info, 0, &depth_image_view));
-
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vkDestroyImageView(device, depth_image_view, 0);
-                vmaDestroyImage(
-                    vmalloc,
-                    depth_image.image,
-                    depth_image.allocation);
-            }));
-    }
+    recreate_swapchain();
 
     // Create graphics command pool
     {
@@ -326,10 +203,10 @@ void Engine::init_pipelines()
         PipelineBuilder(temp_alloc)
             .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
             .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, basic_shader_frag)
+            .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
+            .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
             .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
             .set_polygon_mode(VK_POLYGON_MODE_FILL)
-            .set_viewport(0, 0, extent.width, extent.height, 0.0f, 1.0f)
-            .set_scissor(0, 0, extent.width, extent.height)
             .set_render_pass(render_pass)
             .set_layout(triangle_layout)
             .set_vertex_input_info(vertex_input_info)
@@ -457,12 +334,19 @@ void Engine::init_framebuffers()
         VK_CHECK(
             vkCreateFramebuffer(device, &create_info, 0, &framebuffers[i]));
 
-        main_deletion_queue.add(
+        swap_chain_deletion_queue.add(
             DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
                 vkDestroyFramebuffer(this->device, framebuffers[i], 0);
                 vkDestroyImageView(this->device, swap_chain_image_views[i], 0);
             }));
     }
+}
+
+void Engine::on_resize_presentation()
+{
+    VK_CHECK(vkDeviceWaitIdle(device));
+    recreate_swapchain();
+    init_framebuffers();
 }
 
 void Engine::init_sync_objects()
@@ -535,17 +419,29 @@ void Engine::draw()
 {
     // Wait for previous frame to finish
     VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1000000));
-    VK_CHECK(vkResetFences(device, 1, &fnc_render));
 
     // Get next image
-    u32 next_image_index;
-    VK_CHECK(vkAcquireNextImageKHR(
+    u32      next_image_index;
+    VkResult next_image_result = vkAcquireNextImageKHR(
         device,
         swap_chain,
         1000000000,
         sem_present,
         0,
-        &next_image_index));
+        &next_image_index);
+
+    // VK_SUBOPTIMAL_KHR considered non-error
+    if (!(next_image_result == VK_SUCCESS ||
+          next_image_result == VK_SUBOPTIMAL_KHR))
+    {
+        if (next_image_result == VK_ERROR_OUT_OF_DATE_KHR) {
+            recreate_swapchain();
+            init_framebuffers();
+            return;
+        }
+    }
+
+    VK_CHECK(vkResetFences(device, 1, &fnc_render));
 
     // Reset primary cmd buffer
     VK_CHECK(vkResetCommandBuffer(main_cmd_buffer, 0));
@@ -592,6 +488,20 @@ void Engine::draw()
     vkCmdBeginRenderPass(cmd, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    VkViewport viewport = {
+        .x        = 0,
+        .y        = 0,
+        .width    = (float)extent.width,
+        .height   = (float)extent.height,
+        .minDepth = 0.f,
+        .maxDepth = 1.f,
+    };
+
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+
+    VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
 
     Vec3 camera_pos = {0, 0, 2.f};
 
@@ -655,12 +565,149 @@ void Engine::draw()
     frame_num += 1;
 }
 
+void Engine::recreate_swapchain()
+{
+    vkDeviceWaitIdle(device);
+
+    swap_chain_deletion_queue.flush();
+    Vec2i new_size = window->get_extents();
+    extent         = {.width = (u32)new_size.x, .height = (u32)new_size.y};
+    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+
+    // Create swap chain & views
+    {
+        VkSurfaceFormatKHR  surface_format;
+        VkPresentModeKHR    present_mode;
+        u32                 num_images;
+        CreateSwapchainInfo info = {
+            .physical_device = physical_device,
+            .format          = VK_FORMAT_B8G8R8A8_SRGB,
+            .color_space     = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+            .surface         = surface,
+            .graphics_family = graphics.family,
+            .present_family  = presentation.family,
+            .extent          = extent,
+            .surface_format  = surface_format,
+            .present_mode    = present_mode,
+            .num_images      = num_images,
+        };
+        swap_chain = create_swapchain(temp_alloc, device, info).unwrap();
+        swap_chain_image_format = surface_format.format;
+        swap_chain_image_views.init_range(num_images);
+
+        vkGetSwapchainImagesKHR(device, swap_chain, &num_images, 0);
+        swap_chain_images.init_range(num_images);
+        vkGetSwapchainImagesKHR(
+            device,
+            swap_chain,
+            &num_images,
+            swap_chain_images.data);
+
+        for (u32 i = 0; i < num_images; ++i) {
+            VkImageViewCreateInfo create_info = {
+                .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .image    = swap_chain_images[i],
+                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .format   = surface_format.format,
+                .components =
+                    {
+                        .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                        .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    },
+                .subresourceRange =
+                    {
+                        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                        .baseMipLevel   = 0,
+                        .levelCount     = 1,
+                        .baseArrayLayer = 0,
+                        .layerCount     = 1,
+                    },
+            };
+
+            VK_CHECK(vkCreateImageView(
+                device,
+                &create_info,
+                0,
+                &swap_chain_image_views[i]));
+        }
+
+        swap_chain_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroySwapchainKHR(device, swap_chain, 0);
+            }));
+    }
+
+    // Create depth buffer
+    {
+        VkImageCreateInfo image_create_info = {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format    = depth_image_format,
+            .extent =
+                {
+                    .width  = extent.width,
+                    .height = extent.height,
+                    .depth  = 1,
+                },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        };
+
+        VmaAllocationCreateInfo image_allocation_info = {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+            .requiredFlags =
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        };
+
+        VK_CHECK(vmaCreateImage(
+            vmalloc,
+            &image_create_info,
+            &image_allocation_info,
+            &depth_image.image,
+            &depth_image.allocation,
+            0));
+
+        VkImageViewCreateInfo view_create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image    = depth_image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = depth_image_format,
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+
+        VK_CHECK(
+            vkCreateImageView(device, &view_create_info, 0, &depth_image_view));
+
+        swap_chain_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroyImageView(device, depth_image_view, 0);
+                vmaDestroyImage(
+                    vmalloc,
+                    depth_image.image,
+                    depth_image.allocation);
+            }));
+    }
+}
+
 void Engine::deinit()
 {
     if (!is_initialized) return;
     VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1000000));
 
     main_deletion_queue.flush();
+    swap_chain_deletion_queue.flush();
 
     vkDestroyDevice(device, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
@@ -761,6 +808,14 @@ void PipelineBuilder::init_defaults()
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                           VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
+
+    dynamic_state_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .pNext = 0,
+        .flags = 0,
+        .dynamicStateCount = 0,
+        .pDynamicStates    = 0,
+    };
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
@@ -857,6 +912,13 @@ PipelineBuilder& PipelineBuilder::set_depth_test(
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::add_dynamic_state(
+    VkDynamicState dynamic_state)
+{
+    dynamic_states.add(dynamic_state);
+    return *this;
+}
+
 Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
 {
     VkPipelineViewportStateCreateInfo viewport_info = {
@@ -889,11 +951,17 @@ Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
         .pMultisampleState   = &multisample_state,
         .pDepthStencilState  = &depth_stencil_state,
         .pColorBlendState    = &color_blend_state_info,
+        .pDynamicState       = &dynamic_state_info,
         .layout              = layout,
         .renderPass          = render_pass,
         .subpass             = 0,
         .basePipelineHandle  = VK_NULL_HANDLE,
     };
+
+    if (dynamic_states.size != 0) {
+        dynamic_state_info.dynamicStateCount = dynamic_states.size;
+        dynamic_state_info.pDynamicStates    = dynamic_states.data;
+    }
 
     VkPipeline result;
     VK_RETURN_IF_ERR(vkCreateGraphicsPipelines(
