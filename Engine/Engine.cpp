@@ -194,6 +194,67 @@ void Engine::init()
             }));
     }
 
+    // Create depth buffer
+    {
+        VkImageCreateInfo image_create_info = {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format    = depth_image_format,
+            .extent =
+                {
+                    .width  = extent.width,
+                    .height = extent.height,
+                    .depth  = 1,
+                },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        };
+
+        VmaAllocationCreateInfo image_allocation_info = {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+            .requiredFlags =
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+        };
+
+        VK_CHECK(vmaCreateImage(
+            vmalloc,
+            &image_create_info,
+            &image_allocation_info,
+            &depth_image.image,
+            &depth_image.allocation,
+            0));
+
+        VkImageViewCreateInfo view_create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image    = depth_image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = depth_image_format,
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+
+        VK_CHECK(
+            vkCreateImageView(device, &view_create_info, 0, &depth_image_view));
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroyImageView(device, depth_image_view, 0);
+                vmaDestroyImage(
+                    vmalloc,
+                    depth_image.image,
+                    depth_image.allocation);
+            }));
+    }
+
     // Create graphics command pool
     {
         VkCommandPoolCreateInfo create_info = {
@@ -272,6 +333,7 @@ void Engine::init_pipelines()
             .set_render_pass(render_pass)
             .set_layout(triangle_layout)
             .set_vertex_input_info(vertex_input_info)
+            .set_depth_test(true, true, VK_COMPARE_OP_LESS)
             .build(device)
             .unwrap();
 
@@ -303,18 +365,67 @@ void Engine::init_default_renderpass()
         .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
+    VkAttachmentDescription depth_attachment = {
+        .format         = depth_image_format,
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
+
+    VkAttachmentReference depth_attachment_ref = {
+        .attachment = 1,
+        .layout     = depth_attachment.finalLayout,
+    };
+
     VkSubpassDescription subpass = {
-        .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .colorAttachmentCount = 1,
-        .pColorAttachments    = &color_attachment_ref,
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount    = 1,
+        .pColorAttachments       = &color_attachment_ref,
+        .pDepthStencilAttachment = &depth_attachment_ref,
+    };
+
+    VkSubpassDependency dependency = {
+        .srcSubpass    = VK_SUBPASS_EXTERNAL,
+        .dstSubpass    = 0,
+        .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
+
+    VkSubpassDependency depth_dependency = {
+        .srcSubpass   = VK_SUBPASS_EXTERNAL,
+        .dstSubpass   = 0,
+        .srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    };
+
+    VkAttachmentDescription attachments[2] = {
+        color_attachment,
+        depth_attachment,
+    };
+
+    VkSubpassDependency dependencies[2] = {
+        dependency,
+        depth_dependency,
     };
 
     VkRenderPassCreateInfo create_info = {
         .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments    = &color_attachment,
+        .attachmentCount = 2,
+        .pAttachments    = attachments,
         .subpassCount    = 1,
         .pSubpasses      = &subpass,
+        .dependencyCount = 2,
+        .pDependencies   = dependencies,
     };
 
     VK_CHECK(vkCreateRenderPass(device, &create_info, 0, &render_pass));
@@ -328,7 +439,7 @@ void Engine::init_framebuffers()
     VkFramebufferCreateInfo create_info = {
         .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .renderPass      = render_pass,
-        .attachmentCount = 1,
+        .attachmentCount = 2,
         .width           = extent.width,
         .height          = extent.height,
         .layers          = 1,
@@ -338,7 +449,11 @@ void Engine::init_framebuffers()
     framebuffers.init_range(swapchain_image_count);
 
     for (u32 i = 0; i < swapchain_image_count; ++i) {
-        create_info.pAttachments = &swap_chain_image_views[i];
+        VkImageView attachments[2] = {
+            swap_chain_image_views[i],
+            depth_image_view,
+        };
+        create_info.pAttachments = attachments;
         VK_CHECK(
             vkCreateFramebuffer(device, &create_info, 0, &framebuffers[i]));
 
@@ -450,6 +565,18 @@ void Engine::draw()
         .color = {0, 0, flash, 1.0f},
     };
 
+    VkClearValue depth_clear_value = {
+        .depthStencil =
+            {
+                .depth = 1.f,
+            },
+    };
+
+    VkClearValue clear_values[2] = {
+        clear_value,
+        depth_clear_value,
+    };
+
     VkRenderPassBeginInfo rp_begin_info = {
         .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass  = render_pass,
@@ -459,8 +586,8 @@ void Engine::draw()
                 .offset = {0, 0},
                 .extent = extent,
             },
-        .clearValueCount = 1,
-        .pClearValues    = &clear_value,
+        .clearValueCount = ARRAY_COUNT(clear_values),
+        .pClearValues    = clear_values,
     };
     vkCmdBeginRenderPass(cmd, &rp_begin_info, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -599,6 +726,18 @@ void PipelineBuilder::init_defaults()
         .lineWidth               = 1.0f,
     };
 
+    depth_stencil_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .pNext = 0,
+        .flags = 0,
+        .depthTestEnable       = VK_FALSE,
+        .depthWriteEnable      = VK_FALSE,
+        .depthCompareOp        = VK_COMPARE_OP_ALWAYS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .minDepthBounds        = 0.f,
+        .maxDepthBounds        = 1.f,
+    };
+
     multisample_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
         .pNext = 0,
@@ -709,6 +848,15 @@ PipelineBuilder& PipelineBuilder::set_vertex_input_info(VertexInputInfo& info)
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::set_depth_test(
+    bool enabled, bool write, VkCompareOp compare_op)
+{
+    depth_stencil_state.depthTestEnable  = enabled ? VK_TRUE : VK_FALSE;
+    depth_stencil_state.depthWriteEnable = write ? VK_TRUE : VK_FALSE;
+    depth_stencil_state.depthCompareOp   = compare_op;
+    return *this;
+}
+
 Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
 {
     VkPipelineViewportStateCreateInfo viewport_info = {
@@ -739,7 +887,7 @@ Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
         .pViewportState      = &viewport_info,
         .pRasterizationState = &rasterizer_state,
         .pMultisampleState   = &multisample_state,
-        .pDepthStencilState  = 0,
+        .pDepthStencilState  = &depth_stencil_state,
         .pColorBlendState    = &color_blend_state_info,
         .layout              = layout,
         .renderPass          = render_pass,

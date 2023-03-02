@@ -45,7 +45,7 @@ struct Engine {
     // Depth Buffer
     AllocatedImage depth_image;
     VkImageView    depth_image_view;
-    VkFormat       depth_image_format;
+    VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
 
     // Sync Objects
 
@@ -96,10 +96,14 @@ struct PipelineBuilder {
     VkViewport                              viewport;
     VkRect2D                                scissor;
     VkPipelineRasterizationStateCreateInfo  rasterizer_state;
+    VkPipelineDepthStencilStateCreateInfo   depth_stencil_state;
     VkPipelineMultisampleStateCreateInfo    multisample_state;
     VkPipelineColorBlendAttachmentState     color_blend_attachment_state;
     VkPipelineLayout                        layout;
     VkRenderPass                            render_pass;
+
+    bool has_depth_test  = false;
+    bool has_depth_write = false;
 
     PipelineBuilder& add_shader_stage(
         VkShaderStageFlagBits stage, VkShaderModule module);
@@ -115,6 +119,8 @@ struct PipelineBuilder {
     PipelineBuilder& set_vertex_input_attributes(
         Slice<VkVertexInputAttributeDescription> attributes);
     PipelineBuilder& set_vertex_input_info(VertexInputInfo& info);
+    PipelineBuilder& set_depth_test(
+        bool enabled, bool write, VkCompareOp compare_op);
 
     void                         init_defaults();
     Result<VkPipeline, VkResult> build(VkDevice device);
