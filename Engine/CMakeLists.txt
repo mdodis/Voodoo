@@ -20,7 +20,7 @@ target_include_directories(vkx
     ${Vulkan_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/ThirdParty/VMA/
     )
-
+    
 target_link_libraries(vkx
     PUBLIC
     ${Vulkan_LIBRARY}
@@ -28,6 +28,7 @@ target_link_libraries(vkx
     tinyobjloader
     "user32"
     MokLib
+    glm
     )
 
 add_custom_command(TARGET vkx POST_BUILD
