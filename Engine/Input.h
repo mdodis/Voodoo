@@ -82,7 +82,7 @@ struct Input {
         InputDigitalContinuousAction action;
         action.name          = name;
         action.current_state = false;
-        action.key           = InputKey::W;
+        action.key           = key;
         action.callback      = callback;
         add_action(action);
     }

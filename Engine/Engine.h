@@ -36,14 +36,22 @@ struct RenderObject {
     glm::mat4 transform;
 };
 
+struct FrameData {
+    VkSemaphore     sem_present, sem_render;
+    VkFence         fnc_render;
+    VkCommandPool   pool;
+    VkCommandBuffer main_cmd_buffer;
+};
+
 struct Engine {
     Window*     window;
     Input*      input;
     bool        validation_layers = false;
     IAllocator& allocator;
 
-    bool       is_initialized = false;
-    VkExtent2D extent         = {0, 0};
+    static constexpr int num_overlap_frames = 2;
+    bool                 is_initialized     = false;
+    VkExtent2D           extent             = {0, 0};
 
     // Rendering Objects
 
@@ -55,23 +63,18 @@ struct Engine {
     VkFormat              swap_chain_image_format;
     TArray<VkImage>       swap_chain_images;
     TArray<VkImageView>   swap_chain_image_views;
-    VkCommandPool         cmd_pool;
-    VkCommandBuffer       main_cmd_buffer;
     VkRenderPass          render_pass;
     TArray<VkFramebuffer> framebuffers;
     VkPipelineLayout      triangle_layout;
     VkPipeline            pipeline;
     VmaAllocator          vmalloc;
 
+    FrameData frames[num_overlap_frames];
+
     // Depth Buffer
     AllocatedImage depth_image;
     VkImageView    depth_image_view;
     VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
-
-    // Sync Objects
-
-    VkSemaphore sem_render, sem_present;
-    VkFence     fnc_render;
 
     // Statistics
     u32 frame_num = 0;
@@ -119,13 +122,17 @@ private:
     void init_framebuffers();
     void init_sync_objects();
     void init_default_meshes();
+    void init_commands();
     void init_input();
     void recreate_swapchain();
 
     void on_resize_presentation();
 
+    FrameData& get_current_frame();
+
     // Debug Camera
     void on_debug_camera_forward();
+    void on_debug_camera_back();
     void on_debug_camera_mousex(float value);
 };
 

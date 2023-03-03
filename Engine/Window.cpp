@@ -62,12 +62,12 @@ void Window::poll()
     needs_resize = false;
 
     Win32::MSG message;
-    if (Win32::PeekMessageA(
-            &message,
-            0,
-            0,
-            0,
-            Win32::PeekMessageOption::Remove))
+    while (Win32::PeekMessageA(
+        &message,
+        0,
+        0,
+        0,
+        Win32::PeekMessageOption::Remove))
     {
         Win32::TranslateMessage(&message);
         Win32::DispatchMessageA(&message);

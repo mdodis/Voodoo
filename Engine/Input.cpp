@@ -22,16 +22,16 @@ void Input::send_axis(InputAxis axis, float new_value)
 
 void Input::update()
 {
-    for (auto& action : digital_continuous_actions) {
-        if (action.current_state) {
-            action.callback.call();
-        }
-    }
-
     for (auto& action : axis_motion_actions) {
         if (action.needs_update) {
             action.callback.call(action.delta);
             action.needs_update = false;
+        }
+    }
+
+    for (auto& action : digital_continuous_actions) {
+        if (action.current_state) {
+            action.callback.call();
         }
     }
 }

@@ -16,6 +16,8 @@ static VK_PROC_DEBUG_CALLBACK(debug_callback)
     return VK_FALSE;
 }
 
+// Initialization
+
 void Engine::init()
 {
     swap_chain_images.alloc      = &allocator;
@@ -137,33 +139,7 @@ void Engine::init()
 
     recreate_swapchain();
 
-    // Create graphics command pool
-    {
-        VkCommandPoolCreateInfo create_info = {
-            .sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-            .flags            = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-            .queueFamilyIndex = graphics.family,
-        };
-
-        VK_CHECK(vkCreateCommandPool(device, &create_info, 0, &cmd_pool));
-
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vkDestroyCommandPool(this->device, this->cmd_pool, 0);
-            }));
-    }
-
-    // Create main cmd buffer
-    {
-        VkCommandBufferAllocateInfo create_info = {
-            .sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = cmd_pool,
-            .level       = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
-        VK_CHECK(
-            vkAllocateCommandBuffers(device, &create_info, &main_cmd_buffer));
-    }
+    init_commands();
 
     init_input();
     init_default_renderpass();
@@ -173,6 +149,44 @@ void Engine::init()
     init_default_meshes();
 
     is_initialized = true;
+}
+
+void Engine::init_commands()
+{
+    for (int i = 0; i < num_overlap_frames; ++i) {
+        VkCommandPool   pool;
+        VkCommandBuffer cmd_buffer;
+        // Create graphics command pool
+        {
+            VkCommandPoolCreateInfo create_info = {
+                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                .queueFamilyIndex = graphics.family,
+            };
+
+            VK_CHECK(vkCreateCommandPool(device, &create_info, 0, &pool));
+
+            main_deletion_queue.add(
+                DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
+                    vkDestroyCommandPool(device, frames[i].pool, 0);
+                }));
+        }
+
+        // Create main cmd buffer
+        {
+            VkCommandBufferAllocateInfo create_info = {
+                .sType       = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                .commandPool = pool,
+                .level       = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                .commandBufferCount = 1,
+            };
+            VK_CHECK(
+                vkAllocateCommandBuffers(device, &create_info, &cmd_buffer));
+        }
+
+        frames[i].pool            = pool;
+        frames[i].main_cmd_buffer = cmd_buffer;
+    }
 }
 
 void Engine::init_pipelines()
@@ -352,28 +366,39 @@ void Engine::init_framebuffers()
 
 void Engine::init_sync_objects()
 {
-    VkFenceCreateInfo fnc_create_info = {
-        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-        .flags = VK_FENCE_CREATE_SIGNALED_BIT,
-    };
+    for (int i = 0; i < num_overlap_frames; ++i) {
+        VkFenceCreateInfo fnc_create_info = {
+            .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+            .flags = VK_FENCE_CREATE_SIGNALED_BIT,
+        };
 
-    VK_CHECK(vkCreateFence(device, &fnc_create_info, 0, &fnc_render));
+        VK_CHECK(
+            vkCreateFence(device, &fnc_create_info, 0, &frames[i].fnc_render));
 
-    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-        [this]() { vkDestroyFence(this->device, this->fnc_render, 0); }));
+        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+            [this, i]() { vkDestroyFence(device, frames[i].fnc_render, 0); }));
 
-    VkSemaphoreCreateInfo sem_create_info = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-    };
+        VkSemaphoreCreateInfo sem_create_info = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+        };
 
-    VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem_present));
-    VK_CHECK(vkCreateSemaphore(device, &sem_create_info, 0, &sem_render));
+        VK_CHECK(vkCreateSemaphore(
+            device,
+            &sem_create_info,
+            0,
+            &frames[i].sem_present));
+        VK_CHECK(vkCreateSemaphore(
+            device,
+            &sem_create_info,
+            0,
+            &frames[i].sem_render));
 
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vkDestroySemaphore(this->device, this->sem_render, 0);
-            vkDestroySemaphore(this->device, this->sem_present, 0);
-        }));
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
+                vkDestroySemaphore(device, frames[i].sem_render, 0);
+                vkDestroySemaphore(device, frames[i].sem_present, 0);
+            }));
+    }
 }
 
 void Engine::init_input()
@@ -384,6 +409,13 @@ void Engine::init_input()
         InputDigitalContinuousAction::CallbackDelegate::create_raw(
             this,
             &Engine::on_debug_camera_forward));
+    input->add_digital_continuous_action(
+        LIT("debug.camera.back"),
+        InputKey::S,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_back));
+
     input->add_axis_motion_action(
         LIT("debug.camera.yaw"),
         InputAxis::MouseX,
@@ -393,7 +425,15 @@ void Engine::init_input()
             &Engine::on_debug_camera_mousex));
 }
 
+// Other
+FrameData& Engine::get_current_frame()
+{
+    return frames[frame_num % num_overlap_frames];
+}
+
+// Debug Camera
 void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.1f; }
+void Engine::on_debug_camera_back() { debug_camera.position.z -= 0.1f; }
 
 void Engine::on_debug_camera_mousex(float value)
 {
@@ -467,8 +507,10 @@ void Engine::upload_mesh(Mesh& mesh)
 
 void Engine::draw()
 {
+    FrameData& frame = get_current_frame();
+
     // Wait for previous frame to finish
-    VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1.6e+7));
+    VK_CHECK(vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, 1.6e+7));
 
     // Get next image
     u32      next_image_index;
@@ -476,7 +518,7 @@ void Engine::draw()
         device,
         swap_chain,
         1000000000,
-        sem_present,
+        frame.sem_present,
         0,
         &next_image_index);
 
@@ -491,12 +533,12 @@ void Engine::draw()
         }
     }
 
-    VK_CHECK(vkResetFences(device, 1, &fnc_render));
+    VK_CHECK(vkResetFences(device, 1, &frame.fnc_render));
+
+    VkCommandBuffer cmd = frame.main_cmd_buffer;
 
     // Reset primary cmd buffer
-    VK_CHECK(vkResetCommandBuffer(main_cmd_buffer, 0));
-
-    VkCommandBuffer cmd = main_cmd_buffer;
+    VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // Begin commands
     VkCommandBufferBeginInfo begin_info = {
@@ -554,8 +596,7 @@ void Engine::draw()
     // glm::quat q =
     //     glm::angleAxis(glm::radians(debug_camera.yaw), glm::vec3(0, -1, 0));
 
-    glm::quat q = debug_camera.rotation;
-
+    glm::quat q              = debug_camera.rotation;
     glm::vec3 camera_forward = glm::normalize(q * glm::vec3(0, 0, -1));
     glm::vec3 camera_right =
         glm::normalize(glm::cross(glm::vec3(0, -1, 0), camera_forward));
@@ -604,20 +645,20 @@ void Engine::draw()
     VkSubmitInfo submit_info = {
         .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .waitSemaphoreCount   = 1,
-        .pWaitSemaphores      = &sem_present,
+        .pWaitSemaphores      = &frame.sem_present,
         .pWaitDstStageMask    = &wait_stage,
         .commandBufferCount   = 1,
         .pCommandBuffers      = &cmd,
         .signalSemaphoreCount = 1,
-        .pSignalSemaphores    = &sem_render,
+        .pSignalSemaphores    = &frame.sem_render,
     };
-    VK_CHECK(vkQueueSubmit(graphics.queue, 1, &submit_info, fnc_render));
+    VK_CHECK(vkQueueSubmit(graphics.queue, 1, &submit_info, frame.fnc_render));
 
     // Display image
     VkPresentInfoKHR present_info = {
         .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
         .waitSemaphoreCount = 1,
-        .pWaitSemaphores    = &sem_render,
+        .pWaitSemaphores    = &frame.sem_render,
         .swapchainCount     = 1,
         .pSwapchains        = &swap_chain,
         .pImageIndices      = &next_image_index,
@@ -767,7 +808,14 @@ void Engine::recreate_swapchain()
 void Engine::deinit()
 {
     if (!is_initialized) return;
-    VK_CHECK(vkWaitForFences(device, 1, &fnc_render, VK_TRUE, 1000000));
+    for (int i = 0; i < 0; ++i) {
+        VK_CHECK(vkWaitForFences(
+            device,
+            1,
+            &frames[i].fnc_render,
+            VK_TRUE,
+            1000000));
+    }
 
     main_deletion_queue.flush();
     swap_chain_deletion_queue.flush();
