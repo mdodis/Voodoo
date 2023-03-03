@@ -1,4 +1,7 @@
 #pragma once
+#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
+
 #include "Containers/Map.h"
 #include "DeletionQueue.h"
 #include "Memory/Base.h"
@@ -8,8 +11,8 @@
 #include "vk_mem_alloc.h"
 
 struct MeshPushConstants {
-    Vec4 data;
-    Mat4 transform;
+    Vec4      data;
+    glm::mat4 transform;
 };
 
 struct AllocatedImage {
@@ -30,7 +33,7 @@ static _inline bool operator==(Material& left, Material& right)
 struct RenderObject {
     Mesh*     mesh;
     Material* material;
-    Mat4      transform;
+    glm::mat4 transform;
 };
 
 struct Engine {
@@ -95,9 +98,9 @@ struct Engine {
     } presentation;
 
     struct {
-        Vec3  position = {0, 0, 5};
-        Quat  rotation;
-        float yaw = 0.f, pitch = 0.f;
+        glm::vec3 position = {0, 0, -5};
+        glm::quat rotation = {1, 0, 0, 0};
+        float     yaw = 0.f, pitch = 0.f;
     } debug_camera;
 
     void           init();
@@ -124,7 +127,6 @@ private:
     // Debug Camera
     void on_debug_camera_forward();
     void on_debug_camera_mousex(float value);
-    void debug_camera_update_rotation();
 };
 
 struct PipelineBuilder {

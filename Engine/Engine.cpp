@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Memory/Extras.h"
 
 static auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
@@ -51,7 +53,7 @@ void Engine::init()
             .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
             .pEngineName        = "VKX",
             .engineVersion      = VK_MAKE_VERSION(0, 1, 0),
-            .apiVersion         = VK_API_VERSION_1_0,
+            .apiVersion         = VK_API_VERSION_1_3,
         };
 
         VkInstanceCreateInfo create_info = {
@@ -385,13 +387,14 @@ void Engine::init_input()
     input->add_axis_motion_action(
         LIT("debug.camera.yaw"),
         InputAxis::MouseX,
-        1.0f,
+        -1.0f,
         InputAxisMotionAction::CallbackDelegate::create_raw(
             this,
             &Engine::on_debug_camera_mousex));
 }
 
-void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.5f; }
+void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.1f; }
+
 void Engine::on_debug_camera_mousex(float value)
 {
     // debug_camera.yaw += value;
@@ -401,14 +404,18 @@ void Engine::on_debug_camera_mousex(float value)
     //     debug_camera.yaw += 360.0f;
     // }
 
-    debug_camera.yaw += value > 0 ? 0.01f : -0.01f;
+    // debug_camera.yaw += value;
+    // debug_camera.rotation =
+    //     glm::angleAxis(glm::radians(1.0f), glm::vec3(0, 1, 0)) *
+    //     debug_camera.rotation;
 
-    debug_camera_update_rotation();
-}
-
-void Engine::debug_camera_update_rotation()
-{
-    debug_camera.rotation = Quat(Vec3::up(), debug_camera.yaw * To_Radians);
+    debug_camera.rotation = glm::rotate(
+        debug_camera.rotation,
+        glm::radians(value),
+        glm::vec3(0, -1, 0));
+    // debug_camera.rotation =
+    //     debug_camera.rotation *
+    //     glm::angleAxis(glm::radians(10.0f), glm::vec3(0, 1, 0));
 }
 
 void Engine::on_resize_presentation()
@@ -544,19 +551,31 @@ void Engine::draw()
     VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    Vec3 camera_pos = debug_camera.position;
+    // glm::quat q =
+    //     glm::angleAxis(glm::radians(debug_camera.yaw), glm::vec3(0, -1, 0));
 
-    Mat4 rot        = debug_camera.rotation.rotation_matrix();
-    Mat4 view       = transpose(rot) * translation(camera_pos * -1.0f);
-    Mat4 projection = perspective(
-        70.f * To_Radians,
+    glm::quat q = debug_camera.rotation;
+
+    glm::vec3 camera_forward = glm::normalize(q * glm::vec3(0, 0, -1));
+    glm::vec3 camera_right =
+        glm::normalize(glm::cross(glm::vec3(0, -1, 0), camera_forward));
+    glm::vec3 camera_up =
+        glm::normalize(glm::cross(camera_forward, camera_right));
+    glm::vec3 camera_target = debug_camera.position + camera_forward;
+
+    glm::mat4 view =
+        glm::lookAt(debug_camera.position, camera_target, camera_up);
+    glm::mat4 proj = glm::perspective(
+        glm::radians(70.f),
         (float(extent.width) / float(extent.height)),
         0.1f,
         200.0f);
+
     MeshPushConstants constants;
 
     for (RenderObject& ro : render_objects) {
-        constants.transform = ro.transform * view * projection;
+        // constants.transform = ro.transform * view * projection;
+        constants.transform = proj * view * ro.transform;
 
         vkCmdPushConstants(
             cmd,

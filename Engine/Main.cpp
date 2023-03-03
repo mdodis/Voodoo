@@ -1,3 +1,5 @@
+#include <glm/gtc/matrix_transform.hpp>
+
 #include "Base.h"
 #include "Engine.h"
 #include "FileSystem/Extras.h"
@@ -31,14 +33,17 @@ int main(int argc, char const* argv[])
     RenderObject monke = {
         .mesh      = eng.get_mesh(LIT("monke")),
         .material  = eng.get_material(LIT("default.mesh")),
-        .transform = Mat4::identity(),
+        .transform = glm::mat4(1.0f),
     };
 
     eng.render_objects.add(monke);
     for (int x = -20; x <= 20; ++x) {
         for (int y = -20; y <= 20; ++y) {
-            Mat4 transform =
-                scale(Vec3(0.2f)) * translation(Vec3{(float)x, -2.f, (float)y});
+            glm::mat4 transform =
+                glm::translate(
+                    glm::mat4(1.0f),
+                    glm::vec3((float)x, -2.f, (float)y)) *
+                glm::scale(glm::mat4(1.f), glm::vec3(.2f));
 
             RenderObject triangle = {
                 .mesh      = eng.get_mesh(LIT("triangle")),
