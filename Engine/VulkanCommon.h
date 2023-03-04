@@ -107,6 +107,15 @@ void print_physical_device_queue_families(VkPhysicalDevice device);
 Result<VkShaderModule, VkResult> load_shader_binary(
     IAllocator& allocator, VkDevice device, Str path);
 
+VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
+    VkDescriptorType type, VkShaderStageFlags stage, u32 binding);
+
+VkWriteDescriptorSet write_descriptor_set(
+    VkDescriptorType        type,
+    VkDescriptorSet         set,
+    VkDescriptorBufferInfo* buffer_info,
+    u32                     binding);
+
 /* Win32 */
 
 Slice<const char*>             win32_get_required_extensions();

@@ -426,3 +426,35 @@ Result<VkShaderModule, VkResult> load_shader_binary(
 
     return Ok(result);
 }
+
+VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
+    VkDescriptorType type, VkShaderStageFlags stage, u32 binding)
+{
+    return VkDescriptorSetLayoutBinding{
+        .binding            = binding,
+        .descriptorType     = type,
+        .descriptorCount    = 1,
+        .stageFlags         = stage,
+        .pImmutableSamplers = 0,
+    };
+}
+
+VkWriteDescriptorSet write_descriptor_set(
+    VkDescriptorType        type,
+    VkDescriptorSet         set,
+    VkDescriptorBufferInfo* buffer_info,
+    u32                     binding)
+{
+    return VkWriteDescriptorSet{
+        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext            = 0,
+        .dstSet           = set,
+        .dstBinding       = binding,
+        .dstArrayElement  = 0,
+        .descriptorCount  = 1,
+        .descriptorType   = type,
+        .pImageInfo       = 0,
+        .pBufferInfo      = buffer_info,
+        .pTexelBufferView = 0,
+    };
+}

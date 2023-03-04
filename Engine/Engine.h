@@ -42,6 +42,11 @@ struct GPUCameraData {
     glm::mat4 viewproj;
 };
 
+struct GPUSceneData {
+    glm::vec4 fog_color;  // w: exponent
+    glm::vec4 ambient_color;
+};
+
 struct FrameData {
     VkSemaphore     sem_present, sem_render;
     VkFence         fnc_render;
@@ -98,6 +103,9 @@ struct Engine {
     TMap<Str, Material>  materials;
     TArray<RenderObject> render_objects;
 
+    GPUSceneData    scene_data;
+    AllocatedBuffer scene_data_buffer;
+
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
 
@@ -146,6 +154,8 @@ private:
         VmaMemoryUsage     memory_usage);
 
     FrameData& get_current_frame();
+
+    size_t pad_uniform_buffer_size(size_t original_size);
 
     // Debug Camera
     void on_debug_camera_forward();

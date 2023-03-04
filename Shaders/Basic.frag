@@ -7,8 +7,13 @@ layout (location = 0) in vec3 inColor;
 layout (location = 0) out vec4 outFragColor;
 
 
+layout (set = 0, binding = 1) uniform SceneData {
+	vec4 fog_color;
+	vec4 ambient_color;
+} sceneData;
+
 void main()
 {
-	//return color
-	outFragColor = vec4(inColor,1.0f);
+
+	outFragColor = vec4(inColor + sceneData.ambient_color.xyz, 1.0f);
 }
