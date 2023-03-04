@@ -36,11 +36,19 @@ struct RenderObject {
     glm::mat4 transform;
 };
 
+struct GPUCameraData {
+    glm::mat4 view;
+    glm::mat4 proj;
+    glm::mat4 viewproj;
+};
+
 struct FrameData {
     VkSemaphore     sem_present, sem_render;
     VkFence         fnc_render;
     VkCommandPool   pool;
     VkCommandBuffer main_cmd_buffer;
+    AllocatedBuffer camera_buffer;
+    VkDescriptorSet global_descriptor;
 };
 
 struct Engine {
@@ -127,6 +135,11 @@ private:
     void recreate_swapchain();
 
     void on_resize_presentation();
+
+    Result<AllocatedBuffer, VkResult> create_buffer(
+        size_t             alloc_size,
+        VkBufferUsageFlags usage,
+        VmaMemoryUsage     memory_usage);
 
     FrameData& get_current_frame();
 

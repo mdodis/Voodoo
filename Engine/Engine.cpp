@@ -431,6 +431,30 @@ FrameData& Engine::get_current_frame()
     return frames[frame_num % num_overlap_frames];
 }
 
+Result<AllocatedBuffer, VkResult> Engine::create_buffer(
+    size_t alloc_size, VkBufferUsageFlags usage, VmaMemoryUsage memory_usage)
+{
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size  = alloc_size,
+        .usage = usage,
+    };
+
+    VmaAllocationCreateInfo alloc_info = {};
+    alloc_info.usage                   = memory_usage;
+
+    AllocatedBuffer result;
+    // allocate the buffer
+    VK_RETURN_IF_ERR(vmaCreateBuffer(
+        vmalloc,
+        &buffer_info,
+        &alloc_info,
+        &result.buffer,
+        &result.allocation,
+        nullptr));
+    return Ok(result);
+}
+
 // Debug Camera
 void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.1f; }
 void Engine::on_debug_camera_back() { debug_camera.position.z -= 0.1f; }
