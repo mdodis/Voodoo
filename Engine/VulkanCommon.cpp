@@ -77,7 +77,7 @@ Result<VkPhysicalDevice, VkResult> pick_physical_device(
 
     int best_device       = -1;
     int best_device_score = -1;
-    for (int i = 0; i < device_count; ++i) {
+    for (u32 i = 0; i < device_count; ++i) {
         VkPhysicalDevice device       = physical_devices[i];
         int              device_score = 0;
 

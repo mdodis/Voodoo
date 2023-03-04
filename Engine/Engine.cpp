@@ -143,9 +143,10 @@ void Engine::init()
 
     init_input();
     init_default_renderpass();
-    init_pipelines();
     init_framebuffers();
     init_sync_objects();
+    init_descriptors();
+    init_pipelines();
     init_default_meshes();
 
     is_initialized = true;
@@ -189,6 +190,97 @@ void Engine::init_commands()
     }
 }
 
+void Engine::init_descriptors()
+{
+    auto descriptor_pool_sizes = arr<VkDescriptorPoolSize>(
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10});
+
+    VkDescriptorPoolCreateInfo pool_create_info = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .pNext         = 0,
+        .flags         = 0,
+        .maxSets       = 10,
+        .poolSizeCount = descriptor_pool_sizes.count(),
+        .pPoolSizes    = descriptor_pool_sizes.elements,
+    };
+
+    VK_CHECK(
+        vkCreateDescriptorPool(device, &pool_create_info, 0, &descriptor_pool));
+
+    VkDescriptorSetLayoutBinding camera_binding = {
+        .binding            = 0,
+        .descriptorType     = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        .descriptorCount    = 1,
+        .stageFlags         = VK_SHADER_STAGE_VERTEX_BIT,
+        .pImmutableSamplers = 0,
+    };
+
+    VkDescriptorSetLayoutCreateInfo set_info = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = 0,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &camera_binding,
+    };
+
+    VK_CHECK(
+        vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
+
+    for (int i = 0; i < num_overlap_frames; ++i) {
+        frames[i].camera_buffer =
+            create_buffer(
+                sizeof(GPUCameraData),
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU)
+                .unwrap();
+
+        VkDescriptorSetAllocateInfo alloc_info = {
+            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext          = 0,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &global_set_layout,
+        };
+
+        VK_CHECK(vkAllocateDescriptorSets(
+            device,
+            &alloc_info,
+            &frames[i].global_descriptor));
+
+        VkDescriptorBufferInfo buffer_info = {
+            .buffer = frames[i].camera_buffer.buffer,
+            .offset = 0,
+            .range  = sizeof(GPUCameraData),
+        };
+
+        VkWriteDescriptorSet set_write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = 0,
+            .dstSet          = frames[i].global_descriptor,
+            .dstBinding      = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+            .pBufferInfo     = &buffer_info,
+        };
+
+        vkUpdateDescriptorSets(device, 1, &set_write, 0, 0);
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
+                vmaDestroyBuffer(
+                    vmalloc,
+                    frames[i].camera_buffer.buffer,
+                    frames[i].camera_buffer.allocation);
+            }));
+    }
+
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroyDescriptorSetLayout(device, global_set_layout, 0);
+            vkDestroyDescriptorPool(device, descriptor_pool, 0);
+        }));
+}
+
 void Engine::init_pipelines()
 {
     // Load shaders
@@ -206,7 +298,9 @@ void Engine::init_pipelines()
         };
 
         VkPipelineLayoutCreateInfo create_info = {
-            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1,
+            .pSetLayouts    = &global_set_layout,
             .pushConstantRangeCount = 1,
             .pPushConstantRanges    = &push_constant,
         };
@@ -461,25 +555,10 @@ void Engine::on_debug_camera_back() { debug_camera.position.z -= 0.1f; }
 
 void Engine::on_debug_camera_mousex(float value)
 {
-    // debug_camera.yaw += value;
-    // if (debug_camera.yaw > 360.0f) {
-    //     debug_camera.yaw -= 360.0f;
-    // } else if (debug_camera.yaw < 0.0f) {
-    //     debug_camera.yaw += 360.0f;
-    // }
-
-    // debug_camera.yaw += value;
-    // debug_camera.rotation =
-    //     glm::angleAxis(glm::radians(1.0f), glm::vec3(0, 1, 0)) *
-    //     debug_camera.rotation;
-
     debug_camera.rotation = glm::rotate(
         debug_camera.rotation,
         glm::radians(value),
-        glm::vec3(0, -1, 0));
-    // debug_camera.rotation =
-    //     debug_camera.rotation *
-    //     glm::angleAxis(glm::radians(10.0f), glm::vec3(0, 1, 0));
+        glm::vec3(0, 1, 0));
 }
 
 void Engine::on_resize_presentation()
@@ -534,7 +613,8 @@ void Engine::draw()
     FrameData& frame = get_current_frame();
 
     // Wait for previous frame to finish
-    VK_CHECK(vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, 1.6e+7));
+    VK_CHECK(
+        vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6e+7));
 
     // Get next image
     u32      next_image_index;
@@ -617,13 +697,10 @@ void Engine::draw()
     VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 
-    // glm::quat q =
-    //     glm::angleAxis(glm::radians(debug_camera.yaw), glm::vec3(0, -1, 0));
-
     glm::quat q              = debug_camera.rotation;
     glm::vec3 camera_forward = glm::normalize(q * glm::vec3(0, 0, -1));
     glm::vec3 camera_right =
-        glm::normalize(glm::cross(glm::vec3(0, -1, 0), camera_forward));
+        glm::normalize(glm::cross(glm::vec3(0, 1, 0), camera_forward));
     glm::vec3 camera_up =
         glm::normalize(glm::cross(camera_forward, camera_right));
     glm::vec3 camera_target = debug_camera.position + camera_forward;
@@ -635,12 +712,23 @@ void Engine::draw()
         (float(extent.width) / float(extent.height)),
         0.1f,
         200.0f);
+    proj[1][1] *= -1;
+
+    GPUCameraData camera_data;
+    camera_data.proj     = proj;
+    camera_data.view     = view;
+    camera_data.viewproj = proj * view;
+    void* camera_gpu_data;
+    vmaMapMemory(vmalloc, frame.camera_buffer.allocation, &camera_gpu_data);
+    memcpy(camera_gpu_data, &camera_data, sizeof(camera_data));
+    vmaUnmapMemory(vmalloc, frame.camera_buffer.allocation);
 
     MeshPushConstants constants;
+    Material*         last_material = 0;
 
     for (RenderObject& ro : render_objects) {
         // constants.transform = ro.transform * view * projection;
-        constants.transform = proj * view * ro.transform;
+        constants.transform = ro.transform;
 
         vkCmdPushConstants(
             cmd,
@@ -650,10 +738,24 @@ void Engine::draw()
             sizeof(MeshPushConstants),
             &constants);
 
-        vkCmdBindPipeline(
-            cmd,
-            VK_PIPELINE_BIND_POINT_GRAPHICS,
-            ro.material->pipeline);
+        if ((last_material == 0) || (*last_material != *ro.material)) {
+            vkCmdBindPipeline(
+                cmd,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                ro.material->pipeline);
+
+            vkCmdBindDescriptorSets(
+                cmd,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                ro.material->pipeline_layout,
+                0,
+                1,
+                &frame.global_descriptor,
+                0,
+                0);
+        }
+
+        last_material = ro.material;
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &ro.mesh->gpu_buffer.buffer, &offset);
@@ -1050,14 +1152,14 @@ PipelineBuilder& PipelineBuilder::set_layout(VkPipelineLayout layout)
 PipelineBuilder& PipelineBuilder::set_vertex_input_bindings(
     Slice<VkVertexInputBindingDescription> bindings)
 {
-    vertex_input_info.vertexBindingDescriptionCount = bindings.count;
+    vertex_input_info.vertexBindingDescriptionCount = (u32)bindings.count;
     vertex_input_info.pVertexBindingDescriptions    = bindings.ptr;
     return *this;
 }
 PipelineBuilder& PipelineBuilder::set_vertex_input_attributes(
     Slice<VkVertexInputAttributeDescription> attributes)
 {
-    vertex_input_info.vertexAttributeDescriptionCount = attributes.count;
+    vertex_input_info.vertexAttributeDescriptionCount = (u32)attributes.count;
     vertex_input_info.pVertexAttributeDescriptions    = attributes.ptr;
     return *this;
 }
@@ -1125,7 +1227,7 @@ Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
     };
 
     if (dynamic_states.size != 0) {
-        dynamic_state_info.dynamicStateCount = dynamic_states.size;
+        dynamic_state_info.dynamicStateCount = (u32)dynamic_states.size;
         dynamic_state_info.pDynamicStates    = dynamic_states.data;
     }
 

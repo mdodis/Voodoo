@@ -76,6 +76,8 @@ struct Engine {
     VkPipelineLayout      triangle_layout;
     VkPipeline            pipeline;
     VmaAllocator          vmalloc;
+    VkDescriptorPool      descriptor_pool;
+    VkDescriptorSetLayout global_set_layout;
 
     FrameData frames[num_overlap_frames];
 
@@ -128,6 +130,7 @@ private:
     void init_default_renderpass();
     void init_pipelines();
     void init_framebuffers();
+    void init_descriptors();
     void init_sync_objects();
     void init_default_meshes();
     void init_commands();
