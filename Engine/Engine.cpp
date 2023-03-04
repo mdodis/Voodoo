@@ -137,6 +137,11 @@ void Engine::init()
         VK_CHECK(vmaCreateAllocator(&create_info, &vmalloc));
     }
 
+    vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
+    print(
+        LIT("Min GPU Buffer Alignment: {}\n"),
+        physical_device_properties.limits.minUniformBufferOffsetAlignment);
+
     recreate_swapchain();
 
     init_commands();
@@ -602,6 +607,14 @@ void Engine::upload_mesh(Mesh& mesh)
         &mesh.gpu_buffer.allocation,
         0));
 
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([=]() {
+            vmaDestroyBuffer(
+                vmalloc,
+                mesh.gpu_buffer.buffer,
+                mesh.gpu_buffer.allocation);
+        }));
+
     void* data;
     vmaMapMemory(vmalloc, mesh.gpu_buffer.allocation, &data);
     memcpy(data, mesh.vertices.ptr, mesh.vertices.size());
@@ -934,7 +947,7 @@ void Engine::recreate_swapchain()
 void Engine::deinit()
 {
     if (!is_initialized) return;
-    for (int i = 0; i < 0; ++i) {
+    for (int i = 0; i < num_overlap_frames; ++i) {
         VK_CHECK(vkWaitForFences(
             device,
             1,
@@ -943,9 +956,9 @@ void Engine::deinit()
             1000000));
     }
 
-    main_deletion_queue.flush();
     swap_chain_deletion_queue.flush();
-
+    main_deletion_queue.flush();
+    vmaDestroyAllocator(vmalloc);
     vkDestroyDevice(device, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
     vkDestroyInstance(instance, 0);

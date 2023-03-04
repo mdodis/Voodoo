@@ -63,21 +63,22 @@ struct Engine {
 
     // Rendering Objects
 
-    VkInstance            instance;
-    VkSurfaceKHR          surface;
-    VkPhysicalDevice      physical_device;
-    VkDevice              device;
-    VkSwapchainKHR        swap_chain;
-    VkFormat              swap_chain_image_format;
-    TArray<VkImage>       swap_chain_images;
-    TArray<VkImageView>   swap_chain_image_views;
-    VkRenderPass          render_pass;
-    TArray<VkFramebuffer> framebuffers;
-    VkPipelineLayout      triangle_layout;
-    VkPipeline            pipeline;
-    VmaAllocator          vmalloc;
-    VkDescriptorPool      descriptor_pool;
-    VkDescriptorSetLayout global_set_layout;
+    VkInstance                 instance;
+    VkSurfaceKHR               surface;
+    VkPhysicalDevice           physical_device;
+    VkPhysicalDeviceProperties physical_device_properties;
+    VkDevice                   device;
+    VkSwapchainKHR             swap_chain;
+    VkFormat                   swap_chain_image_format;
+    TArray<VkImage>            swap_chain_images;
+    TArray<VkImageView>        swap_chain_image_views;
+    VkRenderPass               render_pass;
+    TArray<VkFramebuffer>      framebuffers;
+    VkPipelineLayout           triangle_layout;
+    VkPipeline                 pipeline;
+    VmaAllocator               vmalloc;
+    VkDescriptorPool           descriptor_pool;
+    VkDescriptorSetLayout      global_set_layout;
 
     FrameData frames[num_overlap_frames];
 
