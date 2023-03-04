@@ -6,17 +6,6 @@
 #include "Platform/Keycodes.h"
 #include "Str.h"
 
-/*
-Input input;
-input.provider = window.input_provider;
-
-InputAction<DigitalInput>
-
-input.add_action(move_forward);
-input.add_action(press_forward);
-
-*/
-
 enum class InputAxis
 {
     MouseX,
@@ -51,6 +40,10 @@ static _inline bool operator==(InputAction& left, InputAction& right)
     return left.name == right.name;
 }
 
+/**
+ * @todo: Separate action and mapping concepts. The action just has a name and a
+ * type, while the mapping has the actual key and scale, for example.
+ */
 struct Input {
     Input(IAllocator& allocator)
         : digital_continuous_actions(&allocator)
@@ -74,6 +67,13 @@ struct Input {
 
     // Helpers
 
+    /**
+     * Add a digital continuous action. The callback will be called on each
+     * update() that the button state is down.
+     * @param name     The name of the action
+     * @param key      The input key of the action
+     * @param callback Callback delegate
+     */
     void add_digital_continuous_action(
         Str                                              name,
         InputKey                                         key,
@@ -87,6 +87,14 @@ struct Input {
         add_action(action);
     }
 
+    /**
+     * Add an axis motion action. The callback will be called each time the
+     * motion is received.
+     * @param name     The name of the action
+     * @param axis     The axis enum value
+     * @param scale    The reported value will be pre-multiplied by this value
+     * @param callback The callback delegate
+     */
     void add_axis_motion_action(
         Str                                       name,
         InputAxis                                 axis,
