@@ -199,7 +199,8 @@ void Engine::init_descriptors()
 {
     auto descriptor_pool_sizes = arr<VkDescriptorPoolSize>(
         VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10},
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10});
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 10},
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10});
 
     VkDescriptorPoolCreateInfo pool_create_info = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -235,6 +236,21 @@ void Engine::init_descriptors()
         .pBindings    = bindings,
     };
 
+    // Object descriptor set layout
+
+    VkDescriptorSetLayoutBinding object_binding = descriptor_set_layout_binding(
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_SHADER_STAGE_VERTEX_BIT,
+        0);
+
+    VkDescriptorSetLayoutCreateInfo set2_info = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = 0,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &object_binding,
+    };
+
     VK_CHECK(
         vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
 
@@ -259,6 +275,14 @@ void Engine::init_descriptors()
 
     // Camera buffers
     for (int i = 0; i < num_overlap_frames; ++i) {
+        const int max_objects = 1000;
+        frames[i].object_buffer =
+            create_buffer(
+                sizeof(GPUObjectData) * max_objects,
+                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU)
+                .unwrap();
+
         frames[i].camera_buffer =
             create_buffer(
                 sizeof(GPUCameraData),
@@ -319,6 +343,10 @@ void Engine::init_descriptors()
             DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
                 vmaDestroyBuffer(
                     vmalloc,
+                    frames[i].object_buffer.buffer,
+                    frames[i].object_buffer.allocation);
+                vmaDestroyBuffer(
+                    vmalloc,
                     frames[i].camera_buffer.buffer,
                     frames[i].camera_buffer.allocation);
             }));
@@ -326,6 +354,7 @@ void Engine::init_descriptors()
 
     main_deletion_queue.add(
         DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroyDescriptorSetLayout(device, object_set_layout, 0);
             vkDestroyDescriptorSetLayout(device, global_set_layout, 0);
             vkDestroyDescriptorPool(device, descriptor_pool, 0);
         }));

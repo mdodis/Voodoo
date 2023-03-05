@@ -47,6 +47,10 @@ struct GPUSceneData {
     glm::vec4 ambient_color;
 };
 
+struct GPUObjectData {
+    glm::mat4 model;
+};
+
 struct FrameData {
     VkSemaphore     sem_present, sem_render;
     VkFence         fnc_render;
@@ -54,6 +58,8 @@ struct FrameData {
     VkCommandBuffer main_cmd_buffer;
     AllocatedBuffer camera_buffer;
     VkDescriptorSet global_descriptor;
+    AllocatedBuffer object_buffer;
+    VkDescriptorSet object_descriptor;
 };
 
 struct Engine {
@@ -84,6 +90,7 @@ struct Engine {
     VmaAllocator               vmalloc;
     VkDescriptorPool           descriptor_pool;
     VkDescriptorSetLayout      global_set_layout;
+    VkDescriptorSetLayout      object_set_layout;
 
     FrameData frames[num_overlap_frames];
 
