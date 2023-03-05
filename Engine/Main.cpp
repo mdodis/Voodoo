@@ -6,6 +6,7 @@
 #include "FileSystem/FileSystem.h"
 #include "Reflection.h"
 #include "Serialization/JSON.h"
+#include "imgui.h"
 
 struct {
     Input  input{System_Allocator};
@@ -18,6 +19,9 @@ int main(int argc, char const* argv[])
 {
     int width  = 640;
     int height = 480;
+
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
 
     G.window.init(width, height).unwrap();
 

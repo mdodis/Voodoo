@@ -1,6 +1,7 @@
 #include "Window.h"
 
 #include "Compat/Win32VirtualKeycodes.h"
+#include "Win32ImGui.h"
 
 static WIN32_DECLARE_WNDPROC(wnd_proc_handler);
 
@@ -54,6 +55,8 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
     Win32::UpdateWindow(hwnd);
     is_open = true;
 
+    win32_imgui_init(hwnd);
+
     return Ok<void>();
 }
 
@@ -87,6 +90,10 @@ Result<VkSurfaceKHR, VkResult> Window::create_surface(VkInstance instance)
 
 WIN32_DECLARE_WNDPROC(Window::wnd_proc)
 {
+    if (win32_imgui_wndproc(hwnd, msg, wparam, lparam)) {
+        return 0;
+    }
+
     Win32::LRESULT result = 0;
     switch (msg) {
         case Win32::Message::Destroy: {

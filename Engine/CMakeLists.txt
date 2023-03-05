@@ -13,6 +13,8 @@ add_executable(vkx
     "./Mesh.cpp"
     "./Input.h"
     "./Input.cpp"
+    "./Win32ImGui.h"
+    "./Win32ImGui.cpp"
     )
 
 target_include_directories(vkx 
@@ -29,6 +31,7 @@ target_link_libraries(vkx
     "user32"
     MokLib
     glm
+    imgui
     )
 
 add_custom_command(TARGET vkx POST_BUILD

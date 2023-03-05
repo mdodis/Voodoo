@@ -150,6 +150,7 @@ struct Engine {
     void      upload_mesh(Mesh& mesh);
 
 private:
+    void init_imgui();
     void init_default_renderpass();
     void init_pipelines();
     void init_framebuffers();
@@ -170,6 +171,8 @@ private:
     FrameData& get_current_frame();
 
     size_t pad_uniform_buffer_size(size_t original_size);
+
+    void immediate_submit(Delegate<void, VkCommandBuffer> submit_delegate);
 
     // Debug Camera
     void on_debug_camera_forward();
