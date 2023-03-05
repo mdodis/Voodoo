@@ -77,6 +77,7 @@ struct CreateDeviceWithQueuesInfo {
     Slice<const char*>                   validation_layers;    // In
     Slice<const char*>                   extensions;           // In
     Slice<CreateDeviceFamilyRequirement> family_requirements;  // In
+    void*                                next = 0;             // In
 
     TArray<u32> families;  // Out
 };

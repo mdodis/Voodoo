@@ -107,10 +107,18 @@ void Engine::init()
                 .presentation = true,
             });
 
+        VkPhysicalDeviceShaderDrawParametersFeatures shader_draw_params = {
+            .sType =
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES,
+            .pNext                = 0,
+            .shaderDrawParameters = VK_TRUE,
+        };
+
         CreateDeviceWithQueuesInfo info = {
             .surface             = surface,
             .extensions          = slice(Device_Extensions),
             .family_requirements = slice(requirements),
+            .next                = (void*)&shader_draw_params,
         };
 
         if (validation_layers) {
@@ -236,6 +244,8 @@ void Engine::init_descriptors()
         .pBindings    = bindings,
     };
 
+    VK_CHECK(
+        vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
     // Object descriptor set layout
 
     VkDescriptorSetLayoutBinding object_binding = descriptor_set_layout_binding(
@@ -252,7 +262,7 @@ void Engine::init_descriptors()
     };
 
     VK_CHECK(
-        vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
+        vkCreateDescriptorSetLayout(device, &set2_info, 0, &object_set_layout));
 
     // Scene data buffer
     const size_t scene_buffer_size =
@@ -275,7 +285,33 @@ void Engine::init_descriptors()
 
     // Camera buffers
     for (int i = 0; i < num_overlap_frames; ++i) {
-        const int max_objects = 1000;
+        VkDescriptorSetAllocateInfo alloc_info = {
+            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext          = 0,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &global_set_layout,
+        };
+
+        VK_CHECK(vkAllocateDescriptorSets(
+            device,
+            &alloc_info,
+            &frames[i].global_descriptor));
+
+        VkDescriptorSetAllocateInfo object_set_alloc_info = {
+            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext          = 0,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &object_set_layout,
+        };
+
+        VK_CHECK(vkAllocateDescriptorSets(
+            device,
+            &object_set_alloc_info,
+            &frames[i].object_descriptor));
+
+        const int max_objects = 10000;
         frames[i].object_buffer =
             create_buffer(
                 sizeof(GPUObjectData) * max_objects,
@@ -290,19 +326,6 @@ void Engine::init_descriptors()
                 VMA_MEMORY_USAGE_CPU_TO_GPU)
                 .unwrap();
 
-        VkDescriptorSetAllocateInfo alloc_info = {
-            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext          = 0,
-            .descriptorPool = descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts        = &global_set_layout,
-        };
-
-        VK_CHECK(vkAllocateDescriptorSets(
-            device,
-            &alloc_info,
-            &frames[i].global_descriptor));
-
         VkDescriptorBufferInfo camera_buffer_info = {
             .buffer = frames[i].camera_buffer.buffer,
             .offset = 0,
@@ -313,6 +336,12 @@ void Engine::init_descriptors()
             .buffer = scene_data_buffer.buffer,
             .offset = 0,
             .range  = sizeof(GPUSceneData),
+        };
+
+        VkDescriptorBufferInfo object_buffer_info = {
+            .buffer = frames[i].object_buffer.buffer,
+            .offset = 0,
+            .range  = sizeof(GPUObjectData) * max_objects,
         };
 
         VkWriteDescriptorSet camera_set_write = write_descriptor_set(
@@ -327,9 +356,16 @@ void Engine::init_descriptors()
             &scene_buffer_info,
             1);
 
+        VkWriteDescriptorSet object_set_write = write_descriptor_set(
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            frames[i].object_descriptor,
+            &object_buffer_info,
+            0);
+
         VkWriteDescriptorSet write_sets[] = {
             camera_set_write,
             scene_set_write,
+            object_set_write,
         };
 
         vkUpdateDescriptorSets(
@@ -370,18 +406,15 @@ void Engine::init_pipelines()
 
     // Create layout
     {
-        VkPushConstantRange push_constant = {
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset     = 0,
-            .size       = sizeof(MeshPushConstants),
-        };
+        auto layouts =
+            arr<VkDescriptorSetLayout>(global_set_layout, object_set_layout);
 
         VkPipelineLayoutCreateInfo create_info = {
             .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = 1,
-            .pSetLayouts    = &global_set_layout,
-            .pushConstantRangeCount = 1,
-            .pPushConstantRanges    = &push_constant,
+            .setLayoutCount = layouts.count(),
+            .pSetLayouts    = layouts.elements,
+            .pushConstantRangeCount = 0,
+            .pPushConstantRanges    = 0,
         };
 
         VK_CHECK(
@@ -820,7 +853,10 @@ void Engine::draw()
         camera_data.view     = view;
         camera_data.viewproj = proj * view;
         void* camera_gpu_data;
-        vmaMapMemory(vmalloc, frame.camera_buffer.allocation, &camera_gpu_data);
+        VK_CHECK(vmaMapMemory(
+            vmalloc,
+            frame.camera_buffer.allocation,
+            &camera_gpu_data));
         memcpy(camera_gpu_data, &camera_data, sizeof(camera_data));
         vmaUnmapMemory(vmalloc, frame.camera_buffer.allocation);
     }
@@ -832,10 +868,10 @@ void Engine::draw()
         float framed             = (frame_num / 120.f);
         scene_data.ambient_color = {glm::sin(framed), 0, cos(framed), 1};
         u8* scene_data_ptr;
-        vmaMapMemory(
+        VK_CHECK(vmaMapMemory(
             vmalloc,
             scene_data_buffer.allocation,
-            (void**)&scene_data_ptr);
+            (void**)&scene_data_ptr));
 
         scene_data_ptr +=
             pad_uniform_buffer_size(sizeof(GPUSceneData)) * frame_idx;
@@ -844,21 +880,25 @@ void Engine::draw()
         vmaUnmapMemory(vmalloc, scene_data_buffer.allocation);
     }
 
-    MeshPushConstants constants;
-    Material*         last_material = 0;
+    // Write object data
+    {
+        void* object_data;
+        VK_CHECK(vmaMapMemory(
+            vmalloc,
+            frame.object_buffer.allocation,
+            &object_data));
+        GPUObjectData* object_ssbo = (GPUObjectData*)object_data;
+        for (u64 i = 0; i < render_objects.size; ++i) {
+            RenderObject& ro     = render_objects[i];
+            object_ssbo[i].model = ro.transform;
+        }
+        vmaUnmapMemory(vmalloc, frame.object_buffer.allocation);
+    }
 
-    for (RenderObject& ro : render_objects) {
-        // constants.transform = ro.transform * view * projection;
-        constants.transform = ro.transform;
+    Material* last_material = 0;
 
-        vkCmdPushConstants(
-            cmd,
-            triangle_layout,
-            VK_SHADER_STAGE_VERTEX_BIT,
-            0,
-            sizeof(MeshPushConstants),
-            &constants);
-
+    for (u64 i = 0; i < render_objects.size; ++i) {
+        RenderObject& ro = render_objects[i];
         if ((last_material == 0) || (*last_material != *ro.material)) {
             vkCmdBindPipeline(
                 cmd,
@@ -866,7 +906,7 @@ void Engine::draw()
                 ro.material->pipeline);
 
             u32 dynamic_offset =
-                pad_uniform_buffer_size(sizeof(GPUSceneData)) * frame_idx;
+                u32(pad_uniform_buffer_size(sizeof(GPUSceneData))) * frame_idx;
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -876,13 +916,23 @@ void Engine::draw()
                 &frame.global_descriptor,
                 1,
                 &dynamic_offset);
+
+            vkCmdBindDescriptorSets(
+                cmd,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                ro.material->pipeline_layout,
+                1,
+                1,
+                &frame.object_descriptor,
+                0,
+                nullptr);
         }
 
         last_material = ro.material;
 
         VkDeviceSize offset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &ro.mesh->gpu_buffer.buffer, &offset);
-        vkCmdDraw(cmd, (u32)ro.mesh->vertices.count, 1, 0, 0);
+        vkCmdDraw(cmd, (u32)ro.mesh->vertices.count, 1, 0, u32(i));
     }
 
     vkCmdEndRenderPass(cmd);

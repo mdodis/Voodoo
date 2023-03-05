@@ -280,6 +280,7 @@ Result<VkDevice, VkResult> create_device_with_queues(
 
     VkDeviceCreateInfo create_info = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext                   = info.next,
         .queueCreateInfoCount    = (u32)queue_create_infos.size,
         .pQueueCreateInfos       = queue_create_infos.data,
         .enabledLayerCount       = (u32)info.validation_layers.count,
