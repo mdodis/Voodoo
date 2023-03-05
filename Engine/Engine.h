@@ -56,7 +56,6 @@ struct FrameData {
     VkFence         fnc_render;
     VkCommandPool   pool;
     VkCommandBuffer main_cmd_buffer;
-    AllocatedBuffer camera_buffer;
     VkDescriptorSet global_descriptor;
     AllocatedBuffer object_buffer;
     VkDescriptorSet object_descriptor;
@@ -109,6 +108,10 @@ struct Engine {
     TMap<Str, Mesh>      meshes;
     TMap<Str, Material>  materials;
     TArray<RenderObject> render_objects;
+
+    struct {
+        AllocatedBuffer buffer;
+    } camera;
 
     GPUSceneData    scene_data;
     AllocatedBuffer scene_data_buffer;
