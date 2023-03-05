@@ -66,6 +66,12 @@ struct FrameData {
     VkDescriptorSet object_descriptor;
 };
 
+struct UploadContext {
+    VkFence         fnc_upload;
+    VkCommandPool   pool;
+    VkCommandBuffer buffer;
+};
+
 struct Engine {
     Window*     window;
     Input*      input;
@@ -120,6 +126,8 @@ struct Engine {
         u32             total_buffer_size;
     } global;
 
+    UploadContext upload;
+
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
 
@@ -172,7 +180,18 @@ private:
 
     size_t pad_uniform_buffer_size(size_t original_size);
 
-    void immediate_submit(Delegate<void, VkCommandBuffer> submit_delegate);
+    using ImmediateSubmitDelegate = Delegate<void, VkCommandBuffer>;
+
+    FORWARD_DELEGATE_LAMBDA_TEMPLATE()
+    void immediate_submit_lambda(
+        FORWARD_DELEGATE_LAMBDA_SIG(ImmediateSubmitDelegate))
+    {
+        ImmediateSubmitDelegate delegate;
+        FORWARD_DELEGATE_LAMBDA_BODY(delegate);
+        immediate_submit(std::move(delegate));
+    }
+
+    void immediate_submit(ImmediateSubmitDelegate&& submit_delegate);
 
     // Debug Camera
     void on_debug_camera_forward();
