@@ -221,19 +221,13 @@ void Engine::init_descriptors()
     VK_CHECK(
         vkCreateDescriptorPool(device, &pool_create_info, 0, &descriptor_pool));
 
-    // Camera data at 0
-    VkDescriptorSetLayoutBinding camera_binding = descriptor_set_layout_binding(
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0);
-
-    // Scene data at 1
-    VkDescriptorSetLayoutBinding scene_binding = descriptor_set_layout_binding(
+    // Global data at 0
+    VkDescriptorSetLayoutBinding global_binding = descriptor_set_layout_binding(
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        1);
+        0);
 
-    VkDescriptorSetLayoutBinding bindings[] = {camera_binding, scene_binding};
+    VkDescriptorSetLayoutBinding bindings[] = {global_binding};
 
     VkDescriptorSetLayoutCreateInfo set_info = {
         .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -263,43 +257,34 @@ void Engine::init_descriptors()
     VK_CHECK(
         vkCreateDescriptorSetLayout(device, &set2_info, 0, &object_set_layout));
 
-    // Scene data buffer
-    const size_t scene_buffer_size =
-        num_overlap_frames * pad_uniform_buffer_size(sizeof(GPUSceneData));
+    // global data buffer
+    {
+        /*
+            Buffer
+            [Camera, Scene, PAD]
+            [Camera, Scene, PAD]
+            [Camera, Scene, PAD]
+        */
 
-    scene_data_buffer =
-        create_buffer(
-            scene_buffer_size,
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU)
-            .unwrap();
+        global.total_buffer_size =
+            (u32)pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) *
+            num_overlap_frames;
 
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vmaDestroyBuffer(
-                vmalloc,
-                scene_data_buffer.buffer,
-                scene_data_buffer.allocation);
-        }));
+        global.buffer =
+            create_buffer(
+                global.total_buffer_size,
+                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU)
+                .unwrap();
 
-    // Camera data buffer
-    const size_t camera_buffer_size =
-        num_overlap_frames * pad_uniform_buffer_size(sizeof(GPUCameraData));
-
-    camera.buffer =
-        create_buffer(
-            camera_buffer_size,
-            VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU)
-            .unwrap();
-
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vmaDestroyBuffer(
-                vmalloc,
-                camera.buffer.buffer,
-                camera.buffer.allocation);
-        }));
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vmaDestroyBuffer(
+                    vmalloc,
+                    global.buffer.buffer,
+                    global.buffer.allocation);
+            }));
+    }
 
     for (int i = 0; i < num_overlap_frames; ++i) {
         VkDescriptorSetAllocateInfo alloc_info = {
@@ -336,16 +321,10 @@ void Engine::init_descriptors()
                 VMA_MEMORY_USAGE_CPU_TO_GPU)
                 .unwrap();
 
-        VkDescriptorBufferInfo camera_buffer_info = {
-            .buffer = camera.buffer.buffer,
+        VkDescriptorBufferInfo global_instance_buffer_info = {
+            .buffer = global.buffer.buffer,
             .offset = 0,
-            .range  = sizeof(GPUCameraData),
-        };
-
-        VkDescriptorBufferInfo scene_buffer_info = {
-            .buffer = scene_data_buffer.buffer,
-            .offset = 0,
-            .range  = sizeof(GPUSceneData),
+            .range  = sizeof(GPUGlobalInstanceData),
         };
 
         VkDescriptorBufferInfo object_buffer_info = {
@@ -354,17 +333,11 @@ void Engine::init_descriptors()
             .range  = sizeof(GPUObjectData) * max_objects,
         };
 
-        VkWriteDescriptorSet camera_set_write = write_descriptor_set(
+        VkWriteDescriptorSet global_instance_set_write = write_descriptor_set(
             VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
             frames[i].global_descriptor,
-            &camera_buffer_info,
+            &global_instance_buffer_info,
             0);
-
-        VkWriteDescriptorSet scene_set_write = write_descriptor_set(
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            frames[i].global_descriptor,
-            &scene_buffer_info,
-            1);
 
         VkWriteDescriptorSet object_set_write = write_descriptor_set(
             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
@@ -373,8 +346,7 @@ void Engine::init_descriptors()
             0);
 
         VkWriteDescriptorSet write_sets[] = {
-            camera_set_write,
-            scene_set_write,
+            global_instance_set_write,
             object_set_write,
         };
 
@@ -854,38 +826,34 @@ void Engine::draw()
 
     int frame_idx = frame_num % num_overlap_frames;
 
-    // Write camera data
+    // Write global data
     {
-        GPUCameraData camera_data;
-        camera_data.proj     = proj;
-        camera_data.view     = view;
-        camera_data.viewproj = proj * view;
-        u8* camera_gpu_data;
+        GPUGlobalInstanceData global_instance_data;
+        global_instance_data.camera = {
+            .view     = view,
+            .proj     = proj,
+            .viewproj = proj * view,
+        };
+
+        float framed               = (frame_num / 120.f);
+        global_instance_data.scene = {
+            .ambient_color = {glm::sin(framed), 0, cos(framed), 1},
+        };
+
+        u8* global_instance_data_ptr;
         VK_CHECK(vmaMapMemory(
             vmalloc,
-            camera.buffer.allocation,
-            (void**)&camera_gpu_data));
-        camera_gpu_data +=
-            pad_uniform_buffer_size(sizeof(GPUCameraData)) * frame_idx;
-        memcpy(camera_gpu_data, &camera_data, sizeof(camera_data));
-        vmaUnmapMemory(vmalloc, camera.buffer.allocation);
-    }
+            global.buffer.allocation,
+            (void**)&global_instance_data_ptr));
 
-    // Write scene data
-    {
-        float framed             = (frame_num / 120.f);
-        scene_data.ambient_color = {glm::sin(framed), 0, cos(framed), 1};
-        u8* scene_data_ptr;
-        VK_CHECK(vmaMapMemory(
-            vmalloc,
-            scene_data_buffer.allocation,
-            (void**)&scene_data_ptr));
+        global_instance_data_ptr +=
+            pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) * frame_idx;
+        memcpy(
+            global_instance_data_ptr,
+            &global_instance_data,
+            sizeof(GPUGlobalInstanceData));
 
-        scene_data_ptr +=
-            pad_uniform_buffer_size(sizeof(GPUSceneData)) * frame_idx;
-        memcpy(scene_data_ptr, &scene_data, sizeof(GPUSceneData));
-
-        vmaUnmapMemory(vmalloc, scene_data_buffer.allocation);
+        vmaUnmapMemory(vmalloc, global.buffer.allocation);
     }
 
     // Write object data
@@ -914,9 +882,9 @@ void Engine::draw()
                 ro.material->pipeline);
 
             u32 uniform_offsets[] = {
-                // Camera
-                u32(pad_uniform_buffer_size(sizeof(GPUCameraData))) * frame_idx,
-                u32(pad_uniform_buffer_size(sizeof(GPUSceneData))) * frame_idx,
+                // Global
+                u32(pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData))) *
+                    frame_idx,
             };
 
             vkCmdBindDescriptorSets(

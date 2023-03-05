@@ -51,6 +51,11 @@ struct GPUObjectData {
     glm::mat4 model;
 };
 
+struct GPUGlobalInstanceData {
+    GPUCameraData camera;
+    GPUSceneData  scene;
+};
+
 struct FrameData {
     VkSemaphore     sem_present, sem_render;
     VkFence         fnc_render;
@@ -109,12 +114,11 @@ struct Engine {
     TMap<Str, Material>  materials;
     TArray<RenderObject> render_objects;
 
+    /** GPU Global Instance Data */
     struct {
         AllocatedBuffer buffer;
-    } camera;
-
-    GPUSceneData    scene_data;
-    AllocatedBuffer scene_data_buffer;
+        u32             total_buffer_size;
+    } global;
 
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
