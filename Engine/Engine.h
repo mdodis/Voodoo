@@ -147,7 +147,7 @@ struct Engine {
         glm::vec3 velocity        = {0, 0, 0};
         glm::vec3 input_direction = {0, 0, 0};
         glm::vec3 move_velocity   = {0, 0, 0};
-        float     acceleration    = 0.01f;
+        float     acceleration    = 0.05f;
         float     yaw = 0.f, pitch = 0.f;
         bool      has_focus = false;
     } debug_camera;
@@ -166,6 +166,7 @@ struct Engine {
     Mesh*     get_mesh(Str id);
     Material* get_material(Str id);
     void      upload_mesh(Mesh& mesh);
+    bool      upload_image_from_file(const char* path);
 
 private:
     void init_imgui();
@@ -208,6 +209,8 @@ private:
     void on_debug_camera_back();
     void on_debug_camera_right();
     void on_debug_camera_left();
+    void on_debug_camera_up();
+    void on_debug_camera_down();
     void on_debug_camera_toggle_control();
     void on_debug_camera_mousex(float value);
     void on_debug_camera_mousey(float value);

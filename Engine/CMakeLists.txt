@@ -32,6 +32,7 @@ target_link_libraries(vkx
     MokLib
     glm
     imgui
+    stb_image
     )
 
 add_custom_command(TARGET vkx POST_BUILD

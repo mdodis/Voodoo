@@ -1,5 +1,7 @@
 #include "Engine.h"
 
+#include <stb_image.h>
+
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/compatibility.hpp>
@@ -652,6 +654,19 @@ void Engine::init_input()
             this,
             &Engine::on_debug_camera_right));
 
+    input->add_digital_continuous_action(
+        LIT("debug.camera.up"),
+        InputKey::E,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_up));
+    input->add_digital_continuous_action(
+        LIT("debug.camera.down"),
+        InputKey::Q,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_down));
+
     input->add_digital_stroke_action(
         LIT("debug.camera.toggle_control"),
         InputKey::Num1,
@@ -813,6 +828,17 @@ void Engine::on_debug_camera_left()
     debug_camera.input_direction.x -= 1.0f;
 }
 
+void Engine::on_debug_camera_up()
+{
+    if (!debug_camera.has_focus) return;
+    debug_camera.input_direction.y += 1.0f;
+}
+void Engine::on_debug_camera_down()
+{
+    if (!debug_camera.has_focus) return;
+    debug_camera.input_direction.y -= 1.0f;
+}
+
 void Engine::on_debug_camera_mousex(float value)
 {
     if (!debug_camera.has_focus) return;
@@ -944,6 +970,33 @@ void Engine::upload_mesh(Mesh& mesh)
         }));
 
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
+}
+
+bool Engine::upload_image_from_file(const char* path)
+{
+    int width, height, channels;
+    u8* pixels = stbi_load(path, &width, &height, &channels, 4);
+    if (!pixels) {
+        return false;
+    }
+
+    void*        pixel_ptr    = (void*)pixels;
+    VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
+    VkDeviceSize image_size   = width * height * 4;
+
+    AllocatedBuffer storage_buffer =
+        create_buffer(
+            image_size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_ONLY)
+            .unwrap();
+
+    void* data;
+    VK_CHECK(vmaMapMemory(vmalloc, storage_buffer.allocation, &data));
+    memcpy(data, pixel_ptr, image_size);
+    vmaUnmapMemory(vmalloc, storage_buffer.allocation);
+    stbi_image_free(pixels);
+    return true;
 }
 
 void Engine::draw()
@@ -1179,8 +1232,8 @@ void Engine::draw()
 void Engine::update()
 {
     glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
-    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
-
+    glm::vec3 right    = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
+    glm::vec3 up       = glm::vec3(0, 1, 0);
     glm::vec3 now_move = glm::vec3(0, 0, 0);
 
     float acceleration;
@@ -1189,7 +1242,8 @@ void Engine::update()
     {
         now_move = glm::normalize(
             fwd * debug_camera.input_direction.z +
-            right * debug_camera.input_direction.x);
+            right * debug_camera.input_direction.x +
+            up * debug_camera.input_direction.y);
         acceleration = debug_camera.acceleration;
     } else {
         acceleration = 0.1f;
