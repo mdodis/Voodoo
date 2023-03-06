@@ -821,7 +821,7 @@ void Engine::on_debug_camera_left()
 void Engine::on_debug_camera_mousex(float value)
 {
     if (!debug_camera.has_focus) return;
-    debug_camera.yaw += value;
+    debug_camera.yaw += value * 0.1f;
     while (debug_camera.yaw > 360.f) {
         debug_camera.yaw -= 360.f;
     }
@@ -835,18 +835,20 @@ void Engine::on_debug_camera_mousex(float value)
 void Engine::on_debug_camera_mousey(float value)
 {
     if (!debug_camera.has_focus) return;
-    debug_camera.pitch += value;
+    debug_camera.pitch += value * 0.1f;
     debug_camera.pitch = glm::clamp(debug_camera.pitch, -89.f, 89.f);
     debug_camera_update_rotation();
 }
 
 void Engine::debug_camera_update_rotation()
 {
-    debug_camera.rotation =
-        glm::normalize(glm::angleAxis(
-            glm::radians(debug_camera.yaw),
-            glm::vec3(0, 1, 0))) *
-        glm::angleAxis(glm::radians(debug_camera.pitch), glm::vec3(1, 0, 0));
+    debug_camera.rotation = glm::normalize(
+        glm::angleAxis(glm::radians(debug_camera.yaw), glm::vec3(0, 1, 0)) *
+        glm::angleAxis(glm::radians(debug_camera.pitch), glm::vec3(1, 0, 0)));
+
+    // debug_camera.rotation =
+    //     glm::angleAxis(glm::radians(debug_camera.yaw), glm::vec3(0, 1, 0)) *
+    //     glm::angleAxis(glm::radians(debug_camera.pitch), glm::vec3(1, 0, 0));
 }
 
 void Engine::on_debug_camera_toggle_control()

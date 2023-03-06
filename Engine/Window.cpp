@@ -87,14 +87,6 @@ void Window::poll()
     if (needs_resize) {
         on_resized.call_safe();
     }
-
-    if (cursor_locked) {
-        Win32::RECT r;
-        Win32::GetClientRect(hwnd, &r);
-        Win32::SetCursorPos(
-            r.left + (r.right - r.left) / 2,
-            r.top + (r.bottom - r.top) / 2);
-    }
 }
 
 void Window::destroy() { DestroyWindow(hwnd); }
@@ -139,6 +131,12 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
                 &size,
                 sizeof(Win32::RAWINPUTHEADER));
 
+            if (raw->data.mouse.usFlags &
+                Win32::RawInputMouseState::MoveAbsolute)
+            {
+                print(LIT("ABSOLUTE MOVE\n"));
+            }
+
             if (raw->header.dwType == Win32::RawInputDataType::Mouse) {
                 input->send_axis_delta(
                     InputAxis::MouseX,
@@ -154,6 +152,14 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
             result = Win32::DefWindowProcA(hwnd, msg, wparam, lparam);
         } break;
     }
+
+    if (cursor_locked) {
+        Win32::RECT r;
+        Win32::GetClientRect(hwnd, &r);
+        Win32::SetCursorPos(
+            r.left + (r.right - r.left) / 2,
+            r.top + (r.bottom - r.top) / 2);
+    }
     return result;
 }
 
@@ -167,6 +173,9 @@ WIN32_DECLARE_WNDPROC(wnd_proc_handler)
 {
     Window* w = (Window*)
         Win32::GetWindowLongPtrA(hwnd, Win32::WindowLongPointer::UserData);
+    if (w == 0) {
+        return Win32::DefWindowProcA(hwnd, msg, wparam, lparam);
+    }
     return w->wnd_proc(hwnd, msg, wparam, lparam);
 }
 

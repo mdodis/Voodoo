@@ -33,7 +33,7 @@ void Input::send_axis_delta(InputAxis axis, float delta)
 {
     for (auto& action : axis_motion_actions) {
         if (action.axis == axis) {
-            action.delta        = delta;
+            action.delta += delta * action.scale;
             action.needs_update = true;
         }
     }
@@ -43,8 +43,9 @@ void Input::update()
 {
     for (auto& action : axis_motion_actions) {
         if (action.needs_update) {
-            action.callback.call(action.delta * action.scale);
+            action.callback.call(action.delta);
             action.needs_update = false;
+            action.delta        = 0.f;
         }
     }
 
