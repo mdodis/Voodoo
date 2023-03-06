@@ -636,6 +636,26 @@ void Engine::init_input()
             this,
             &Engine::on_debug_camera_back));
 
+    input->add_digital_continuous_action(
+        LIT("debug.camera.left"),
+        InputKey::A,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_left));
+    input->add_digital_continuous_action(
+        LIT("debug.camera.right"),
+        InputKey::D,
+        InputDigitalContinuousAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_right));
+
+    input->add_digital_stroke_action(
+        LIT("debug.camera.toggle_control"),
+        InputKey::Num1,
+        InputDigitalStrokeAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_toggle_control));
+
     input->add_axis_motion_action(
         LIT("debug.camera.yaw"),
         InputAxis::MouseX,
@@ -643,6 +663,16 @@ void Engine::init_input()
         InputAxisMotionAction::CallbackDelegate::create_raw(
             this,
             &Engine::on_debug_camera_mousex));
+
+    input->add_axis_motion_action(
+        LIT("debug.camera.pitch"),
+        InputAxis::MouseY,
+        -1.0f,
+        InputAxisMotionAction::CallbackDelegate::create_raw(
+            this,
+            &Engine::on_debug_camera_mousey));
+
+    debug_camera_update_rotation();
 }
 
 void Engine::init_imgui()
@@ -758,15 +788,72 @@ void Engine::immediate_submit(ImmediateSubmitDelegate&& submit_delegate)
 }
 
 // Debug Camera
-void Engine::on_debug_camera_forward() { debug_camera.position.z += 0.1f; }
-void Engine::on_debug_camera_back() { debug_camera.position.z -= 0.1f; }
+void Engine::on_debug_camera_forward()
+{
+    if (!debug_camera.has_focus) return;
+    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
+    debug_camera.position += 0.1f * fwd;
+}
+void Engine::on_debug_camera_back()
+{
+    if (!debug_camera.has_focus) return;
+    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
+    debug_camera.position -= 0.1f * fwd;
+}
+
+void Engine::on_debug_camera_right()
+{
+    if (!debug_camera.has_focus) return;
+    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
+    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
+
+    debug_camera.position += 0.1f * right;
+}
+void Engine::on_debug_camera_left()
+{
+    if (!debug_camera.has_focus) return;
+    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
+    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
+
+    debug_camera.position -= 0.1f * right;
+}
 
 void Engine::on_debug_camera_mousex(float value)
 {
-    debug_camera.rotation = glm::rotate(
-        debug_camera.rotation,
-        glm::radians(value),
-        glm::vec3(0, 1, 0));
+    if (!debug_camera.has_focus) return;
+    debug_camera.yaw += value;
+    while (debug_camera.yaw > 360.f) {
+        debug_camera.yaw -= 360.f;
+    }
+
+    while (debug_camera.yaw < 0.f) {
+        debug_camera.yaw += 360.f;
+    }
+
+    debug_camera_update_rotation();
+}
+void Engine::on_debug_camera_mousey(float value)
+{
+    if (!debug_camera.has_focus) return;
+    debug_camera.pitch += value;
+    debug_camera.pitch = glm::clamp(debug_camera.pitch, -89.f, 89.f);
+    debug_camera_update_rotation();
+}
+
+void Engine::debug_camera_update_rotation()
+{
+    debug_camera.rotation =
+        glm::normalize(glm::angleAxis(
+            glm::radians(debug_camera.yaw),
+            glm::vec3(0, 1, 0))) *
+        glm::angleAxis(glm::radians(debug_camera.pitch), glm::vec3(1, 0, 0));
+}
+
+void Engine::on_debug_camera_toggle_control()
+{
+    print(LIT("YEET\n"));
+    debug_camera.has_focus = !debug_camera.has_focus;
+    window->set_lock_cursor(debug_camera.has_focus);
 }
 
 void Engine::on_resize_presentation()

@@ -17,7 +17,10 @@ struct Window {
     void                           destroy();
     Result<VkSurfaceKHR, VkResult> create_surface(VkInstance instance);
 
+    void set_lock_cursor(bool value);
+
     Delegate<void> on_resized;
 
     WIN32_DECLARE_WNDPROC(wnd_proc);
+    bool cursor_locked = false;
 };

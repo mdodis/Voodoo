@@ -55,6 +55,14 @@ Result<void, Win32::DWORD> Window::init(i32 width, i32 height)
     Win32::UpdateWindow(hwnd);
     is_open = true;
 
+    // Raw input
+    Win32::RAWINPUTDEVICE rid[1];
+    rid[0].usUsagePage = Win32::HIDUsagePage::Generic;
+    rid[0].usUsage     = Win32::HIDUsage::Mouse;
+    rid[0].dwFlags     = Win32::HIDMode::InputSink;
+    rid[0].hwndTarget  = hwnd;
+    Win32::RegisterRawInputDevices(rid, 1, sizeof(rid));
+
     win32_imgui_init(hwnd);
 
     return Ok<void>();
@@ -78,6 +86,14 @@ void Window::poll()
 
     if (needs_resize) {
         on_resized.call_safe();
+    }
+
+    if (cursor_locked) {
+        Win32::RECT r;
+        Win32::GetClientRect(hwnd, &r);
+        Win32::SetCursorPos(
+            r.left + (r.right - r.left) / 2,
+            r.top + (r.bottom - r.top) / 2);
     }
 }
 
@@ -113,12 +129,25 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
             input->send_input(key, down);
         } break;
 
-        case Win32::Message::MouseMove: {
-            int x = WIN32_GET_X_LPARAM(lparam);
-            int y = WIN32_GET_Y_LPARAM(lparam);
+        case Win32::Message::Input: {
+            unsigned               size = sizeof(Win32::RAWINPUT);
+            static Win32::RAWINPUT raw[sizeof(Win32::RAWINPUT)];
+            GetRawInputData(
+                (Win32::HRAWINPUT)lparam,
+                Win32::RawInputCommand::Input,
+                raw,
+                &size,
+                sizeof(Win32::RAWINPUTHEADER));
 
-            input->send_axis(InputAxis::MouseX, (float)x);
-            input->send_axis(InputAxis::MouseY, (float)y);
+            if (raw->header.dwType == Win32::RawInputDataType::Mouse) {
+                input->send_axis_delta(
+                    InputAxis::MouseX,
+                    (float)raw->data.mouse.lLastX);
+                input->send_axis_delta(
+                    InputAxis::MouseY,
+                    (float)raw->data.mouse.lLastY);
+            }
+
         } break;
 
         default: {
@@ -126,6 +155,12 @@ WIN32_DECLARE_WNDPROC(Window::wnd_proc)
         } break;
     }
     return result;
+}
+
+void Window::set_lock_cursor(bool value)
+{
+    cursor_locked = value;
+    Win32::ShowCursor(!cursor_locked);
 }
 
 WIN32_DECLARE_WNDPROC(wnd_proc_handler)

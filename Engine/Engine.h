@@ -145,6 +145,7 @@ struct Engine {
         glm::vec3 position = {0, 0, -5};
         glm::quat rotation = {1, 0, 0, 0};
         float     yaw = 0.f, pitch = 0.f;
+        bool      has_focus = false;
     } debug_camera;
 
     void           init();
@@ -196,7 +197,12 @@ private:
     // Debug Camera
     void on_debug_camera_forward();
     void on_debug_camera_back();
+    void on_debug_camera_right();
+    void on_debug_camera_left();
+    void on_debug_camera_toggle_control();
     void on_debug_camera_mousex(float value);
+    void on_debug_camera_mousey(float value);
+    void debug_camera_update_rotation();
 };
 
 struct PipelineBuilder {
