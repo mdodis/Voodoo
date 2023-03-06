@@ -22,9 +22,8 @@ void Input::send_axis(InputAxis axis, float new_value)
 {
     for (auto& action : axis_motion_actions) {
         if (action.axis == axis) {
-            action.delta        = (new_value - action.last_value);
-            action.last_value   = new_value;
-            action.needs_update = true;
+            action.delta      = (new_value - action.last_value);
+            action.last_value = new_value;
         }
     }
 }
@@ -34,7 +33,6 @@ void Input::send_axis_delta(InputAxis axis, float delta)
     for (auto& action : axis_motion_actions) {
         if (action.axis == axis) {
             action.delta += delta * action.scale;
-            action.needs_update = true;
         }
     }
 }
@@ -42,11 +40,8 @@ void Input::send_axis_delta(InputAxis axis, float delta)
 void Input::update()
 {
     for (auto& action : axis_motion_actions) {
-        if (action.needs_update) {
-            action.callback.call(action.delta);
-            action.needs_update = false;
-            action.delta        = 0.f;
-        }
+        action.callback.call(action.delta);
+        action.delta = 0.f;
     }
 
     for (auto& action : digital_continuous_actions) {

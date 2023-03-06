@@ -142,15 +142,24 @@ struct Engine {
     } presentation;
 
     struct {
-        glm::vec3 position = {0, 0, -5};
-        glm::quat rotation = {1, 0, 0, 0};
+        glm::vec3 position        = {0, 0, -5};
+        glm::quat rotation        = {1, 0, 0, 0};
+        glm::vec3 velocity        = {0, 0, 0};
+        glm::vec3 input_direction = {0, 0, 0};
+        glm::vec3 move_velocity   = {0, 0, 0};
+        float     acceleration    = 0.01f;
         float     yaw = 0.f, pitch = 0.f;
         bool      has_focus = false;
     } debug_camera;
 
-    void           init();
-    void           deinit();
-    void           draw();
+    void init();
+    void deinit();
+    void draw();
+
+    /**
+     * Used to update debug camera
+     */
+    void           update();
     VkShaderModule load_shader(Str path);
     Material*      create_material(
              VkPipeline pipeline, VkPipelineLayout layout, Str id);

@@ -62,7 +62,7 @@ int main(int argc, char const* argv[])
     G.window.poll();
     while (G.window.is_open) {
         G.input.update();
-
+        eng.update();
         eng.draw();
         G.window.poll();
     }

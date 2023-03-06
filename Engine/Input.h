@@ -35,7 +35,6 @@ struct InputDigitalStrokeAction : InputActionBase<> {
 
 struct InputAxisMotionAction : InputActionBase<float> {
     InputAxis axis;
-    bool      needs_update;
     float     scale;
     float     last_value;
     float     delta;
@@ -136,13 +135,12 @@ struct Input {
         InputAxisMotionAction::CallbackDelegate&& callback)
     {
         InputAxisMotionAction action;
-        action.name         = name;
-        action.axis         = axis;
-        action.scale        = scale;
-        action.delta        = 0.f;
-        action.last_value   = 0.f;
-        action.needs_update = false;
-        action.callback     = callback;
+        action.name       = name;
+        action.axis       = axis;
+        action.scale      = scale;
+        action.delta      = 0.f;
+        action.last_value = 0.f;
+        action.callback   = callback;
         add_action(action);
     }
 

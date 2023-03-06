@@ -1,6 +1,9 @@
 #include "Engine.h"
 
+#include <glm/ext/scalar_constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/compatibility.hpp>
+#include <glm/gtx/norm.hpp>
 
 #include "Memory/Extras.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -791,31 +794,23 @@ void Engine::immediate_submit(ImmediateSubmitDelegate&& submit_delegate)
 void Engine::on_debug_camera_forward()
 {
     if (!debug_camera.has_focus) return;
-    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
-    debug_camera.position += 0.1f * fwd;
+    debug_camera.input_direction.z += 1.0f;
 }
 void Engine::on_debug_camera_back()
 {
     if (!debug_camera.has_focus) return;
-    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
-    debug_camera.position -= 0.1f * fwd;
+    debug_camera.input_direction.z -= 1.0f;
 }
 
 void Engine::on_debug_camera_right()
 {
     if (!debug_camera.has_focus) return;
-    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
-    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
-
-    debug_camera.position += 0.1f * right;
+    debug_camera.input_direction.x += 1.0f;
 }
 void Engine::on_debug_camera_left()
 {
     if (!debug_camera.has_focus) return;
-    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
-    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
-
-    debug_camera.position -= 0.1f * right;
+    debug_camera.input_direction.x -= 1.0f;
 }
 
 void Engine::on_debug_camera_mousex(float value)
@@ -1179,6 +1174,34 @@ void Engine::draw()
     VK_CHECK(vkQueuePresentKHR(presentation.queue, &present_info));
 
     frame_num += 1;
+}
+
+void Engine::update()
+{
+    glm::vec3 fwd = glm::normalize(debug_camera.rotation * glm::vec3(0, 0, -1));
+    glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0, 1, 0)));
+
+    glm::vec3 now_move = glm::vec3(0, 0, 0);
+
+    float acceleration;
+    if (glm::length2(debug_camera.input_direction) >
+        (glm::epsilon<float>() * glm::epsilon<float>()))
+    {
+        now_move = glm::normalize(
+            fwd * debug_camera.input_direction.z +
+            right * debug_camera.input_direction.x);
+        acceleration = debug_camera.acceleration;
+    } else {
+        acceleration = 0.1f;
+    }
+
+    debug_camera.move_velocity =
+        glm::lerp(debug_camera.move_velocity, now_move * 0.5f, acceleration);
+
+    debug_camera.velocity = debug_camera.move_velocity;
+
+    debug_camera.position += debug_camera.velocity;
+    debug_camera.input_direction = glm::vec3(0, 0, 0);
 }
 
 void Engine::recreate_swapchain()
