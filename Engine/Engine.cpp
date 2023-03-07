@@ -421,6 +421,7 @@ void Engine::init_descriptors()
 
     main_deletion_queue.add(
         DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroyDescriptorSetLayout(device, texture_set_layout, 0);
             vkDestroyDescriptorSetLayout(device, object_set_layout, 0);
             vkDestroyDescriptorSetLayout(device, global_set_layout, 0);
             vkDestroyDescriptorPool(device, descriptor_pool, 0);
@@ -463,7 +464,7 @@ void Engine::init_pipelines()
 
         VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
-        pipeline =
+        VkPipeline pipeline =
             PipelineBuilder(temp_alloc)
                 .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
                 .add_shader_stage(
@@ -526,7 +527,7 @@ void Engine::init_pipelines()
 
         VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
-        pipeline =
+        VkPipeline pipeline =
             PipelineBuilder(temp_alloc)
                 .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
                 .add_shader_stage(
@@ -1715,6 +1716,7 @@ void Engine::init_default_images()
     {
         AllocatedImage image =
             upload_image_from_file("Assets/lost_empire-RGBA.png").unwrap();
+
         VkImageView           view;
         VkImageViewCreateInfo create_info = {
             .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -1773,6 +1775,12 @@ void Engine::init_default_images()
             0);
 
         vkUpdateDescriptorSets(device, 1, &write_image, 0, nullptr);
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([=]() {
+                vkDestroySampler(device, blocky_sampler, 0);
+                vkDestroyImageView(device, view, 0);
+            }));
     }
 }
 

@@ -101,7 +101,6 @@ struct Engine {
     TArray<VkImageView>        swap_chain_image_views;
     VkRenderPass               render_pass;
     TArray<VkFramebuffer>      framebuffers;
-    VkPipeline                 pipeline;
     VmaAllocator               vmalloc;
     VkDescriptorPool           descriptor_pool;
     VkDescriptorSetLayout      global_set_layout;
