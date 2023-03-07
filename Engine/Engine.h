@@ -204,8 +204,8 @@ private:
     void immediate_submit_lambda(
         FORWARD_DELEGATE_LAMBDA_SIG(ImmediateSubmitDelegate))
     {
-        ImmediateSubmitDelegate delegate;
-        FORWARD_DELEGATE_LAMBDA_BODY(delegate);
+        ImmediateSubmitDelegate delegate =
+            FORWARD_DELEGATE_LAMBDA_CREATE(ImmediateSubmitDelegate);
         immediate_submit(std::move(delegate));
     }
 

@@ -544,11 +544,10 @@ void Engine::init_pipelines()
                 .build(device)
                 .unwrap();
 
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([=]() {
-                vkDestroyPipeline(device, pipeline, 0);
-                vkDestroyPipelineLayout(device, pipeline_layout, 0);
-            }));
+        main_deletion_queue.add_lambda([=]() {
+            vkDestroyPipeline(device, pipeline, 0);
+            vkDestroyPipelineLayout(device, pipeline_layout, 0);
+        });
 
         create_material(
             pipeline,

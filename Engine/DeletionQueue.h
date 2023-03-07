@@ -9,7 +9,15 @@ struct DeletionQueue {
     DeletionQueue() {}
     DeletionQueue(IAllocator& allocator) : deletors(&allocator) {}
 
-    void add(DeletionDelegate delegate) { deletors.add(delegate); }
+    void add(DeletionDelegate&& delegate) { deletors.add(std::move(delegate)); }
+
+    FORWARD_DELEGATE_LAMBDA_TEMPLATE()
+    void add_lambda(FORWARD_DELEGATE_LAMBDA_SIG(DeletionDelegate))
+    {
+        DeletionDelegate delegate =
+            FORWARD_DELEGATE_LAMBDA_CREATE(DeletionDelegate);
+        add(std::move(delegate));
+    }
 
     void flush()
     {
