@@ -65,10 +65,20 @@ int main(int argc, char const* argv[])
         }
     }
 
+    bool show_demo = true;
+
     G.window.poll();
     while (G.window.is_open) {
         G.input.update();
         eng.update();
+
+        eng.imgui_new_frame();
+        G.window.imgui_new_frame();
+
+        ImGui::NewFrame();
+
+        ImGui::ShowDemoWindow(&show_demo);
+        ImGui::Render();
         eng.draw();
         G.window.poll();
     }

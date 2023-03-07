@@ -96,10 +96,14 @@ Result<VkSurfaceKHR, VkResult> Window::create_surface(VkInstance instance)
     return win32_create_surface(instance, hwnd, Win32::GetModuleHandleA(0));
 }
 
+void Window::imgui_new_frame() { win32_imgui_new_frame(); }
+
 WIN32_DECLARE_WNDPROC(Window::wnd_proc)
 {
-    if (win32_imgui_wndproc(hwnd, msg, wparam, lparam)) {
-        return 0;
+    if (!cursor_locked) {
+        if (win32_imgui_wndproc(hwnd, msg, wparam, lparam)) {
+            return 0;
+        }
     }
 
     Win32::LRESULT result = 0;

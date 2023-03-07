@@ -9,3 +9,5 @@ bool win32_imgui_wndproc(
     Win32::UINT   msg,
     Win32::WPARAM wparam,
     Win32::LPARAM lparam);
+
+void win32_imgui_new_frame();

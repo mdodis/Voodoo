@@ -15,6 +15,7 @@ struct Window {
     Vec2i                          get_extents() const;
     void                           poll();
     void                           destroy();
+    void                           imgui_new_frame();
     Result<VkSurfaceKHR, VkResult> create_surface(VkInstance instance);
 
     void set_lock_cursor(bool value);

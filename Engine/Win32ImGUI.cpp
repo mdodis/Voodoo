@@ -25,3 +25,5 @@ bool win32_imgui_wndproc(
     }
     return false;
 }
+
+void win32_imgui_new_frame() { ImGui_ImplWin32_NewFrame(); }

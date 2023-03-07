@@ -161,6 +161,7 @@ struct Engine {
     void init();
     void deinit();
     void draw();
+    void imgui_new_frame();
 
     /**
      * Used to update debug camera

@@ -168,7 +168,7 @@ void Engine::init()
     init_pipelines();
     init_default_meshes();
     init_default_images();
-    // init_imgui();
+    init_imgui();
 
     is_initialized = true;
 }
@@ -793,6 +793,13 @@ void Engine::init_input()
     debug_camera_update_rotation();
 }
 
+static void imgui_check_vk_result(VkResult result)
+{
+    if (result != VK_SUCCESS) {
+        print(LIT("Vk result failed {}\n"), result);
+    }
+}
+
 void Engine::init_imgui()
 {
     VkDescriptorPoolSize pool_sizes[] = {
@@ -820,18 +827,32 @@ void Engine::init_imgui()
     VkDescriptorPool imgui_pool;
     VK_CHECK(vkCreateDescriptorPool(device, &pool_info, nullptr, &imgui_pool));
     ImGui_ImplVulkan_InitInfo vk_init_info = {
-        .Instance       = instance,
-        .PhysicalDevice = physical_device,
-        .Device         = device,
-        .QueueFamily    = graphics.family,
-        .Queue          = graphics.queue,
-        .DescriptorPool = imgui_pool,
-        .MinImageCount  = 3,
-        .ImageCount     = 3,
-        .MSAASamples    = VK_SAMPLE_COUNT_1_BIT,
+        .Instance        = instance,
+        .PhysicalDevice  = physical_device,
+        .Device          = device,
+        .QueueFamily     = graphics.family,
+        .Queue           = graphics.queue,
+        .DescriptorPool  = imgui_pool,
+        .MinImageCount   = 3,
+        .ImageCount      = 3,
+        .MSAASamples     = VK_SAMPLE_COUNT_1_BIT,
+        .CheckVkResultFn = imgui_check_vk_result,
     };
     ASSERT(ImGui_ImplVulkan_Init(&vk_init_info, render_pass));
+
+    immediate_submit_lambda([&](VkCommandBuffer cmd) {
+        ASSERT(ImGui_ImplVulkan_CreateFontsTexture(cmd));
+    });
+
+    ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    main_deletion_queue.add_lambda([=]() {
+        vkDestroyDescriptorPool(device, imgui_pool, nullptr);
+        ImGui_ImplVulkan_Shutdown();
+    });
 }
+
+void Engine::imgui_new_frame() { ImGui_ImplVulkan_NewFrame(); }
 
 // Other
 FrameData& Engine::get_current_frame()
@@ -1426,6 +1447,7 @@ void Engine::draw()
         vkCmdDraw(cmd, (u32)ro.mesh->vertices.count, 1, 0, u32(i));
     }
 
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
 
