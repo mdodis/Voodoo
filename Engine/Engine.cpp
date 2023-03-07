@@ -34,6 +34,7 @@ void Engine::init()
     render_objects.alloc         = &allocator;
     meshes.init(allocator);
     materials.init(allocator);
+    textures.init(allocator);
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     Slice<const char*> required_window_ext = win32_get_required_extensions();
@@ -166,6 +167,7 @@ void Engine::init()
     init_descriptors();
     init_pipelines();
     init_default_meshes();
+    init_default_images();
     // init_imgui();
 
     is_initialized = true;
@@ -405,12 +407,6 @@ void Engine::init_descriptors()
 
 void Engine::init_pipelines()
 {
-    // Load shaders
-    VkShaderModule basic_shader_vert, basic_shader_frag;
-
-    basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
-    basic_shader_frag = load_shader(LIT("Shaders/Basic.frag.spv"));
-
     // Create layout
     {
         auto layouts =
@@ -427,36 +423,89 @@ void Engine::init_pipelines()
         VK_CHECK(
             vkCreatePipelineLayout(device, &create_info, 0, &triangle_layout));
     }
+    // Untextured
+    {
+        // Load shaders
+        VkShaderModule basic_shader_vert, basic_shader_frag;
 
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+        basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
+        basic_shader_frag = load_shader(LIT("Shaders/Basic.frag.spv"));
 
-    VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
+        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
 
-    pipeline =
-        PipelineBuilder(temp_alloc)
-            .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
-            .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, basic_shader_frag)
-            .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
-            .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
-            .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-            .set_polygon_mode(VK_POLYGON_MODE_FILL)
-            .set_render_pass(render_pass)
-            .set_layout(triangle_layout)
-            .set_vertex_input_info(vertex_input_info)
-            .set_depth_test(true, true, VK_COMPARE_OP_LESS)
-            .build(device)
-            .unwrap();
+        VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vkDestroyPipeline(device, pipeline, 0);
-            vkDestroyPipelineLayout(device, triangle_layout, 0);
-        }));
+        pipeline =
+            PipelineBuilder(temp_alloc)
+                .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
+                .add_shader_stage(
+                    VK_SHADER_STAGE_FRAGMENT_BIT,
+                    basic_shader_frag)
+                .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
+                .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
+                .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .set_polygon_mode(VK_POLYGON_MODE_FILL)
+                .set_render_pass(render_pass)
+                .set_layout(triangle_layout)
+                .set_vertex_input_info(vertex_input_info)
+                .set_depth_test(true, true, VK_COMPARE_OP_LESS)
+                .build(device)
+                .unwrap();
 
-    create_material(pipeline, triangle_layout, LIT("default.mesh"));
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroyPipeline(device, pipeline, 0);
+                vkDestroyPipelineLayout(device, triangle_layout, 0);
+            }));
 
-    vkDestroyShaderModule(device, basic_shader_vert, 0);
-    vkDestroyShaderModule(device, basic_shader_frag, 0);
+        create_material(pipeline, triangle_layout, LIT("default.mesh"));
+
+        vkDestroyShaderModule(device, basic_shader_vert, 0);
+        vkDestroyShaderModule(device, basic_shader_frag, 0);
+    }
+    // Textured
+    {
+        // Load shaders
+        VkShaderModule basic_shader_vert, basic_shader_frag;
+
+        basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
+        basic_shader_frag = load_shader(LIT("Shaders/Textured.frag.spv"));
+
+        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+
+        VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
+
+        pipeline =
+            PipelineBuilder(temp_alloc)
+                .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
+                .add_shader_stage(
+                    VK_SHADER_STAGE_FRAGMENT_BIT,
+                    basic_shader_frag)
+                .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
+                .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
+                .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+                .set_polygon_mode(VK_POLYGON_MODE_FILL)
+                .set_render_pass(render_pass)
+                .set_layout(triangle_layout)
+                .set_vertex_input_info(vertex_input_info)
+                .set_depth_test(true, true, VK_COMPARE_OP_LESS)
+                .build(device)
+                .unwrap();
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+                vkDestroyPipeline(device, pipeline, 0);
+                vkDestroyPipelineLayout(device, triangle_layout, 0);
+            }));
+
+        create_material(
+            pipeline,
+            triangle_layout,
+            LIT("default.mesh.textured"));
+
+        vkDestroyShaderModule(device, basic_shader_vert, 0);
+        vkDestroyShaderModule(device, basic_shader_frag, 0);
+    }
 }
 
 void Engine::init_default_renderpass()
@@ -888,7 +937,7 @@ void Engine::on_resize_presentation()
 
 VkShaderModule Engine::load_shader(Str path)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(8));
     auto load_result = load_shader_binary(temp_alloc, device, path);
 
     if (!load_result.ok()) {
@@ -972,19 +1021,20 @@ void Engine::upload_mesh(Mesh& mesh)
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
 }
 
-bool Engine::upload_image_from_file(const char* path)
+Result<AllocatedImage, VkResult> Engine::upload_image_from_file(
+    const char* path)
 {
     int width, height, channels;
     u8* pixels = stbi_load(path, &width, &height, &channels, 4);
     if (!pixels) {
-        return false;
+        return Err(VK_ERROR_UNKNOWN);
     }
 
     void*        pixel_ptr    = (void*)pixels;
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
     VkDeviceSize image_size   = width * height * 4;
 
-    AllocatedBuffer storage_buffer =
+    AllocatedBuffer staging_buffer =
         create_buffer(
             image_size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -992,11 +1042,128 @@ bool Engine::upload_image_from_file(const char* path)
             .unwrap();
 
     void* data;
-    VK_CHECK(vmaMapMemory(vmalloc, storage_buffer.allocation, &data));
+    VK_RETURN_IF_ERR(vmaMapMemory(vmalloc, staging_buffer.allocation, &data));
     memcpy(data, pixel_ptr, image_size);
-    vmaUnmapMemory(vmalloc, storage_buffer.allocation);
+    vmaUnmapMemory(vmalloc, staging_buffer.allocation);
+
     stbi_image_free(pixels);
-    return true;
+
+    VkExtent3D image_extent = {
+        .width  = (u32)width,
+        .height = (u32)height,
+        .depth  = 1,
+    };
+
+    VkImageCreateInfo image_create_info = {
+        .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext       = 0,
+        .imageType   = VK_IMAGE_TYPE_2D,
+        .format      = image_format,
+        .extent      = image_extent,
+        .mipLevels   = 1,
+        .arrayLayers = 1,
+        .samples     = VK_SAMPLE_COUNT_1_BIT,
+        .tiling      = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    };
+
+    VmaAllocationCreateInfo image_allocation_info = {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    };
+
+    AllocatedImage result;
+    VK_RETURN_IF_ERR(vmaCreateImage(
+        vmalloc,
+        &image_create_info,
+        &image_allocation_info,
+        &result.image,
+        &result.allocation,
+        0));
+
+    immediate_submit_lambda([&](VkCommandBuffer cmd) {
+        VkImageSubresourceRange range = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1,
+        };
+
+        VkImageMemoryBarrier transfer_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext            = 0,
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .image            = result.image,
+            .subresourceRange = range,
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &transfer_barrier);
+
+        VkBufferImageCopy copy_region = {
+            .bufferOffset      = 0,
+            .bufferRowLength   = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel       = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+            .imageExtent = image_extent,
+        };
+
+        vkCmdCopyBufferToImage(
+            cmd,
+            staging_buffer.buffer,
+            result.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &copy_region);
+
+        VkImageMemoryBarrier layout_change_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext            = 0,
+            .srcAccessMask    = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT,
+            .oldLayout        = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image            = result.image,
+            .subresourceRange = range,
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &layout_change_barrier);
+    });
+
+    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+        [=]() { vmaDestroyImage(vmalloc, result.image, result.allocation); }));
+
+    vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
+
+    return Ok(result);
 }
 
 void Engine::draw()
@@ -1468,8 +1635,49 @@ void Engine::init_default_meshes()
         Mesh::load_from_file(allocator, "Assets/monkey_smooth.obj").unwrap();
     upload_mesh(monke_mesh);
 
+    // Lost Empire
+    {
+        Mesh lost_empire =
+            Mesh::load_from_file(allocator, "Assets/lost_empire.obj").unwrap();
+        upload_mesh(lost_empire);
+        meshes.add(LIT("lost_empire"), lost_empire);
+    }
+
     meshes.add(LIT("triangle"), triangle_mesh);
     meshes.add(LIT("monke"), monke_mesh);
+}
+
+void Engine::init_default_images()
+{
+    {
+        AllocatedImage image =
+            upload_image_from_file("Assets/lost_empire-RGBA.png").unwrap();
+        VkImageView           view;
+        VkImageViewCreateInfo create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext    = 0,
+            .flags    = 0,
+            .image    = image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = VK_FORMAT_R8G8B8A8_SRGB,
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+        VK_CHECK(vkCreateImageView(device, &create_info, 0, &view));
+
+        Texture new_texture = {
+            .image = image,
+            .view  = view,
+        };
+
+        textures.add(LIT("empire.diffuse"), new_texture);
+    }
 }
 
 void PipelineBuilder::init_defaults()

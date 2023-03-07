@@ -20,6 +20,11 @@ struct AllocatedImage {
     VmaAllocation allocation;
 };
 
+struct Texture {
+    AllocatedImage image;
+    VkImageView    view;
+};
+
 struct Material {
     VkPipeline       pipeline        = VK_NULL_HANDLE;
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
@@ -118,6 +123,7 @@ struct Engine {
     // Scene Management
     TMap<Str, Mesh>      meshes;
     TMap<Str, Material>  materials;
+    TMap<Str, Texture>   textures;
     TArray<RenderObject> render_objects;
 
     /** GPU Global Instance Data */
@@ -163,10 +169,10 @@ struct Engine {
     VkShaderModule load_shader(Str path);
     Material*      create_material(
              VkPipeline pipeline, VkPipelineLayout layout, Str id);
-    Mesh*     get_mesh(Str id);
-    Material* get_material(Str id);
-    void      upload_mesh(Mesh& mesh);
-    bool      upload_image_from_file(const char* path);
+    Mesh*                            get_mesh(Str id);
+    Material*                        get_material(Str id);
+    void                             upload_mesh(Mesh& mesh);
+    Result<AllocatedImage, VkResult> upload_image_from_file(const char* path);
 
 private:
     void init_imgui();
@@ -176,6 +182,7 @@ private:
     void init_descriptors();
     void init_sync_objects();
     void init_default_meshes();
+    void init_default_images();
     void init_commands();
     void init_input();
     void recreate_swapchain();

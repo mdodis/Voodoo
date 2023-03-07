@@ -1,5 +1,6 @@
 #pragma once
-#include "Math/CG.h"
+#include <glm/glm.hpp>
+
 #include "Result.h"
 #include "VulkanCommon.h"
 #include "vk_mem_alloc.h"
@@ -16,10 +17,10 @@ struct VertexInputInfo {
 };
 
 struct Vertex {
-    Vec3 position;
-    Vec3 normal;
-    Vec3 color;
-
+    glm::vec3              position;
+    glm::vec3              normal;
+    glm::vec3              color;
+    glm::vec2              uv;
     static VertexInputInfo get_input_info(IAllocator& allocator);
 };
 

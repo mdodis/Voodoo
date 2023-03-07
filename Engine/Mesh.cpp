@@ -8,7 +8,7 @@ VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
     VertexInputInfo result = {
         .bindings = alloc_slice<VkVertexInputBindingDescription, 1>(allocator),
         .attributes =
-            alloc_slice<VkVertexInputAttributeDescription, 3>(allocator),
+            alloc_slice<VkVertexInputAttributeDescription, 4>(allocator),
     };
 
     result.bindings[0] = {
@@ -36,6 +36,13 @@ VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
         .binding  = 0,
         .format   = VK_FORMAT_R32G32B32_SFLOAT,
         .offset   = OFFSET_OF(Vertex, color),
+    };
+
+    result.attributes[3] = {
+        .location = 3,
+        .binding  = 0,
+        .format   = VK_FORMAT_R32G32_SFLOAT,
+        .offset   = OFFSET_OF(Vertex, uv),
     };
 
     return result;
@@ -71,6 +78,11 @@ Result<Mesh, Str> Mesh::load_from_file(IAllocator& allocator, const char* path)
                 tinyobj::real_t ny = attrib.normals[3 * idx.normal_index + 1];
                 tinyobj::real_t nz = attrib.normals[3 * idx.normal_index + 2];
 
+                tinyobj::real_t ux =
+                    attrib.texcoords[2 * idx.texcoord_index + 0];
+                tinyobj::real_t uy =
+                    attrib.texcoords[2 * idx.texcoord_index + 1];
+
                 // copy it into our vertex
                 Vertex new_vert;
                 new_vert.position.x = vx;
@@ -80,6 +92,9 @@ Result<Mesh, Str> Mesh::load_from_file(IAllocator& allocator, const char* path)
                 new_vert.normal.x = nx;
                 new_vert.normal.y = ny;
                 new_vert.normal.z = nz;
+
+                new_vert.uv.x = ux;
+                new_vert.uv.y = 1 - uy;
 
                 // we are setting the vertex color as the vertex normal. This is
                 // just for display purposes

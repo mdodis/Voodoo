@@ -39,8 +39,14 @@ int main(int argc, char const* argv[])
         .material  = eng.get_material(LIT("default.mesh")),
         .transform = glm::mat4(1.0f),
     };
+    RenderObject lost_empire = {
+        .mesh      = eng.get_mesh(LIT("lost_empire")),
+        .material  = eng.get_material(LIT("default.mesh.textured")),
+        .transform = glm::mat4(1.f),
+    };
 
     eng.render_objects.add(monke);
+    eng.render_objects.add(lost_empire);
     for (int x = -20; x <= 20; ++x) {
         for (int y = -20; y <= 20; ++y) {
             glm::mat4 transform =

@@ -24,6 +24,6 @@ layout (set = 0, binding = 0) uniform GPUGlobalInstanceData {
 
 void main()
 {
-
-	outFragColor = vec4(inColor + globalData.scene.ambient_color.xyz, 1.0f);
+	vec3 color = inColor;
+	outFragColor = vec4(color + globalData.scene.ambient_color.xyz, 1.0f);
 }
