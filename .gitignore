@@ -12,6 +12,6 @@
 **.exe
 **.idb
 **.spv
-Build/**.obj
-Build/
+Build*/**.obj
+Build*/
 **/CMakeSettings.json
