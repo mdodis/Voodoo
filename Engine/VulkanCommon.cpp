@@ -459,3 +459,37 @@ VkWriteDescriptorSet write_descriptor_set(
         .pTexelBufferView = 0,
     };
 }
+
+VkWriteDescriptorSet write_descriptor_set_image(
+    VkDescriptorType       type,
+    VkDescriptorSet        dst_set,
+    VkDescriptorImageInfo* image_info,
+    u32                    binding)
+{
+    return VkWriteDescriptorSet{
+        .sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+        .pNext            = 0,
+        .dstSet           = dst_set,
+        .dstBinding       = binding,
+        .dstArrayElement  = 0,
+        .descriptorCount  = 1,
+        .descriptorType   = type,
+        .pImageInfo       = image_info,
+        .pBufferInfo      = 0,
+        .pTexelBufferView = 0,
+    };
+}
+
+VkSamplerCreateInfo make_sampler_create_info(
+    VkFilter filters, VkSamplerAddressMode address_mode)
+{
+    return VkSamplerCreateInfo{
+        .sType        = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .pNext        = 0,
+        .magFilter    = filters,
+        .minFilter    = filters,
+        .addressModeU = address_mode,
+        .addressModeV = address_mode,
+        .addressModeW = address_mode,
+    };
+}

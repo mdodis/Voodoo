@@ -28,6 +28,7 @@ struct Texture {
 struct Material {
     VkPipeline       pipeline        = VK_NULL_HANDLE;
     VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+    VkDescriptorSet  texture_set     = {VK_NULL_HANDLE};
 };
 
 static _inline bool operator==(Material& left, Material& right)
@@ -100,12 +101,12 @@ struct Engine {
     TArray<VkImageView>        swap_chain_image_views;
     VkRenderPass               render_pass;
     TArray<VkFramebuffer>      framebuffers;
-    VkPipelineLayout           triangle_layout;
     VkPipeline                 pipeline;
     VmaAllocator               vmalloc;
     VkDescriptorPool           descriptor_pool;
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
+    VkDescriptorSetLayout      texture_set_layout;
 
     FrameData frames[num_overlap_frames];
 

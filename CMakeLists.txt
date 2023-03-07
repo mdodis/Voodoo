@@ -7,6 +7,7 @@ add_compile_definitions(
     GLM_FORCE_RIGHT_HANDED
     )
 
+set(MOKLIB_COMPILE_STATIC ON CACHE BOOL "Compile MokLib as static library")
 add_subdirectory("MokLib")
 add_subdirectory("Shaders")
 add_subdirectory("ThirdParty/ImGUI")

@@ -238,7 +238,8 @@ void Engine::init_descriptors()
 {
     auto descriptor_pool_sizes = arr<VkDescriptorPoolSize>(
         VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 20},
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10});
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
+        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10});
 
     VkDescriptorPoolCreateInfo pool_create_info = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
@@ -270,8 +271,8 @@ void Engine::init_descriptors()
 
     VK_CHECK(
         vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
-    // Object descriptor set layout
 
+    // Per-object transforms at 1
     VkDescriptorSetLayoutBinding object_binding = descriptor_set_layout_binding(
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
         VK_SHADER_STAGE_VERTEX_BIT,
@@ -287,6 +288,27 @@ void Engine::init_descriptors()
 
     VK_CHECK(
         vkCreateDescriptorSetLayout(device, &set2_info, 0, &object_set_layout));
+
+    // Textures at 2
+    VkDescriptorSetLayoutBinding texture_binding =
+        descriptor_set_layout_binding(
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            0);
+
+    VkDescriptorSetLayoutCreateInfo set3_info = {
+        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+        .pNext        = 0,
+        .flags        = 0,
+        .bindingCount = 1,
+        .pBindings    = &texture_binding,
+    };
+
+    VK_CHECK(vkCreateDescriptorSetLayout(
+        device,
+        &set3_info,
+        0,
+        &texture_set_layout));
 
     // global data buffer
     {
@@ -407,24 +429,30 @@ void Engine::init_descriptors()
 
 void Engine::init_pipelines()
 {
-    // Create layout
-    {
-        auto layouts =
-            arr<VkDescriptorSetLayout>(global_set_layout, object_set_layout);
-
-        VkPipelineLayoutCreateInfo create_info = {
-            .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = layouts.count(),
-            .pSetLayouts    = layouts.elements,
-            .pushConstantRangeCount = 0,
-            .pPushConstantRanges    = 0,
-        };
-
-        VK_CHECK(
-            vkCreatePipelineLayout(device, &create_info, 0, &triangle_layout));
-    }
     // Untextured
     {
+        VkPipelineLayout pipeline_layout;
+        // Create layout
+        {
+            auto layouts = arr<VkDescriptorSetLayout>(
+                global_set_layout,
+                object_set_layout);
+
+            VkPipelineLayoutCreateInfo create_info = {
+                .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                .setLayoutCount = layouts.count(),
+                .pSetLayouts    = layouts.elements,
+                .pushConstantRangeCount = 0,
+                .pPushConstantRanges    = 0,
+            };
+
+            VK_CHECK(vkCreatePipelineLayout(
+                device,
+                &create_info,
+                0,
+                &pipeline_layout));
+        }
+
         // Load shaders
         VkShaderModule basic_shader_vert, basic_shader_frag;
 
@@ -446,25 +474,48 @@ void Engine::init_pipelines()
                 .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .set_polygon_mode(VK_POLYGON_MODE_FILL)
                 .set_render_pass(render_pass)
-                .set_layout(triangle_layout)
+                .set_layout(pipeline_layout)
                 .set_vertex_input_info(vertex_input_info)
                 .set_depth_test(true, true, VK_COMPARE_OP_LESS)
                 .build(device)
                 .unwrap();
 
         main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            DeletionQueue::DeletionDelegate::create_lambda([=]() {
                 vkDestroyPipeline(device, pipeline, 0);
-                vkDestroyPipelineLayout(device, triangle_layout, 0);
+                vkDestroyPipelineLayout(device, pipeline_layout, 0);
             }));
 
-        create_material(pipeline, triangle_layout, LIT("default.mesh"));
+        create_material(pipeline, pipeline_layout, LIT("default.mesh"));
 
         vkDestroyShaderModule(device, basic_shader_vert, 0);
         vkDestroyShaderModule(device, basic_shader_frag, 0);
     }
     // Textured
     {
+        VkPipelineLayout pipeline_layout;
+        // Create layout
+        {
+            auto layouts = arr<VkDescriptorSetLayout>(
+                global_set_layout,
+                object_set_layout,
+                texture_set_layout);
+
+            VkPipelineLayoutCreateInfo create_info = {
+                .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                .setLayoutCount = layouts.count(),
+                .pSetLayouts    = layouts.elements,
+                .pushConstantRangeCount = 0,
+                .pPushConstantRanges    = 0,
+            };
+
+            VK_CHECK(vkCreatePipelineLayout(
+                device,
+                &create_info,
+                0,
+                &pipeline_layout));
+        }
+
         // Load shaders
         VkShaderModule basic_shader_vert, basic_shader_frag;
 
@@ -486,21 +537,21 @@ void Engine::init_pipelines()
                 .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .set_polygon_mode(VK_POLYGON_MODE_FILL)
                 .set_render_pass(render_pass)
-                .set_layout(triangle_layout)
+                .set_layout(pipeline_layout)
                 .set_vertex_input_info(vertex_input_info)
                 .set_depth_test(true, true, VK_COMPARE_OP_LESS)
                 .build(device)
                 .unwrap();
 
         main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            DeletionQueue::DeletionDelegate::create_lambda([=]() {
                 vkDestroyPipeline(device, pipeline, 0);
-                vkDestroyPipelineLayout(device, triangle_layout, 0);
+                vkDestroyPipelineLayout(device, pipeline_layout, 0);
             }));
 
         create_material(
             pipeline,
-            triangle_layout,
+            pipeline_layout,
             LIT("default.mesh.textured"));
 
         vkDestroyShaderModule(device, basic_shader_vert, 0);
@@ -1354,6 +1405,18 @@ void Engine::draw()
                 &frame.object_descriptor,
                 0,
                 nullptr);
+
+            if (ro.material->texture_set != VK_NULL_HANDLE) {
+                vkCmdBindDescriptorSets(
+                    cmd,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    ro.material->pipeline_layout,
+                    2,
+                    1,
+                    &ro.material->texture_set,
+                    0,
+                    nullptr);
+            }
         }
 
         last_material = ro.material;
@@ -1677,6 +1740,39 @@ void Engine::init_default_images()
         };
 
         textures.add(LIT("empire.diffuse"), new_texture);
+
+        // Bind descriptor set here
+        Material* mat = get_material(LIT("default.mesh.textured"));
+
+        VkSamplerCreateInfo sampler_create_info =
+            make_sampler_create_info(VK_FILTER_NEAREST);
+
+        VkSampler blocky_sampler;
+        VK_CHECK(
+            vkCreateSampler(device, &sampler_create_info, 0, &blocky_sampler));
+
+        VkDescriptorSetAllocateInfo alloc_info = {
+            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .pNext          = 0,
+            .descriptorPool = descriptor_pool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &texture_set_layout,
+        };
+        vkAllocateDescriptorSets(device, &alloc_info, &mat->texture_set);
+
+        VkDescriptorImageInfo image_info = {
+            .sampler     = blocky_sampler,
+            .imageView   = view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        VkWriteDescriptorSet write_image = write_descriptor_set_image(
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            mat->texture_set,
+            &image_info,
+            0);
+
+        vkUpdateDescriptorSets(device, 1, &write_image, 0, nullptr);
     }
 }
 

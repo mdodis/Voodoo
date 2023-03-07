@@ -7,6 +7,9 @@ layout (location = 1) in vec2 inTexCoord;
 //output write
 layout (location = 0) out vec4 outFragColor;
 
+layout (set = 2, binding = 0) uniform sampler2D tex1;
+
+
 struct GPUCameraData {
     mat4 view;
     mat4 proj;
@@ -25,6 +28,6 @@ layout (set = 0, binding = 0) uniform GPUGlobalInstanceData {
 
 void main()
 {
-    vec3 color = vec3(inTexCoord.x, inTexCoord.y, 0.5f);
-    outFragColor = vec4(color + globalData.scene.ambient_color.xyz, 1.0f);
+    vec3 color = texture(tex1, inTexCoord).xyz;
+    outFragColor = vec4(color, 1.0f);
 }

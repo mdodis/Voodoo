@@ -117,6 +117,16 @@ VkWriteDescriptorSet write_descriptor_set(
     VkDescriptorBufferInfo* buffer_info,
     u32                     binding);
 
+VkWriteDescriptorSet write_descriptor_set_image(
+    VkDescriptorType       type,
+    VkDescriptorSet        dst_set,
+    VkDescriptorImageInfo* image_info,
+    u32                    binding);
+
+VkSamplerCreateInfo make_sampler_create_info(
+    VkFilter             filters,
+    VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
 /* Win32 */
 
 Slice<const char*>             win32_get_required_extensions();
