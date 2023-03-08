@@ -1,14 +1,14 @@
 #pragma once
 #include <functional>
-
+#include "Base.h"
 #include "Debugging/Assertions.h"
 #include "IntrusiveList.h"
 #include "Memory/Base.h"
 #include "Memory/Extras.h"
 
 template <typename SizeType, u32 BlockSize = 64>
-struct BlockList_ {
-    BlockList_(IAllocator& allocator, SizeType item_size)
+struct BlockList {
+    BlockList(IAllocator& allocator, SizeType item_size)
         : allocator(allocator)
         , item_size(item_size)
         , block_total_size(BlockSize * item_size)
@@ -136,14 +136,14 @@ struct BlockList_ {
 };
 
 template <typename StorageType, typename SizeType, u32 BlockSize = 64>
-struct BlockList : public BlockList_<SizeType, BlockSize> {
-    using Base = BlockList_<SizeType, BlockSize>;
+struct TBlockList : public BlockList<SizeType, BlockSize> {
+    using Base = BlockList<SizeType, BlockSize>;
 
-    BlockList() = delete;
-    BlockList(IAllocator& allocator)
+    TBlockList() = delete;
+    TBlockList(IAllocator& allocator)
         : Base(allocator, (SizeType)sizeof(StorageType))
     {}
 };
 
 template <typename StorageType, u32 BlockSize = 64>
-using BlockListU32 = BlockList<StorageType, u32, BlockSize>;
+using BlockListU32 = TBlockList<StorageType, u32, BlockSize>;

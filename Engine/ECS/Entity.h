@@ -5,11 +5,12 @@
 
 struct EntityBase {
     bool pending_deletion = false;
+    TArray<ComponentReference> components;
 };
 
-struct LogicalEntity {};
+struct LogicalEntity : EntityBase {};
 
-struct SpatialEntity;
+struct SpatialEntity : EntityBase {};
 
 struct EntityReference {
     u32 id;

@@ -13,15 +13,21 @@ add_executable(vkx
     "./Mesh.cpp"
     "./Input.h"
     "./Input.cpp"
+    "./BlockList.h"
+    "./IntrusiveList.h"
     "./Win32ImGui.h"
     "./Win32ImGui.cpp"
     "./ECS/Entity.h"
+    "./ECS/Component.h"
+    "./ECS/World.h"
+    "./ECS/World.cpp"
     )
 
 target_include_directories(vkx 
     PUBLIC
     ${Vulkan_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/ThirdParty/VMA/
+    "./"
     )
     
 target_link_libraries(vkx
