@@ -77,7 +77,12 @@ int main(int argc, char const* argv[])
 
         ImGui::NewFrame();
 
-        ImGui::ShowDemoWindow(&show_demo);
+        ImGui::Begin("Engine - General");
+        ImGui::Text(
+            "Swapchain format: %s",
+            string_VkFormat(eng.swap_chain_image_format));
+        ImGui::End();
+
         ImGui::Render();
         eng.draw();
         G.window.poll();

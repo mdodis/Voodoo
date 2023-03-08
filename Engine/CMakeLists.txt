@@ -15,6 +15,7 @@ add_executable(vkx
     "./Input.cpp"
     "./Win32ImGui.h"
     "./Win32ImGui.cpp"
+    "./ECS/Entity.h"
     )
 
 target_include_directories(vkx 
@@ -35,11 +36,13 @@ target_link_libraries(vkx
     stb_image
     )
 
-add_custom_command(TARGET vkx POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo
-    "Installing dll to output dir..."
+# add_custom_command(TARGET vkx POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E echo
+#     "Installing dll to output dir..."
 
-    COMMAND ${CMAKE_COMMAND} -E copy
-    $<TARGET_FILE:MokLib>
-    $<TARGET_FILE_DIR:vkx>
-    )
+#     COMMAND ${CMAKE_COMMAND} -E copy
+#     $<TARGET_FILE:MokLib>
+#     $<TARGET_FILE_DIR:vkx>
+#     )
+
+add_subdirectory(Tests)
