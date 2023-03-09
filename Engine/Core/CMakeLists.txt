@@ -3,6 +3,7 @@ set(SOURCES
     "./DeletionQueue.h"
     "./IntrusiveList.h"
     "./ECS/Component.h"
+    "./ECS/Component.cpp"
     "./ECS/Entity.h"
     "./ECS/World.h"
     "./ECS/World.cpp"

@@ -1,19 +1,8 @@
 #pragma once
 
-#include "BlockList.h"
 #include "Component.h"
 #include "Containers/Array.h"
 #include "Entity.h"
-struct ComponentContainer {
-    using List = BlockList<u32, 64>;
-    ComponentContainer(
-        IAllocator& allocator, const ComponentType& component_type)
-        : component_type(component_type), list(allocator, component_type.size)
-    {}
-
-    ComponentType component_type;
-    List          list;
-};
 
 struct World {
     World(IAllocator& in_allocator) : allocator(in_allocator) {}

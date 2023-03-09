@@ -2,6 +2,7 @@
 #include <typeinfo>
 
 #include "Base.h"
+#include "BlockList.h"
 
 namespace ComponentTypeProvider {
     enum Type : u16
@@ -72,4 +73,38 @@ struct ComponentPtr {
 
 struct ComponentMetadata {
     ComponentType type;
+};
+
+struct ComponentContainer {
+    using List = BlockList<u32, 64>;
+    ComponentContainer(
+        IAllocator& allocator, const ComponentType& component_type)
+        : component_type(component_type), list(allocator, component_type.size)
+    {}
+
+    ComponentType component_type;
+    List          list;
+};
+
+struct ComponentIteratorBase {
+    ComponentIteratorBase(
+        const ComponentContainer& container, u32 begin_index, u32 count)
+        : ComponentIteratorBase(
+              container.list.ptr_from_index(begin_index),
+              count,
+              container.component_type)
+    {}
+
+    ComponentIteratorBase(
+        ComponentContainer::List::Ptr begin,
+        u32                           count,
+        const ComponentType&          type)
+        : begin(begin), count(count), type(type), current(0)
+    {}
+    void* next();
+
+    ComponentContainer::List::Ptr begin;
+    ComponentType                 type;
+    u32                           current;
+    u32                           count;
 };

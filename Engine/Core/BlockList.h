@@ -38,6 +38,29 @@ struct BlockList {
         return (void*)(((u8*)p.block->items) + (p.index * item_size));
     }
 
+    Ptr ptr_from_index(SizeType index) const
+    {
+        SizeType block_num    = (index) / BlockSize;
+        SizeType block_offset = (index) % BlockSize;
+
+        return Ptr{
+            .block = get_nth_block(block_num),
+            .index = block_offset,
+        };
+    }
+
+    Block* get_nth_block(SizeType n) const
+    {
+        const intrusive_list::Node* it = &first_node;
+        while (n != 0) {
+            it = it->next;
+            n--;
+        }
+
+        ASSERT(it != &first_node);
+        return CONTAINER_OF(it, Block, node);
+    }
+
     Ptr allocate(SizeType count = 1)
     {
         num_items += count;
