@@ -1,3 +1,6 @@
+
+add_subdirectory(Core)
+
 find_package(Vulkan REQUIRED)
 
 add_executable(vkx
@@ -8,19 +11,12 @@ add_executable(vkx
     "./Engine.cpp"
     "./VulkanCommon.h"
     "./VulkanCommon.cpp"
-    "./DeletionQueue.h"
     "./Mesh.h"
     "./Mesh.cpp"
     "./Input.h"
     "./Input.cpp"
-    "./BlockList.h"
-    "./IntrusiveList.h"
     "./Win32ImGui.h"
     "./Win32ImGui.cpp"
-    "./ECS/Entity.h"
-    "./ECS/Component.h"
-    "./ECS/World.h"
-    "./ECS/World.cpp"
     )
 
 target_include_directories(vkx 
@@ -35,20 +31,8 @@ target_link_libraries(vkx
     ${Vulkan_LIBRARY}
     VulkanMemoryAllocator
     tinyobjloader
-    "user32"
-    MokLib
-    glm
+    core
     imgui
     stb_image
+    "user32"
     )
-
-# add_custom_command(TARGET vkx POST_BUILD
-#     COMMAND ${CMAKE_COMMAND} -E echo
-#     "Installing dll to output dir..."
-
-#     COMMAND ${CMAKE_COMMAND} -E copy
-#     $<TARGET_FILE:MokLib>
-#     $<TARGET_FILE_DIR:vkx>
-#     )
-
-add_subdirectory(Tests)

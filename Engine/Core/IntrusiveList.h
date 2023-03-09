@@ -32,7 +32,7 @@ namespace intrusive_list {
      */
     static inline void append(Node* new_node, Node* target)
     {
-        add(new_node, target->prev, target);
+        add(new_node, target, target->next);
     }
 
     static inline void unlink(Node* node)

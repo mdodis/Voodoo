@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+
 #include "Base.h"
 #include "Debugging/Assertions.h"
 #include "IntrusiveList.h"
@@ -27,54 +28,88 @@ struct BlockList {
     };
 #pragma pack(pop)
 
+    struct Ptr {
+        Block*   block;
+        SizeType index;
+    };
+
+    void* ptr_to_data_ptr(const Ptr& p)
+    {
+        return (void*)(((u8*)p.block->items) + (p.index * item_size));
+    }
+
+    Ptr allocate(SizeType count = 1)
+    {
+        num_items += count;
+        intrusive_list::Node* last_block = &first_node;
+
+        // If count doesn't fit in last block, then add blocks
+        if ((num_items + count) > capacity()) {
+            const SizeType blocks_to_add = (count / BlockSize) + 1;
+            last_block                   = add_blocks(blocks_to_add);
+        }
+        last_block = last_block->next;
+
+        // Check if the starting block can fit anything, otherwise start from
+        // next
+        Block* start = CONTAINER_OF(last_block, Block, node);
+        if (start->count == BlockSize) {
+            last_block = last_block->next;
+            start      = CONTAINER_OF(last_block, Block, node);
+        }
+
+        Ptr result = {
+            .block = CONTAINER_OF(last_block, Block, node),
+            .index = start->count,
+        };
+
+        // Walk through the added blocks and change their count
+        while (last_block != &first_node) {
+            Block* block = CONTAINER_OF(last_block, Block, node);
+
+            const SizeType item_capacity = BlockSize - block->count;
+            const SizeType num_items_reserved =
+                (count > item_capacity) ? item_capacity : count;
+
+            block->count += num_items_reserved;
+            count -= num_items_reserved;
+            last_block = last_block->next;
+        }
+
+        return result;
+    }
+
     void add(void* item) { add_range(item, 1); }
 
     void add_range(void* items_, SizeType count)
     {
         u8* items = (u8*)items_;
 
-        intrusive_list::Node* last_block = first_node.prev;
+        Ptr start = allocate(count);
 
-        if (capacity() < count) {
-            bool items_fit_in_last_block = false;
-
-            // Do the items fit in the last block?
-            if (!intrusive_list::is_empty(&first_node)) {
-                Block* last_block = CONTAINER_OF(first_node.prev, Block, node);
-                if (last_block->count + count <= BlockSize) {
-                    items_fit_in_last_block = true;
-                }
-            }
-
-            if (!items_fit_in_last_block) {
-                const SizeType blocks_to_add = (count / BlockSize) + 1;
-                last_block                   = add_blocks(blocks_to_add);
-            }
-        }
+        intrusive_list::Node* node              = &start.block->node;
+        Block*                block             = start.block;
+        SizeType              write_start_index = start.index;
 
         SizeType items_copied = 0;
         while (items_copied != count) {
-            intrusive_list::Node* list_node = last_block->next;
+            const SizeType max_items_to_copy   = count - items_copied;
+            const SizeType num_available_items = BlockSize - write_start_index;
 
-            const SizeType max_items_to_copy = count - items_copied;
+            const SizeType items_to_copy =
+                num_available_items > max_items_to_copy
+                    ? max_items_to_copy
+                    : num_available_items;
 
-            Block* block = CONTAINER_OF(list_node, Block, node);
+            memcpy(
+                block->items + write_start_index,
+                items + (items_copied * item_size),
+                items_to_copy * item_size);
+            items_copied += items_to_copy;
 
-            SizeType items_to_copy = max_items_to_copy;
-            if (max_items_to_copy + block->count > BlockSize) {
-                items_to_copy = BlockSize - block->count;
-            }
-
-            if (items_to_copy != 0) {
-                memcpy(
-                    block->items + (block->count * item_size),
-                    items + (items_copied * item_size),
-                    items_to_copy * item_size);
-                items_copied += items_to_copy;
-                block->count += items_to_copy;
-            }
-
-            last_block = last_block->next;
+            node              = node->next;
+            block             = CONTAINER_OF(node, Block, node);
+            write_start_index = 0;
         }
     }
 
@@ -90,6 +125,7 @@ struct BlockList {
             ASSERT(block);
 
             intrusive_list::append(&block->node, last_block);
+            last_block = &block->node;
             num_blocks++;
         }
 

@@ -14,7 +14,8 @@ TEST_CASE("Engine/BlockList", "{4 add_range() calls work}")
 
     auto items = arr<Item>(Item{0}, Item{1}, Item{2});
     list.add_range((void*)items.elements, items.count());
-    u32 i = 0;
+    auto items2 = arr<Item>(Item{3}, Item{4}, Item{5});
+    list.add_range((void*)items2.elements, items2.count());
 
     bool valid = true;
     list.for_each<Item>([&valid](u32 index, Item* item) {
