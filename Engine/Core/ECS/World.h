@@ -2,26 +2,8 @@
 
 #include "Component.h"
 #include "Containers/Array.h"
+#include "Containers/Slice.h"
 #include "Entity.h"
-
-struct ArchetypeID {
-    u32 id;
-};
-
-struct Archetype {
-    ArchetypeID           id;
-    TArray<ComponentType> types;
-
-    inline bool has_component(const ComponentType& type)
-    {
-        for (const auto& t : types) {
-            if (type == t) {
-                return true;
-            }
-        }
-        return false;
-    }
-};
 
 struct World {
     World(IAllocator& in_allocator) : allocator(in_allocator) {}
@@ -73,12 +55,14 @@ struct World {
 
     struct {
         TArray<ComponentMetadata> component_types;
+        TArray<Archetype> archetypes;
     } registry;
 
     // Internal
     ComponentMetadata*  find_component_metadata(const ComponentType& type);
     ComponentContainer* find_or_create_component_container(
         const ComponentType& type);
+    Archetype *find_archetype(const Slice<ComponentType>& components);
 
     IAllocator& allocator;
 };

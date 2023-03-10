@@ -2,17 +2,16 @@
 #include <glm/glm.hpp>
 
 #include "Component.h"
+#include "Archetype.h"
 
 struct EntityBase {
-    bool                       pending_deletion = false;
-    TArray<ComponentReference> components;
+    bool pending_deletion = false;
+    ArchetypeReference archetype_id;
 };
 
 struct LogicalEntity : EntityBase {};
 
-struct SpatialEntity : EntityBase {
-    glm::vec3 test;
-};
+struct SpatialEntity : EntityBase {};
 
 struct EntityReference {
     u32 id;

@@ -26,7 +26,7 @@ EntityBase* World::create_entity(bool logical)
         result = entities.spatial.add();
     }
     result->pending_deletion = false;
-    result->components       = TArray<ComponentReference>(&allocator);
+    result->archetype_id = ArchetypeReference::invalid();
     return result;
 }
 
@@ -50,7 +50,7 @@ ComponentNativePtr World::allocate_component(const ComponentType& type)
 void World::attach_component_to_entity(
     ComponentNativePtr component, EntityBase* entity)
 {
-    entity->components.add(component.ref);
+
 }
 
 ComponentMetadata* World::find_component_metadata(const ComponentType& type)
@@ -78,4 +78,22 @@ ComponentContainer* World::find_or_create_component_container(
         new (tmp_result) ComponentContainer(allocator, type);
 
     return result;
+}
+
+Archetype *World::find_archetype(const Slice<ComponentType>& components) {
+    for (Archetype& arch : registry.archetypes) {
+        bool valid = true;
+        for (const ComponentType& type : components) {
+            if (!arch.has_component(type)) {
+                valid = false;
+                break;
+            }
+        }
+
+        if (valid) {
+            return &arch;
+        }
+    }
+
+    return 0;
 }
