@@ -9,6 +9,7 @@
 
 template <typename SizeType, u32 BlockSize = 64>
 struct BlockList {
+    static constexpr u32 ItemsPerBlock = BlockSize;
     BlockList(IAllocator& allocator, SizeType item_size)
         : allocator(allocator)
         , item_size(item_size)
@@ -31,12 +32,12 @@ struct BlockList {
     struct Ptr {
         Block*   block;
         SizeType index;
+        SizeType item_size;
+        void*    to_data_ptr() const
+        {
+            return (void*)(((u8*)block->items) + (index * item_size));
+        }
     };
-
-    void* ptr_to_data_ptr(const Ptr& p)
-    {
-        return (void*)(((u8*)p.block->items) + (p.index * item_size));
-    }
 
     Ptr ptr_from_index(SizeType index) const
     {
@@ -44,8 +45,9 @@ struct BlockList {
         SizeType block_offset = (index) % BlockSize;
 
         return Ptr{
-            .block = get_nth_block(block_num),
-            .index = block_offset,
+            .block     = get_nth_block(block_num),
+            .index     = block_offset,
+            .item_size = item_size,
         };
     }
 

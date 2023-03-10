@@ -42,7 +42,7 @@ ComponentNativePtr World::allocate_component(const ComponentType& type)
     ComponentContainer::List::Ptr ptr = container->list.allocate();
 
     return ComponentNativePtr{
-        .ptr = container->list.ptr_to_data_ptr(ptr),
+        .ptr = ptr.to_data_ptr(),
         .ref = ComponentReference{ptr.index},
     };
 }

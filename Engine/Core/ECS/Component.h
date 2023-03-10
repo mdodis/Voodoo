@@ -3,6 +3,7 @@
 
 #include "Base.h"
 #include "BlockList.h"
+#include "Hashing.h"
 
 namespace ComponentTypeProvider {
     enum Type : u16
@@ -20,10 +21,11 @@ struct ComponentType {
     size_t                 id;
 };
 
-struct ComponentReference {
-    u32           id;
-    ComponentType type;
-};
+static _inline bool operator<(
+    const ComponentType& left, const ComponentType& right)
+{
+    return (left.provider + left.id) < (right.provider + right.id);
+}
 
 static _inline bool operator==(
     const ComponentType& left, const ComponentType& right)
@@ -42,6 +44,18 @@ static inline ComponentType make_native_component_type()
         .id       = typeid(ComponentStorageType).hash_code(),
     };
 }
+
+static _inline u64 hash_of(const ComponentType& type, uint32 seed)
+{
+    u64   hash   = type.provider + type.id;
+    char* as_str = (char*)&hash;
+    return murmur_hash2(as_str, 8, seed);
+}
+
+struct ComponentReference {
+    u32           id;
+    ComponentType type;
+};
 
 struct ComponentNativePtr {
     void*              ptr;
@@ -99,11 +113,11 @@ struct ComponentIteratorBase {
         ComponentContainer::List::Ptr begin,
         u32                           count,
         const ComponentType&          type)
-        : begin(begin), count(count), type(type), current(0)
+        : ptr(begin), count(count), type(type), current(0)
     {}
     void* next();
 
-    ComponentContainer::List::Ptr begin;
+    ComponentContainer::List::Ptr ptr;
     ComponentType                 type;
     u32                           current;
     u32                           count;

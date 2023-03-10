@@ -4,6 +4,25 @@
 #include "Containers/Array.h"
 #include "Entity.h"
 
+struct ArchetypeID {
+    u32 id;
+};
+
+struct Archetype {
+    ArchetypeID           id;
+    TArray<ComponentType> types;
+
+    inline bool has_component(const ComponentType& type)
+    {
+        for (const auto& t : types) {
+            if (type == t) {
+                return true;
+            }
+        }
+        return false;
+    }
+};
+
 struct World {
     World(IAllocator& in_allocator) : allocator(in_allocator) {}
 
