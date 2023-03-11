@@ -34,5 +34,6 @@ target_link_libraries(vkx
     core
     imgui
     stb_image
+    flecs
     "user32"
     )

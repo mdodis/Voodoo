@@ -1696,7 +1696,7 @@ Material* Engine::get_material(Str id)
 
 void Engine::init_default_meshes()
 {
-    Vertex* vertices = alloc_array<Vertex, 3>(allocator);
+    Vertex* vertices = alloc_array<Vertex>(allocator, 3);
 
     vertices[0] = {
         .position = {1, 1, 0},

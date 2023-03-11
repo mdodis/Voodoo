@@ -6,6 +6,7 @@
 #include "FileSystem/FileSystem.h"
 #include "Reflection.h"
 #include "Serialization/JSON.h"
+#include "flecs.h"
 #include "imgui.h"
 
 struct {

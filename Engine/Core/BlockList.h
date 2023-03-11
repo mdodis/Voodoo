@@ -2,14 +2,15 @@
 #include <functional>
 
 #include "Base.h"
+#include "Containers/IntrusiveList.h"
 #include "Debugging/Assertions.h"
-#include "IntrusiveList.h"
 #include "Memory/Base.h"
 #include "Memory/Extras.h"
 
 template <typename SizeType, u32 BlockSize = 64>
 struct BlockList {
     static constexpr u32 ItemsPerBlock = BlockSize;
+
     BlockList(IAllocator& allocator, SizeType item_size)
         : allocator(allocator)
         , item_size(item_size)
@@ -18,6 +19,17 @@ struct BlockList {
         , num_items(0)
     {
         intrusive_list::init(&first_node);
+    }
+
+    BlockList& operator=(const BlockList& other)
+    {
+        first_node       = other.first_node;
+        num_items        = other.num_items;
+        num_blocks       = other.num_blocks;
+        item_size        = other.item_size;
+        block_total_size = other.block_total_size;
+        allocator        = other.allocator;
+        return *this;
     }
 
 #pragma pack(push, 1)

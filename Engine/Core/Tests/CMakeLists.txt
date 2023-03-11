@@ -1,7 +1,6 @@
 
 set(SOURCES
     "./BlockList.test.cpp"
-    "./ECS.basic.test.cpp"
     "./Tests.cpp"
     )
 
