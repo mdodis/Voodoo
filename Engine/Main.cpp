@@ -1,12 +1,13 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Base.h"
+#include "ECS.h"
 #include "Engine.h"
 #include "FileSystem/Extras.h"
 #include "FileSystem/FileSystem.h"
+#include "Memory/AllocTape.h"
 #include "Reflection.h"
 #include "Serialization/JSON.h"
-#include "flecs.h"
 #include "imgui.h"
 
 struct {
@@ -14,6 +15,8 @@ struct {
     Window window = {
         .input = &input,
     };
+
+    ECS ecs;
 } G;
 
 int main(int argc, char const* argv[])
@@ -26,6 +29,19 @@ int main(int argc, char const* argv[])
 
     G.window.init(width, height).unwrap();
 
+    // Initialize ECS
+    G.ecs.init();
+    {
+        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+        for (int i = 0; i < 10; ++i) {
+            SAVE_ARENA(temp);
+
+            Str  entity_name = format(temp, LIT("Entity #{}\0"), i);
+            auto ent         = G.ecs.create_entity(entity_name);
+            ent.set<Transform>({{i, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
+        }
+    }
+
     Engine eng = {
         .window            = &G.window,
         .input             = &G.input,
@@ -35,6 +51,7 @@ int main(int argc, char const* argv[])
     eng.init();
     DEFER(eng.deinit());
 
+    // Add render objects
     RenderObject monke = {
         .mesh      = eng.get_mesh(LIT("monke")),
         .material  = eng.get_material(LIT("default.mesh")),
@@ -73,16 +90,22 @@ int main(int argc, char const* argv[])
         G.input.update();
         eng.update();
 
+        G.ecs.run();
+
         eng.imgui_new_frame();
         G.window.imgui_new_frame();
 
         ImGui::NewFrame();
+
+        ImGui::ShowDemoWindow(&show_demo);
 
         ImGui::Begin("Engine - General");
         ImGui::Text(
             "Swapchain format: %s",
             string_VkFormat(eng.swap_chain_image_format));
         ImGui::End();
+
+        G.ecs.draw_editor();
 
         ImGui::Render();
         eng.draw();

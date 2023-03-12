@@ -17,6 +17,8 @@ add_executable(vkx
     "./Input.cpp"
     "./Win32ImGui.h"
     "./Win32ImGui.cpp"
+    "./ECS.h"
+    "./ECS.cpp"
     )
 
 target_include_directories(vkx 
