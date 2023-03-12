@@ -16,15 +16,18 @@ struct {
         .input = &input,
     };
 
-    ECS ecs;
+    ECS  ecs;
+    bool imgui_demo = false;
 } G;
 
 int main(int argc, char const* argv[])
 {
-    int width  = 640;
-    int height = 480;
+    int width  = 1600;
+    int height = 900;
 
     ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
     ImGui::StyleColorsDark();
 
     G.window.init(width, height).unwrap();
@@ -83,8 +86,6 @@ int main(int argc, char const* argv[])
         }
     }
 
-    bool show_demo = true;
-
     G.window.poll();
     while (G.window.is_open) {
         G.input.update();
@@ -97,14 +98,41 @@ int main(int argc, char const* argv[])
 
         ImGui::NewFrame();
 
-        ImGui::ShowDemoWindow(&show_demo);
+        {
+            if (ImGui::BeginMainMenuBar()) {
+                if (ImGui::BeginMenu("File")) {
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Quit")) {
+                        G.window.is_open = false;
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Help")) {
+                    if (ImGui::MenuItem("IMGUI")) {
+                        G.imgui_demo = true;
+                    }
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMainMenuBar();
+            }
 
-        ImGui::Begin("Engine - General");
-        ImGui::Text(
-            "Swapchain format: %s",
-            string_VkFormat(eng.swap_chain_image_format));
-        ImGui::End();
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::DockSpaceOverViewport(
+                viewport,
+                ImGuiDockNodeFlags_PassthruCentralNode);
 
+            {
+                ImGui::Begin("Engine - General");
+                ImGui::Text(
+                    "Swapchain format: %s",
+                    string_VkFormat(eng.swap_chain_image_format));
+                ImGui::End();
+            }
+
+            if (G.imgui_demo) {
+                ImGui::ShowDemoWindow(&G.imgui_demo);
+            }
+        }
         G.ecs.draw_editor();
 
         ImGui::Render();
