@@ -1,6 +1,7 @@
 set(SOURCES
     "./BlockList.h"
     "./DeletionQueue.h"
+    "./Core.cpp"
 )
 
 add_library(core STATIC ${SOURCES})

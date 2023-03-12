@@ -3,9 +3,9 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "Containers/Array.h"
 #include "Str.h"
 #include "flecs.h"
-#include "Containers/Array.h"
 
 struct EntityReference {
     ecs_entity_t id;
@@ -32,7 +32,8 @@ struct ECS {
 
     struct {
         flecs::query<EditorSelectableComponent> entity_view_query;
-        TArray<flecs::entity_t> selection = { &System_Allocator };
+        flecs::query<>          component_view_query;
+        TArray<flecs::entity_t>                 selection = {&System_Allocator};
     } editor;
 
     void draw_editor();

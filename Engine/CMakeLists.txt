@@ -29,11 +29,11 @@ target_include_directories(vkx
     )
     
 target_link_libraries(vkx
-    PUBLIC
+    PRIVATE
+    core
     ${Vulkan_LIBRARY}
     VulkanMemoryAllocator
     tinyobjloader
-    core
     imgui
     stb_image
     flecs
