@@ -31,11 +31,18 @@ struct AssetInfo {
     void write(Tape* output);
 };
 
+#pragma pack(push, 1)
+struct AssetHeader {
+    /** Length of asset info data */
+    u32 info_len;
+};
+#pragma pack(pop)
+
 struct Asset {
     AssetInfo info;
     Slice<u8> blob;
 
-    void write(Tape* output);
+    void write(IAllocator& allocator, Tape* output);
 };
 
 struct AssetTextureDescriptor : IDescriptor {
