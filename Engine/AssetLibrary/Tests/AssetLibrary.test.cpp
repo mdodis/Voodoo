@@ -17,10 +17,10 @@ TEST_CASE("AssetLibrary/Main", "Write AssetInfo")
             },
     };
 
-    {
-        auto ft = open_write_tape("./asset_info.test.json");
-        info.write(&ft);
-    }
+    FileHandle              fh = open_file_write("./asset_info.test.json");
+    TBufferedFileTape<true> ft(fh);
+
+    info.write(&ft);
 
     return MPASSED();
 }
