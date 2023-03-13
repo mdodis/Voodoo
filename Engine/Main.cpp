@@ -41,7 +41,7 @@ int main(int argc, char const* argv[])
 
             Str  entity_name = format(temp, LIT("Entity #{}\0"), i);
             auto ent         = G.ecs.create_entity(entity_name);
-            ent.set<Transform>({{i, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
+            ent.set<TransformComponent>({{i, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
         }
     }
 

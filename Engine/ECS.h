@@ -11,12 +11,12 @@ struct EntityReference {
     ecs_entity_t id;
 };
 
-struct Transform {
+struct TransformComponent {
     glm::vec3 position;
     glm::quat rotation;
     glm::vec3 scale;
 };
-extern ECS_COMPONENT_DECLARE(Transform);
+extern ECS_COMPONENT_DECLARE(TransformComponent);
 
 struct EditorSelectableComponent {
     bool selected;

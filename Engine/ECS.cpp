@@ -4,14 +4,14 @@
 
 #include "imgui.h"
 
-ECS_COMPONENT_DECLARE(Transform);
+ECS_COMPONENT_DECLARE(TransformComponent);
 ECS_COMPONENT_DECLARE(EditorSelectableComponent);
 
 void ECS::init()
 {
     // Default components
     {
-        ECS_COMPONENT_DEFINE(world, Transform);
+        ECS_COMPONENT_DEFINE(world, TransformComponent);
         ECS_COMPONENT_DEFINE(world, EditorSelectableComponent);
     }
 
@@ -73,8 +73,8 @@ void ECS::draw_editor()
                 if (!id.is_entity()) return;
                 flecs::entity comp = id.entity();
                 ImGui::Text("%s", comp.name().c_str());
-                if (comp.raw_id() == ecs_id(Transform)) {
-                    auto*  t = entity.get_mut<Transform>();
+                if (comp.raw_id() == ecs_id(TransformComponent)) {
+                    auto*  t = entity.get_mut<TransformComponent>();
                     float* v = glm::value_ptr(t->position);
                     ImGui::DragFloat3("Position", v);
                 }

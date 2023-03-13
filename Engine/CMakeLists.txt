@@ -1,5 +1,6 @@
 
 add_subdirectory(Core)
+add_subdirectory(AssetLibrary)
 
 find_package(Vulkan REQUIRED)
 
@@ -37,5 +38,6 @@ target_link_libraries(vkx
     imgui
     stb_image
     flecs
+    assetlib
     "user32"
     )
