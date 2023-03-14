@@ -13,11 +13,31 @@ namespace AssetKind {
 }
 typedef u32 EAssetKind;
 
-struct AssetTexture {
-    u32 width;
-    u32 height;
-    u32 depth;
-    u32 format;
+namespace TextureFormat {
+    enum Type : u32
+    {
+        Unknown      = 0,
+        R8G8B8A8UInt = 1,
+    };
+}
+typedef TextureFormat::Type ETextureFormat;
+
+PROC_FMT_ENUM(TextureFormat, {
+    FMT_ENUM_CASE(TextureFormat, Unknown);
+    FMT_ENUM_CASE(TextureFormat, R8G8B8A8UInt);
+    FMT_ENUM_DEFAULT_CASE(Unknown);
+})
+
+PROC_PARSE_ENUM(TextureFormat, {
+    PARSE_ENUM_CASE(TextureFormat, Unknown);
+    PARSE_ENUM_CASE(TextureFormat, R8G8B8A8UInt);
+})
+
+struct TextureAsset {
+    u32            width;
+    u32            height;
+    u32            depth;
+    ETextureFormat format;
 };
 
 struct AssetInfo {
@@ -25,7 +45,7 @@ struct AssetInfo {
     EAssetKind kind;
 
     union {
-        AssetTexture texture;
+        TextureAsset texture;
     };
 
     void write(Tape* output);
@@ -42,18 +62,18 @@ struct Asset {
     AssetInfo info;
     Slice<u8> blob;
 
-    void write(IAllocator& allocator, Tape* output);
+    bool write(IAllocator& allocator, Tape* output);
 };
 
-struct AssetTextureDescriptor : IDescriptor {
+struct TextureAssetDescriptor : IDescriptor {
     PrimitiveDescriptor<u32> width_desc = {
-        OFFSET_OF(AssetTexture, width), LIT("width")};
+        OFFSET_OF(TextureAsset, width), LIT("width")};
     PrimitiveDescriptor<u32> height_desc = {
-        OFFSET_OF(AssetTexture, height), LIT("height")};
+        OFFSET_OF(TextureAsset, height), LIT("height")};
     PrimitiveDescriptor<u32> depth_desc = {
-        OFFSET_OF(AssetTexture, depth), LIT("depth")};
+        OFFSET_OF(TextureAsset, depth), LIT("depth")};
     PrimitiveDescriptor<u32> format_desc = {
-        OFFSET_OF(AssetTexture, format), LIT("format")};
+        OFFSET_OF(TextureAsset, format), LIT("format")};
 
     IDescriptor* descs[4] = {
         &width_desc,
@@ -62,8 +82,8 @@ struct AssetTextureDescriptor : IDescriptor {
         &format_desc,
     };
 
-    CUSTOM_DESC_DEFAULT(AssetTextureDescriptor)
-    virtual Str type_name() override { return LIT("AssetTexture"); }
+    CUSTOM_DESC_DEFAULT(TextureAssetDescriptor)
+    virtual Str type_name() override { return LIT("TextureAsset"); }
     virtual Slice<IDescriptor*> subdescriptors(umm self) override
     {
         return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
@@ -76,7 +96,7 @@ struct AssetInfoDescriptor : IDescriptor {
     PrimitiveDescriptor<EAssetKind> kind_desc = {
         OFFSET_OF(AssetInfo, kind), LIT("kind")};
 
-    AssetTextureDescriptor texture_desc = {
+    TextureAssetDescriptor texture_desc = {
         OFFSET_OF(AssetInfo, texture), LIT("texture")};
 
     IDescriptor* descs_unrecognized[2] = {
@@ -112,5 +132,5 @@ struct AssetInfoDescriptor : IDescriptor {
     }
 };
 
-DEFINE_DESCRIPTOR_OF_INL(AssetTexture)
+DEFINE_DESCRIPTOR_OF_INL(TextureAsset)
 DEFINE_DESCRIPTOR_OF_INL(AssetInfo)

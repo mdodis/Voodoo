@@ -13,7 +13,7 @@ TEST_CASE("AssetLibrary/Main", "Write AssetInfo")
                 .width  = 100,
                 .height = 200,
                 .depth  = 32,
-                .format = 5,
+                .format = TextureFormat::Unknown,
             },
     };
 
