@@ -36,8 +36,8 @@ target_link_libraries(vkx
     VulkanMemoryAllocator
     tinyobjloader
     imgui
-    stb_image
     flecs
+    stb_image
     assetlib
     "user32"
     )

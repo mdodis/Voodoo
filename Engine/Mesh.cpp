@@ -6,9 +6,9 @@
 VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
 {
     VertexInputInfo result = {
-        .bindings = alloc_slice<VkVertexInputBindingDescription, 1>(allocator),
+        .bindings = alloc_slice<VkVertexInputBindingDescription>(allocator, 1),
         .attributes =
-            alloc_slice<VkVertexInputAttributeDescription, 4>(allocator),
+            alloc_slice<VkVertexInputAttributeDescription>(allocator, 4),
     };
 
     result.bindings[0] = {

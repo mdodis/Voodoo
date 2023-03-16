@@ -1,6 +1,7 @@
 #pragma once
 #include "Base.h"
 #include "Reflection.h"
+#include "Result.h"
 #include "Tape.h"
 
 namespace AssetKind {
@@ -33,6 +34,22 @@ PROC_PARSE_ENUM(TextureFormat, {
     PARSE_ENUM_CASE(TextureFormat, R8G8B8A8UInt);
 })
 
+namespace AssetLoadError {
+    enum Type : u32
+    {
+        Unknown = 0,
+        InvalidFormat,
+        OutOfMemory
+    };
+}
+typedef AssetLoadError::Type EAssetLoadError;
+
+PROC_FMT_ENUM(AssetLoadError, {
+    FMT_ENUM_CASE(AssetLoadError, Unknown);
+    FMT_ENUM_CASE(AssetLoadError, InvalidFormat);
+    FMT_ENUM_CASE(AssetLoadError, OutOfMemory);
+})
+
 struct TextureAsset {
     u32            width;
     u32            height;
@@ -47,14 +64,13 @@ struct AssetInfo {
     union {
         TextureAsset texture;
     };
-
-    void write(Tape* output);
 };
 
 #pragma pack(push, 1)
 struct AssetHeader {
     /** Length of asset info data */
     u32 info_len;
+    u64 blob_size;
 };
 #pragma pack(pop)
 
@@ -63,6 +79,8 @@ struct Asset {
     Slice<u8> blob;
 
     bool write(IAllocator& allocator, Tape* output);
+    static Result<Asset, EAssetLoadError> load(
+        IAllocator& allocator, Tape* input);
 };
 
 struct TextureAssetDescriptor : IDescriptor {
@@ -134,3 +152,23 @@ struct AssetInfoDescriptor : IDescriptor {
 
 DEFINE_DESCRIPTOR_OF_INL(TextureAsset)
 DEFINE_DESCRIPTOR_OF_INL(AssetInfo)
+
+#define PROC_IMPORTER_IMPORT(name) \
+    Result<Asset, Str> name(Str path, IAllocator& allocator)
+typedef PROC_IMPORTER_IMPORT(ProcImporterImport);
+
+struct Importer {
+    Str                 name;
+    EAssetKind          kind;
+    Slice<Str>          file_extensions;
+    ProcImporterImport* import;
+};
+
+struct ImporterRegistry {
+    TArray<Importer> importers;
+    ImporterRegistry(IAllocator& allocator) : importers(&allocator) {}
+
+    void               init_default_importers();
+    void               register_importer(const Importer& importer);
+    Result<Asset, Str> import_asset_from_file(Str path, IAllocator& allocator);
+};

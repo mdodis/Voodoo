@@ -5,5 +5,5 @@ set cwd="%cd%"
 popd
 
 pushd %cwd%\..
-.\Build\MokLib\Tests\Debug\MokLibTests.exe
+cmake --build .\Build --target RUN_TESTS
 popd

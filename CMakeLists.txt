@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.7.1)
 project(VKX)
 set(CMAKE_CXX_STANDARD 20)
+include(CTest)
 
 add_compile_definitions(
     GLM_FORCE_DEPTH_ZERO_TO_ONE

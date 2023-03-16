@@ -11,3 +11,7 @@ target_link_libraries(assetlib_tests PRIVATE
 
 target_include_directories(assetlib_tests PRIVATE
     "../")
+
+add_test(NAME AssetLibraryTests COMMAND assetlib_tests)
+set_property(TEST AssetLibraryTests PROPERTY PASS_REGULAR_EXPRESSION "Passed")
+set_property(TEST AssetLibraryTests PROPERTY FAIL_REGULAR_EXPRESSION "Failed")
