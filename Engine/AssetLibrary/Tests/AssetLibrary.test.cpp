@@ -6,18 +6,6 @@
 
 TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
 {
-    AssetInfo info = {
-        .version = 1,
-        .kind    = AssetKind::Texture,
-        .texture =
-            {
-                .width  = 1,
-                .height = 2,
-                .depth  = 3,
-                .format = TextureFormat::Unknown,
-            },
-    };
-
     auto blob = arr<u8>(
         (u8)0x49,
         (u8)0x20,
@@ -33,6 +21,20 @@ TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
         (u8)0x45,
         (u8)0x54);
 
+    AssetInfo info = {
+        .version     = 1,
+        .kind        = AssetKind::Texture,
+        .compression = AssetCompression::None,
+        .actual_size = blob.size(),
+        .texture =
+            {
+                .width  = 1,
+                .height = 2,
+                .depth  = 3,
+                .format = TextureFormat::Unknown,
+            },
+    };
+
     Asset asset = {
         .info = info,
         .blob = slice(blob),
@@ -46,7 +48,15 @@ TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
     }
 
     {
-        TBufferedFileTape<true> ft(open_file_read("./asset.test.asset"));
+        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+
+        auto ft = open_read_tape(LIT("./asset.test.asset"));
+
+        Asset asset = asset.load(temp, &ft).unwrap();
+
+        REQUIRE(
+            memcmp(blob.elements, asset.blob.ptr, asset.blob.size()) == 0,
+            "");
     }
 
     return MPASSED();

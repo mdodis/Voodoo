@@ -39,7 +39,8 @@ namespace AssetLoadError {
     {
         Unknown = 0,
         InvalidFormat,
-        OutOfMemory
+        OutOfMemory,
+        CompressionFailed,
     };
 }
 typedef AssetLoadError::Type EAssetLoadError;
@@ -48,6 +49,27 @@ PROC_FMT_ENUM(AssetLoadError, {
     FMT_ENUM_CASE(AssetLoadError, Unknown);
     FMT_ENUM_CASE(AssetLoadError, InvalidFormat);
     FMT_ENUM_CASE(AssetLoadError, OutOfMemory);
+    FMT_ENUM_CASE(AssetLoadError, CompressionFailed);
+})
+
+namespace AssetCompression {
+    enum Type : u32
+    {
+        None = 0,
+        LZ4
+    };
+}
+typedef AssetCompression::Type EAssetCompression;
+
+PROC_FMT_ENUM(AssetCompression, {
+    FMT_ENUM_CASE(AssetCompression, None);
+    FMT_ENUM_CASE(AssetCompression, LZ4);
+    FMT_ENUM_DEFAULT_CASE(None);
+})
+
+PROC_PARSE_ENUM(AssetCompression, {
+    PARSE_ENUM_CASE(AssetCompression, None);
+    PARSE_ENUM_CASE(AssetCompression, LZ4);
 })
 
 struct TextureAsset {
@@ -58,12 +80,30 @@ struct TextureAsset {
 };
 
 struct AssetInfo {
-    int        version;
-    EAssetKind kind;
+    /** Version ID */
+    int               version;
+    /** The type of the asset */
+    EAssetKind        kind;
+    /** What kind of compression (if any) is used */
+    EAssetCompression compression;
+    /** The actual size of the blob (if compressed) */
+    u64               actual_size;
 
     union {
         TextureAsset texture;
     };
+
+    _inline bool is_compressed() const
+    {
+        return compression != AssetCompression::None;
+    }
+
+    // Not Serialized
+
+    /** Blob size in the file. Used when the blob hasn't been loaded */
+    u64 blob_size;
+    /** Blob offset from file start. Used when the blob hasn't been loaded */
+    i64 blob_offset;
 };
 
 #pragma pack(push, 1)
@@ -80,6 +120,9 @@ struct Asset {
 
     bool write(IAllocator& allocator, Tape* output);
     static Result<Asset, EAssetLoadError> load(
+        IAllocator& allocator, Tape* input);
+
+    static Result<AssetInfo, EAssetLoadError> probe(
         IAllocator& allocator, Tape* input);
 };
 
@@ -113,18 +156,26 @@ struct AssetInfoDescriptor : IDescriptor {
         OFFSET_OF(AssetInfo, version), LIT("version")};
     PrimitiveDescriptor<EAssetKind> kind_desc = {
         OFFSET_OF(AssetInfo, kind), LIT("kind")};
+    EnumDescriptor<EAssetCompression> compression_desc = {
+        OFFSET_OF(AssetInfo, compression), LIT("compression")};
+    PrimitiveDescriptor<u64> actual_size_desc = {
+        OFFSET_OF(AssetInfo, actual_size), LIT("actual_size")};
 
     TextureAssetDescriptor texture_desc = {
         OFFSET_OF(AssetInfo, texture), LIT("texture")};
 
-    IDescriptor* descs_unrecognized[2] = {
+    IDescriptor* descs_unrecognized[4] = {
         &version_desc,
         &kind_desc,
+        &compression_desc,
+        &actual_size_desc,
     };
 
-    IDescriptor* descs_texture[3] = {
+    IDescriptor* descs_texture[5] = {
         &version_desc,
         &kind_desc,
+        &compression_desc,
+        &actual_size_desc,
         &texture_desc,
     };
 

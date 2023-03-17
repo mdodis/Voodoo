@@ -8,6 +8,7 @@ target_link_libraries(assetlib
     PUBLIC
     core
     PRIVATE
+    LZ4
     stb_image)
 
 add_subdirectory(Tests)
