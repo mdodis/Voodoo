@@ -10,6 +10,12 @@ A simplistic ECS engine, with just one Vulkan renderer, primarily focused on exp
 | Linux | No (Planned) |
 | Mac | No |
 
+## Development Requirements
+
+- Vulkan SDK
+- Visual Studio C/C++ Build Tools (2022 or later)
+- CMake
+
 ## Building
 
 All third party libraries are included in source, so you only have to:
