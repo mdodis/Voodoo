@@ -21,6 +21,7 @@ A simplistic ECS engine, with just one Vulkan renderer, primarily focused on exp
 All third party libraries are included in source, so you only have to:
 1. Run `Scripts/0.1 - Configure.bat`
 2. Run `Scripts/0.0 - Build.bat`
+3. Run `Scripts/0.3 - Build Shaders.bat`
 
 ## Third Party Libraries
 
