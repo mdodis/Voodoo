@@ -10,9 +10,6 @@ bool Asset::write(IAllocator& allocator, Tape* output)
     AssetHeader header;
     AllocTape   info_tape(allocator);
 
-    json_serialize_pretty(&info_tape, &info);
-    DEFER(info_tape.release());
-
     Slice<u8> compressed_blob = blob;
 
     bool did_compress = false;
@@ -38,6 +35,9 @@ bool Asset::write(IAllocator& allocator, Tape* output)
     }
 
     DEFER(if (did_compress) allocator.release(compressed_blob.ptr));
+
+    json_serialize_pretty(&info_tape, &info);
+    DEFER(info_tape.release());
 
     header.info_len  = (u32)info_tape.wr_offset;
     header.blob_size = did_compress ? compressed_blob.size() : blob.size();
