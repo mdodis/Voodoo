@@ -1,5 +1,6 @@
 #include "AssetLibrary.h"
 
+#include "Containers/Extras.h"
 #include "Importers/DefaultImporters.h"
 #include "Memory/AllocTape.h"
 #include "Serialization/JSON.h"
@@ -67,6 +68,48 @@ Result<AssetInfo, EAssetLoadError> Asset::probe(
     return Ok(asset_info);
 }
 
+Result<void, EAssetLoadError> Asset::unpack(
+    IAllocator&      allocator,
+    const AssetInfo& info,
+    Tape*            input,
+    Slice<u8>&       buffer)
+{
+    if (info.actual_size > buffer.size()) {
+        return Err(AssetLoadError::Unknown);
+    }
+
+    ASSERT(info.blob_size != 0);
+    ASSERT(info.blob_offset > 0);
+
+    if (info.is_compressed()) {
+        auto compressed_blob = alloc_slice<u8>(allocator, info.blob_size);
+        DEFER(allocator.release(compressed_blob.ptr));
+        // Read in the compressed blob
+        input->move(info.blob_offset);
+        if (!input->read(compressed_blob.ptr, compressed_blob.size())) {
+            return Err(AssetLoadError::InvalidFormat);
+        }
+
+        // @note: For now we only have LZ4 compression
+        int result = LZ4_decompress_safe(
+            (const char*)compressed_blob.ptr,
+            (char*)buffer.ptr,
+            compressed_blob.size(),
+            buffer.size());
+
+        if (result <= 0) {
+            return Err(AssetLoadError::CompressionFailed);
+        }
+
+        return Ok<void>();
+    } else {
+        if (!input->read(buffer.ptr, info.actual_size) == info.actual_size) {
+            return Err(AssetLoadError::InvalidFormat);
+        }
+        return Ok<void>();
+    }
+}
+
 Result<Asset, EAssetLoadError> Asset::load(IAllocator& allocator, Tape* input)
 {
     AssetInfo asset_info;
@@ -82,36 +125,13 @@ Result<Asset, EAssetLoadError> Asset::load(IAllocator& allocator, Tape* input)
         asset_info = probe_result.value();
     }
 
-    input->move(asset_info.blob_offset);
+    Slice<u8> blob = alloc_slice<u8>(allocator, asset_info.actual_size);
 
-    Raw compressed_blob = alloc_raw(allocator, asset_info.blob_size);
-    if (!compressed_blob) return Err(AssetLoadError::OutOfMemory);
+    auto asset_unpack_result =
+        Asset::unpack(allocator, asset_info, input, blob);
 
-    // Read in the blob
-    if (!input->read_raw(compressed_blob))
-        return Err(AssetLoadError::InvalidFormat);
-
-    Raw blob = compressed_blob;
-
-    // If it's compressed, decompress it
-    if (asset_info.is_compressed()) {
-        DEFER(allocator.release(compressed_blob.buffer));
-
-        Raw uncompressed_blob = alloc_raw(allocator, asset_info.actual_size);
-        if (!uncompressed_blob) return Err(AssetLoadError::OutOfMemory);
-
-        // @note: For now we only have LZ4 compression
-        int result = LZ4_decompress_safe(
-            (const char*)compressed_blob.buffer,
-            (char*)uncompressed_blob.buffer,
-            compressed_blob.size,
-            uncompressed_blob.size);
-
-        if (result <= 0) {
-            return Err(AssetLoadError::CompressionFailed);
-        }
-
-        blob = uncompressed_blob;
+    if (!asset_unpack_result.ok()) {
+        return Err(asset_unpack_result.err());
     }
 
     return Ok(Asset{

@@ -1,5 +1,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 
+#include "Arg.h"
 #include "Base.h"
 #include "ECS.h"
 #include "Engine.h"
@@ -18,7 +19,35 @@ struct {
     bool imgui_demo = false;
 } G;
 
+static int run();
+static int convert(Slice<Str> args);
+
 int main(int argc, char const* argv[])
+{
+    TArray<Str> args(&System_Allocator);
+
+    for (int i = 0; i < argc; ++i) {
+        args.add(Str(argv[i]));
+    }
+
+    if (args.size <= 1) {
+        return run();
+    }
+
+    Str operation = args[1];
+
+    if (operation == LIT("run")) {
+        return run();
+    }
+
+    if (operation == LIT("convert")) {
+        return convert(slice(args, 2));
+    }
+
+    return -1;
+}
+
+static int run()
 {
     int width  = 1600;
     int height = 900;
@@ -142,4 +171,18 @@ int main(int argc, char const* argv[])
 
     print(LIT("Closing...\n"));
     return 0;
+}
+
+static int convert(Slice<Str> args)
+{
+    ArgCollection arguments;
+    arguments.register_arg<Str>(
+        LIT("-i"),
+        LIT(""),
+        LIT("Input file to convert to an asset"));
+    arguments.register_arg<Str>(LIT("-o"), LIT(""), LIT("Output asset path"));
+
+    ASSERT(arguments.parse_args(args));
+
+    return -1;
 }

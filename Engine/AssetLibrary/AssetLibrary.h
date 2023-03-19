@@ -101,9 +101,9 @@ struct AssetInfo {
     // Not Serialized
 
     /** Blob size in the file. Used when the blob hasn't been loaded */
-    u64 blob_size;
+    u64 blob_size   = 0;
     /** Blob offset from file start. Used when the blob hasn't been loaded */
-    i64 blob_offset;
+    i64 blob_offset = 0;
 };
 
 #pragma pack(push, 1)
@@ -124,6 +124,12 @@ struct Asset {
 
     static Result<AssetInfo, EAssetLoadError> probe(
         IAllocator& allocator, Tape* input);
+
+    static Result<void, EAssetLoadError> unpack(
+        IAllocator&      allocator,
+        const AssetInfo& info,
+        Tape*            input,
+        Slice<u8>&       buffer);
 };
 
 struct TextureAssetDescriptor : IDescriptor {

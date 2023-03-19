@@ -29,8 +29,10 @@ PROC_IMPORTER_IMPORT(stb_image_import)
     return Ok(Asset{
         .info =
             {
-                .version = 1,
-                .kind    = AssetKind::Texture,
+                .version     = 1,
+                .kind        = AssetKind::Texture,
+                .compression = AssetCompression::None,
+                .actual_size = image_size,
                 .texture =
                     {
                         .width  = (u32)width,
@@ -39,6 +41,7 @@ PROC_IMPORTER_IMPORT(stb_image_import)
                         .format = TextureFormat::R8G8B8A8UInt,
                     },
             },
+        .blob = blob,
     });
 }
 
