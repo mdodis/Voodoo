@@ -2,11 +2,11 @@
 #include <windows.h>
 #include "backends/imgui_impl_win32.h"
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+    HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 namespace win {
     void win32_imgui_init(Win32::HWND hwnd) { ImGui_ImplWin32_Init((void*)hwnd); }
-
-    extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
-        HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
     bool win32_imgui_wndproc(
         Win32::HWND   hwnd,

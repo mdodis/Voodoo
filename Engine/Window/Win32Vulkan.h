@@ -4,6 +4,7 @@
 #include "vulkan/vulkan.h"
 #include "Result.h"
 #include "Base.h"
+#include "Containers/Slice.h"
 
 namespace win {
     Slice<const char*>             win32_get_required_extensions();

@@ -1,6 +1,7 @@
 #include "Win32Window.h"
 #include "Win32ImGUI.h"
 #include "Win32Vulkan.h"
+#include "Compat/Win32VirtualKeycodes.h"
 
 namespace win {
     static WIN32_DECLARE_WNDPROC(wnd_proc_handler);
@@ -123,7 +124,7 @@ namespace win {
         return win32_get_required_extensions();
     }
 
-    WIN32_DECLARE_WNDPROC(Window::wnd_proc)
+    WIN32_DECLARE_WNDPROC(Win32Window::wnd_proc)
     {
         if (!cursor_locked) {
             if (win32_imgui_wndproc(hwnd, msg, wparam, lparam)) {
@@ -194,7 +195,7 @@ namespace win {
 
     WIN32_DECLARE_WNDPROC(wnd_proc_handler)
     {
-        Window* w = (Window*)
+        Win32Window* w = (Win32Window*)
             Win32::GetWindowLongPtrA(hwnd, Win32::WindowLongPointer::UserData);
         if (w == 0) {
             return Win32::DefWindowProcA(hwnd, msg, wparam, lparam);
