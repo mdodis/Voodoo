@@ -5,9 +5,9 @@ add_subdirectory(AssetLibrary)
 find_package(Vulkan REQUIRED)
 
 add_executable(vkx
+    "./Window/Window.h"
+    "./Window/Window.cpp"
     "./Main.cpp"
-    "./Window.cpp"
-    "./Window.h"
     "./Engine.h"
     "./Engine.cpp"
     "./VulkanCommon.h"
@@ -16,11 +16,31 @@ add_executable(vkx
     "./Mesh.cpp"
     "./Input.h"
     "./Input.cpp"
-    "./Win32ImGui.h"
-    "./Win32ImGui.cpp"
     "./ECS.h"
     "./ECS.cpp"
     )
+
+if (UNIX)
+    find_package(X11 REQUIRED)
+
+    target_sources(vkx PRIVATE
+        "./Window/GLFWWindow.h"
+        "./Window/GLFWWindow.cpp"
+        )
+    target_link_libraries(vkx PRIVATE glfw ${X11_LIBRARIES})
+    target_include_directories(vkx PRIVATE ${X11_INCLUDE_DIRS})
+elseif(WIN32)
+
+    target_sources(vkx PUBLIC
+        "./Window/Win32Window.h"
+        "./Window/Win32Window.cpp"
+        "./Window/Win32ImGUI.h"
+        "./Window/Win32ImGUI.cpp"
+        "./Window/Win32Vulkan.h"
+        "./Window/Win32Vulkan.cpp"
+        )
+    target_link_libraries(vkx PRIVATE "user32")
+endif()
 
 target_include_directories(vkx 
     PUBLIC
@@ -39,5 +59,4 @@ target_link_libraries(vkx
     flecs
     stb_image
     assetlib
-    "user32"
     )

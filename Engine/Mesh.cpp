@@ -61,6 +61,10 @@ Result<Mesh, Str> Mesh::load_from_file(IAllocator& allocator, const char* path)
         return Err(Str(err.c_str()));
     }
 
+    if (shapes.size() == 0) {
+        return Err(LIT("No shapes in model"));
+    }
+
     for (size_t s = 0; s < shapes.size(); ++s) {
         size_t index_offset = 0;
         for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); ++f) {

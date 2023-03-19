@@ -12,9 +12,7 @@
 
 struct {
     Input  input{System_Allocator};
-    Window window = {
-        .input = &input,
-    };
+    win::Window *window;
 
     ECS  ecs;
     bool imgui_demo = false;
@@ -30,7 +28,9 @@ int main(int argc, char const* argv[])
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
     ImGui::StyleColorsDark();
 
-    G.window.init(width, height).unwrap();
+    G.window = win::create_window(System_Allocator);
+    G.window->input = &G.input;
+    G.window->init(width, height).unwrap();
 
     // Initialize ECS
     G.ecs.init();
@@ -46,7 +46,7 @@ int main(int argc, char const* argv[])
     }
 
     Engine eng = {
-        .window            = &G.window,
+        .window            = G.window,
         .input             = &G.input,
         .validation_layers = true,
         .allocator         = System_Allocator,
@@ -86,15 +86,15 @@ int main(int argc, char const* argv[])
         }
     }
 
-    G.window.poll();
-    while (G.window.is_open) {
+    G.window->poll();
+    while (G.window->is_open) {
         G.input.update();
         eng.update();
 
         G.ecs.run();
 
         eng.imgui_new_frame();
-        G.window.imgui_new_frame();
+        G.window->imgui_new_frame();
 
         ImGui::NewFrame();
 
@@ -103,7 +103,7 @@ int main(int argc, char const* argv[])
                 if (ImGui::BeginMenu("File")) {
                     ImGui::Separator();
                     if (ImGui::MenuItem("Quit")) {
-                        G.window.is_open = false;
+                        G.window->is_open = false;
                     }
                     ImGui::EndMenu();
                 }
@@ -137,7 +137,7 @@ int main(int argc, char const* argv[])
 
         ImGui::Render();
         eng.draw();
-        G.window.poll();
+        G.window->poll();
     }
 
     print(LIT("Closing...\n"));

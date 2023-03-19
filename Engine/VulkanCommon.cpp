@@ -1,35 +1,6 @@
 #define MOK_WIN32_NO_FUNCTIONS
 #include "VulkanCommon.h"
-
-#include <Windows.h>
-#include <vulkan/vulkan_win32.h>
-
 #include <set>
-
-auto Win32_Required_Extensions = arr<const char*>(
-    VK_KHR_SURFACE_EXTENSION_NAME,
-    VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
-    VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-
-Slice<const char*> win32_get_required_extensions()
-{
-    return slice(Win32_Required_Extensions);
-}
-
-Result<VkSurfaceKHR, VkResult> win32_create_surface(
-    VkInstance vk_instance, Win32::HWND hwnd, Win32::HINSTANCE instance)
-{
-    VkWin32SurfaceCreateInfoKHR create_info = {
-        .sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
-        .hinstance = (HINSTANCE)instance,
-        .hwnd      = (HWND)hwnd,
-    };
-
-    VkSurfaceKHR result;
-    VK_RETURN_IF_ERR(
-        vkCreateWin32SurfaceKHR(vk_instance, &create_info, 0, &result));
-    return Ok(result);
-}
 
 bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers)
 {
@@ -123,6 +94,7 @@ Result<VkPhysicalDevice, VkResult> pick_physical_device(
             continue;
         }
 
+        // @todo: cant query willy nilly
         auto swap_chain_support_result =
             query_physical_device_swap_chain_support(
                 allocator,
@@ -168,6 +140,30 @@ Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
     IAllocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     SwapChainSupportInfo result(allocator);
+
+
+    bool has_queue_with_present = false;
+    auto families = get_physical_device_queue_families(device, allocator);
+    DEFER(families.release());
+    for (u32 i = 0; i < families.size; ++i) {
+        VkQueueFamilyProperties& family = families[i];
+        VkBool32 surface_supported = false;
+        VK_RETURN_IF_ERR(vkGetPhysicalDeviceSurfaceSupportKHR(
+            device,
+            i,
+            surface,
+            &surface_supported));
+
+        if (surface_supported) {
+            has_queue_with_present = true;
+            break;
+        }
+
+    }
+
+    if (!has_queue_with_present) {
+        return Ok(result);
+    }
 
     VK_RETURN_IF_ERR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         device,
@@ -492,4 +488,17 @@ VkSamplerCreateInfo make_sampler_create_info(
         .addressModeV = address_mode,
         .addressModeW = address_mode,
     };
+}
+
+TArray<VkQueueFamilyProperties> get_physical_device_queue_families(VkPhysicalDevice physical_device, IAllocator& allocator)
+{
+    u32 count;
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, 0);
+
+    TArray<VkQueueFamilyProperties> result(&allocator);
+    result.init_range(count);
+
+    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, result.data);
+
+    return result;
 }

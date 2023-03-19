@@ -1,8 +1,6 @@
 #pragma once
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
-
-#include "Compat/Win32Base.h"
 #include "Containers/Slice.h"
 #include "Result.h"
 #include "Types.h"
@@ -103,6 +101,9 @@ struct CreateSwapchainInfo {
 Result<VkSwapchainKHR, VkResult> create_swapchain(
     IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info);
 
+TArray<VkQueueFamilyProperties> get_physical_device_queue_families(
+        VkPhysicalDevice physical_device, IAllocator& allocator);
+
 void print_physical_device_queue_families(VkPhysicalDevice device);
 
 Result<VkShaderModule, VkResult> load_shader_binary(
@@ -126,9 +127,3 @@ VkWriteDescriptorSet write_descriptor_set_image(
 VkSamplerCreateInfo make_sampler_create_info(
     VkFilter             filters,
     VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-/* Win32 */
-
-Slice<const char*>             win32_get_required_extensions();
-Result<VkSurfaceKHR, VkResult> win32_create_surface(
-    VkInstance vk_instance, Win32::HWND hwnd, Win32::HINSTANCE instance);

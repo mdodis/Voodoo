@@ -7,11 +7,12 @@
 #include "Memory/Base.h"
 #include "Mesh.h"
 #include "VulkanCommon.h"
-#include "Window.h"
+#include "Window/Window.h"
 #include "vk_mem_alloc.h"
+using namespace win;
 
 struct MeshPushConstants {
-    Vec4      data;
+    glm::vec4 data;
     glm::mat4 transform;
 };
 

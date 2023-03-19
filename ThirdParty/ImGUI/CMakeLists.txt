@@ -9,16 +9,34 @@ add_library(imgui STATIC
     "./imstb_rectpack.h"
     "./imstb_textedit.h"
     "./imstb_truetype.h"
-    "./imgui_demo.cpp"    
-    "./imgui_draw.cpp"    
+    "./imgui_demo.cpp"
+    "./imgui_draw.cpp"
     "./imgui_tables.cpp"
     "./imgui_widgets.cpp"
     "./imgui.cpp"
-    "./backends/imgui_impl_win32.h"
-    "./backends/imgui_impl_win32.cpp"
     "./backends/imgui_impl_vulkan.h"
     "./backends/imgui_impl_vulkan.cpp"
     )
+
+if (WIN32)
+    target_sources(imgui PRIVATE
+        "./backends/imgui_impl_win32.h"
+        "./backends/imgui_impl_win32.cpp"
+        )
+    target_link_libraries(imgui
+        PUBLIC
+        "user32"
+        )
+elseif(UNIX)
+    target_sources(imgui PRIVATE
+        "./backends/imgui_impl_glfw.h"
+        "./backends/imgui_impl_glfw.cpp"
+        )
+    target_link_libraries(imgui
+        PUBLIC
+        glfw
+        )
+endif()
 
 find_package(Vulkan)
 target_include_directories(imgui
@@ -26,8 +44,8 @@ target_include_directories(imgui
     ${Vulkan_INCLUDE_DIRS}
     ${INCLUDE_DIRS}
     )
+
 target_link_libraries(imgui
     PUBLIC
     ${Vulkan_LIBRARY}
-    "user32"
     )

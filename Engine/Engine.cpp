@@ -37,7 +37,7 @@ void Engine::init()
     textures.init(allocator);
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
-    Slice<const char*> required_window_ext = win32_get_required_extensions();
+    Slice<const char*> required_window_ext = window->get_required_extensions();
     window->on_resized.bind_raw(this, &Engine::on_resize_presentation);
 
     // Instance
@@ -482,7 +482,7 @@ void Engine::init_pipelines()
                 .unwrap();
 
         main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([=]() {
+            DeletionQueue::DeletionDelegate::create_lambda([this, pipeline, pipeline_layout]() {
                 vkDestroyPipeline(device, pipeline, 0);
                 vkDestroyPipelineLayout(device, pipeline_layout, 0);
             }));
@@ -1243,8 +1243,17 @@ void Engine::draw()
     FrameData& frame = get_current_frame();
 
     // Wait for previous frame to finish
-    VK_CHECK(
-        vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6e+7));
+    VkResult wait_result = VK_SUCCESS;
+    while (1) {
+        wait_result = vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6e+7);
+        if (wait_result == VK_SUCCESS) {
+            break;
+        } else if (wait_result == VK_TIMEOUT) {
+            continue;
+        } else {
+            ASSERT(false && "Either waited too long or device lost???");
+        }
+    }
 
     // Get next image
     u32      next_image_index;
@@ -1515,7 +1524,8 @@ void Engine::recreate_swapchain()
     vkDeviceWaitIdle(device);
 
     swap_chain_deletion_queue.flush();
-    Vec2i new_size = window->get_extents();
+    glm::ivec2 new_size;
+    window->get_extents(new_size.x, new_size.y);
     extent         = {.width = (u32)new_size.x, .height = (u32)new_size.y};
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
 

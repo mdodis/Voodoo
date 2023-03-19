@@ -8,9 +8,15 @@ add_compile_definitions(
     GLM_FORCE_RIGHT_HANDED
     )
 
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "glfw")
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "glfw")
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "glfw")
+set(GLFW_INSTALL OFF CACHE BOOL "glfw")
+
 set(MOKLIB_COMPILE_STATIC ON CACHE BOOL "Compile MokLib as static library")
 add_subdirectory("ThirdParty/flecs")
 add_subdirectory("ThirdParty/glm")
+add_subdirectory("ThirdParty/GLFW")
 add_subdirectory("ThirdParty/ImGUI")
 add_subdirectory("ThirdParty/LZ4")
 add_subdirectory("ThirdParty/STB")
