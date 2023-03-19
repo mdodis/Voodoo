@@ -22,7 +22,7 @@ void Input::send_axis(InputAxis axis, float new_value)
 {
     for (auto& action : axis_motion_actions) {
         if (action.axis == axis) {
-            action.delta      = (new_value - action.last_value);
+            action.delta      += (new_value - action.last_value);
             action.last_value = new_value;
         }
     }

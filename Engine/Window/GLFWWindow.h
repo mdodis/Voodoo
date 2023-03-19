@@ -19,6 +19,11 @@ namespace win {
         virtual Slice<const char *> get_required_extensions() override;
         // ~ Window interface
 
+    private:
+        static void callback_keyboard(::GLFWwindow* window, int key, int scancode, int action, int mods);
+        static void callback_cursor_pos(::GLFWwindow* window, double xpos, double ypos);
+
+        double last_xpos, last_ypos;
     };
 
 }

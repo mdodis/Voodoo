@@ -1,6 +1,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include "GLFWWindow.h"
 #include "backends/imgui_impl_glfw.h"
+#define MOK_GLFW_VIRTUAL_KEYCODES_AUTO_INCLUDE 0
+#include "Compat/GLFWVirtualKeycodes.h"
 
 namespace win {
 
@@ -14,6 +16,19 @@ namespace win {
 
         window = glfwCreateWindow(width, height, "VKXWindow", NULL, NULL);
         if (!window) return Err(WindowError::Unknown);
+
+        glfwGetCursorPos(window, &last_xpos, &last_ypos);
+
+        glfwSetWindowUserPointer(window, (void*)this);
+        // Bind events
+        glfwSetKeyCallback(window, GLFWWindow::callback_keyboard);
+        glfwSetCursorPosCallback(window, GLFWWindow::callback_cursor_pos);
+//        glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_FALSE);
+
+        if (glfwRawMouseMotionSupported()) {
+            print(LIT("Raw mouse motion: supported\n"));
+            glfwSetInputMode(window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+        }
 
         ASSERT(glfwVulkanSupported() == GLFW_TRUE);
         ImGui_ImplGlfw_InitForVulkan(window, true);
@@ -58,6 +73,7 @@ namespace win {
 
     void GLFWWindow::set_lock_cursor(bool value)
     {
+        glfwSetInputMode(window, GLFW_CURSOR, value ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         return;
     }
 
@@ -68,4 +84,27 @@ namespace win {
         ASSERT(extensions != NULL);
         return slice(extensions, count);
     }
+
+    void GLFWWindow::callback_keyboard(::GLFWwindow *window, int key, int scancode, int action, int mods)
+    {
+        GLFWWindow* self = (GLFWWindow*)glfwGetWindowUserPointer(window);
+        if (action == GLFW_REPEAT)
+            return;
+
+        bool down = (action == GLFW_PRESS);
+        self->input->send_input(glfw_key_to_input_key(key), down);
+    }
+
+    void GLFWWindow::callback_cursor_pos(GLFWwindow *window, double xpos, double ypos)
+    {
+        GLFWWindow* self = (GLFWWindow*)glfwGetWindowUserPointer(window);
+
+        self->input->send_axis_delta(InputAxis::MouseX, (xpos - self->last_xpos) * 10.0f);
+        self->input->send_axis_delta(InputAxis::MouseY, (ypos - self->last_ypos) * 10.0f);
+
+        self->last_xpos = xpos;
+        self->last_ypos = ypos;
+    }
+
+
 }
