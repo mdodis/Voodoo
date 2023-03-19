@@ -7,21 +7,30 @@ A simplistic ECS engine, with just one Vulkan renderer, primarily focused on exp
 | Platform        | Supported |
 | --------------- | --------- |
 | Windows | Yes |
-| Linux | No (Planned) |
+| Linux | Yes |
 | Mac | No |
 
 ## Development Requirements
 
 - Vulkan SDK
-- Visual Studio C/C++ Build Tools (2022 or later)
+- (Windows) Visual Studio C/C++ Build Tools (2022 or later)
+- (Linux) GCC or clang
 - CMake
 
 ## Building
+
+### Windows
 
 All third party libraries are included in source, so you only have to:
 1. Run `Scripts/0.1 - Configure.bat`
 2. Run `Scripts/0.0 - Build.bat`
 3. Run `Scripts/0.3 - Build Shaders.bat`
+
+### Linux
+
+1. Configure project `cmake . -DCMAKE_BUILD_TYPE=Debug -B Build`
+2. Build code `cmake --build Build`
+3. Build shaders `cmake --build Build --target shaders`
 
 ## Third Party Libraries
 
@@ -32,3 +41,4 @@ All third party libraries are included in source, so you only have to:
 - [STB](https://github.com/nothings/stb)
 - [Vulkan Memory Allocator](https://gpuopen.com/vulkan-memory-allocator/)
 - [Tinyobjloader](https://github.com/tinyobjloader/tinyobjloader)
+- [GLFW](https://www.glfw.org/)
