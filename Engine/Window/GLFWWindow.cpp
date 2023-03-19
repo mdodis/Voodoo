@@ -99,8 +99,8 @@ namespace win {
     {
         GLFWWindow* self = (GLFWWindow*)glfwGetWindowUserPointer(window);
 
-        self->input->send_axis_delta(InputAxis::MouseX, (xpos - self->last_xpos) * 10.0f);
-        self->input->send_axis_delta(InputAxis::MouseY, (ypos - self->last_ypos) * 10.0f);
+        self->input->send_axis_delta(InputAxis::MouseX, (xpos - self->last_xpos));
+        self->input->send_axis_delta(InputAxis::MouseY, (ypos - self->last_ypos));
 
         self->last_xpos = xpos;
         self->last_ypos = ypos;

@@ -127,3 +127,5 @@ VkWriteDescriptorSet write_descriptor_set_image(
 VkSamplerCreateInfo make_sampler_create_info(
     VkFilter             filters,
     VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+VkResult wait_for_fences_indefinitely(VkDevice device, u32 fence_count, const VkFence* fences, VkBool32 wait_all = VK_TRUE, u64 timeout = 1000000);

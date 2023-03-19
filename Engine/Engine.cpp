@@ -544,7 +544,7 @@ void Engine::init_pipelines()
                 .build(device)
                 .unwrap();
 
-        main_deletion_queue.add_lambda([=]() {
+        main_deletion_queue.add_lambda([this, pipeline, pipeline_layout]() {
             vkDestroyPipeline(device, pipeline, 0);
             vkDestroyPipelineLayout(device, pipeline_layout, 0);
         });
@@ -846,7 +846,7 @@ void Engine::init_imgui()
 
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-    main_deletion_queue.add_lambda([=]() {
+    main_deletion_queue.add_lambda([this, imgui_pool]() {
         vkDestroyDescriptorPool(device, imgui_pool, nullptr);
         ImGui_ImplVulkan_Shutdown();
     });
@@ -1083,7 +1083,7 @@ void Engine::upload_mesh(Mesh& mesh)
     });
 
     main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([=]() {
+        DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
             vmaDestroyBuffer(
                 vmalloc,
                 mesh.gpu_buffer.buffer,
@@ -1231,7 +1231,7 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(
     });
 
     main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-        [=]() { vmaDestroyImage(vmalloc, result.image, result.allocation); }));
+        [this, result]() { vmaDestroyImage(vmalloc, result.image, result.allocation); }));
 
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
 
@@ -1243,17 +1243,7 @@ void Engine::draw()
     FrameData& frame = get_current_frame();
 
     // Wait for previous frame to finish
-    VkResult wait_result = VK_SUCCESS;
-    while (1) {
-        wait_result = vkWaitForFences(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6e+7);
-        if (wait_result == VK_SUCCESS) {
-            break;
-        } else if (wait_result == VK_TIMEOUT) {
-            continue;
-        } else {
-            ASSERT(false && "Either waited too long or device lost???");
-        }
-    }
+    VK_CHECK(wait_for_fences_indefinitely(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6+7));
 
     // Get next image
     u32      next_image_index;
@@ -1660,12 +1650,7 @@ void Engine::deinit()
 {
     if (!is_initialized) return;
     for (int i = 0; i < num_overlap_frames; ++i) {
-        VK_CHECK(vkWaitForFences(
-            device,
-            1,
-            &frames[i].fnc_render,
-            VK_TRUE,
-            1000000));
+        VK_CHECK(wait_for_fences_indefinitely(device, 1, &frames[i].fnc_render));
     }
 
     swap_chain_deletion_queue.flush();
@@ -1808,7 +1793,7 @@ void Engine::init_default_images()
         vkUpdateDescriptorSets(device, 1, &write_image, 0, nullptr);
 
         main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([=]() {
+            DeletionQueue::DeletionDelegate::create_lambda([this, blocky_sampler, view]() {
                 vkDestroySampler(device, blocky_sampler, 0);
                 vkDestroyImageView(device, view, 0);
             }));

@@ -502,3 +502,20 @@ TArray<VkQueueFamilyProperties> get_physical_device_queue_families(VkPhysicalDev
 
     return result;
 }
+
+VkResult wait_for_fences_indefinitely(VkDevice device, u32 fence_count, const VkFence *fences, VkBool32 wait_all, u64 timeout)
+{
+    VkResult result = VK_SUCCESS;
+
+    for (;;) {
+        result = vkWaitForFences(device, fence_count, fences, wait_all, timeout);
+        if (result == VK_SUCCESS) {
+            break;
+        } else if (result == VK_TIMEOUT) {
+            continue;
+        } else {
+            return result;
+        }
+    }
+    return VK_SUCCESS;
+}
