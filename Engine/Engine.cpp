@@ -1,7 +1,5 @@
 #include "Engine.h"
 
-#include <stb_image.h>
-
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/compatibility.hpp>
@@ -481,8 +479,8 @@ void Engine::init_pipelines()
                 .build(device)
                 .unwrap();
 
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this, pipeline, pipeline_layout]() {
+        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+            [this, pipeline, pipeline_layout]() {
                 vkDestroyPipeline(device, pipeline, 0);
                 vkDestroyPipelineLayout(device, pipeline_layout, 0);
             }));
@@ -1093,18 +1091,17 @@ void Engine::upload_mesh(Mesh& mesh)
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
 }
 
-Result<AllocatedImage, VkResult> Engine::upload_image_from_file(
-    const char* path)
+Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
 {
-    int width, height, channels;
-    u8* pixels = stbi_load(path, &width, &height, &channels, 4);
-    if (!pixels) {
-        return Err(VK_ERROR_UNKNOWN);
-    }
+    CREATE_SCOPED_ARENA(&allocator, temp, MEGABYTES(5));
 
-    void*        pixel_ptr    = (void*)pixels;
+    auto      read_tape = open_read_tape(path);
+    AssetInfo info      = Asset::probe(temp, &read_tape).unwrap();
+    ASSERT(info.kind == AssetKind::Texture);
+    ASSERT(info.texture.format == TextureFormat::R8G8B8A8UInt);
+
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
-    VkDeviceSize image_size   = width * height * 4;
+    VkDeviceSize image_size   = info.actual_size;
 
     AllocatedBuffer staging_buffer =
         create_buffer(
@@ -1115,14 +1112,15 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(
 
     void* data;
     VK_RETURN_IF_ERR(vmaMapMemory(vmalloc, staging_buffer.allocation, &data));
-    memcpy(data, pixel_ptr, image_size);
+    Slice<u8> buffer_ptr((u8*)data, image_size);
+    Asset::unpack(temp, info, &read_tape, buffer_ptr).unwrap();
     vmaUnmapMemory(vmalloc, staging_buffer.allocation);
 
-    stbi_image_free(pixels);
+    // stbi_image_free(pixels);
 
     VkExtent3D image_extent = {
-        .width  = (u32)width,
-        .height = (u32)height,
+        .width  = (u32)info.texture.width,
+        .height = (u32)info.texture.height,
         .depth  = 1,
     };
 
@@ -1230,8 +1228,10 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(
             &layout_change_barrier);
     });
 
-    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-        [this, result]() { vmaDestroyImage(vmalloc, result.image, result.allocation); }));
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([this, result]() {
+            vmaDestroyImage(vmalloc, result.image, result.allocation);
+        }));
 
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
 
@@ -1243,7 +1243,12 @@ void Engine::draw()
     FrameData& frame = get_current_frame();
 
     // Wait for previous frame to finish
-    VK_CHECK(wait_for_fences_indefinitely(device, 1, &frame.fnc_render, VK_TRUE, (u64)1.6+7));
+    VK_CHECK(wait_for_fences_indefinitely(
+        device,
+        1,
+        &frame.fnc_render,
+        VK_TRUE,
+        (u64)1.6 + 7));
 
     // Get next image
     u32      next_image_index;
@@ -1516,7 +1521,7 @@ void Engine::recreate_swapchain()
     swap_chain_deletion_queue.flush();
     glm::ivec2 new_size;
     window->get_extents(new_size.x, new_size.y);
-    extent         = {.width = (u32)new_size.x, .height = (u32)new_size.y};
+    extent = {.width = (u32)new_size.x, .height = (u32)new_size.y};
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
 
     // Create swap chain & views
@@ -1650,7 +1655,8 @@ void Engine::deinit()
 {
     if (!is_initialized) return;
     for (int i = 0; i < num_overlap_frames; ++i) {
-        VK_CHECK(wait_for_fences_indefinitely(device, 1, &frames[i].fnc_render));
+        VK_CHECK(
+            wait_for_fences_indefinitely(device, 1, &frames[i].fnc_render));
     }
 
     swap_chain_deletion_queue.flush();
@@ -1731,7 +1737,7 @@ void Engine::init_default_images()
 {
     {
         AllocatedImage image =
-            upload_image_from_file("Assets/lost_empire-RGBA.png").unwrap();
+            upload_image_from_file("Assets/lost-empire-rgba.asset").unwrap();
 
         VkImageView           view;
         VkImageViewCreateInfo create_info = {
@@ -1792,8 +1798,8 @@ void Engine::init_default_images()
 
         vkUpdateDescriptorSets(device, 1, &write_image, 0, nullptr);
 
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this, blocky_sampler, view]() {
+        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+            [this, blocky_sampler, view]() {
                 vkDestroySampler(device, blocky_sampler, 0);
                 vkDestroyImageView(device, view, 0);
             }));

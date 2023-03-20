@@ -57,10 +57,12 @@ Result<AssetInfo, EAssetLoadError> Asset::probe(
 {
     AssetHeader header;
     AssetInfo   asset_info;
+    ParseTape   pt(input);
+    DEFER(pt.restore());
 
-    if (!input->read_struct(&header)) return Err(AssetLoadError::InvalidFormat);
+    if (!pt.read_struct(&header)) return Err(AssetLoadError::InvalidFormat);
 
-    if (!deserialize(input, allocator, asset_info, json_deserialize))
+    if (!deserialize(&pt, allocator, asset_info, json_deserialize))
         return Err(AssetLoadError::InvalidFormat);
 
     asset_info.blob_size   = header.blob_size;

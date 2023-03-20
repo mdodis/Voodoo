@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include "AssetLibrary/AssetLibrary.h"
 #include "Containers/Map.h"
 #include "Core/DeletionQueue.h"
 #include "Memory/Base.h"
@@ -174,7 +175,7 @@ struct Engine {
     Mesh*                            get_mesh(Str id);
     Material*                        get_material(Str id);
     void                             upload_mesh(Mesh& mesh);
-    Result<AllocatedImage, VkResult> upload_image_from_file(const char* path);
+    Result<AllocatedImage, VkResult> upload_image_from_file(Str path);
 
 private:
     void init_imgui();

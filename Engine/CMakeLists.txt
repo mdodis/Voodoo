@@ -57,6 +57,5 @@ target_link_libraries(vkx
     tinyobjloader
     imgui
     flecs
-    stb_image
     assetlib
     )

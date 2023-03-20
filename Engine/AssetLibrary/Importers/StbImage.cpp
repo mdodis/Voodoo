@@ -5,7 +5,7 @@
 #include "stb_image.h"
 
 static thread_local IAllocator* Local_Allocator;
-static Str File_Extensions[] = {"png", "jpeg", "bmp", "jpg"};
+static Str File_Extensions[] = {".png", ".jpeg", ".bmp", ".jpg"};
 
 PROC_IMPORTER_IMPORT(stb_image_import)
 {

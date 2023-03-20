@@ -1,6 +1,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 #include "Arg.h"
+#include "AssetLibrary/AssetLibrary.h"
 #include "Base.h"
 #include "ECS.h"
 #include "Engine.h"
@@ -12,8 +13,9 @@
 #include "imgui.h"
 
 struct {
-    Input  input{System_Allocator};
-    win::Window *window;
+    Input            input{System_Allocator};
+    win::Window*     window;
+    ImporterRegistry importers{System_Allocator};
 
     ECS  ecs;
     bool imgui_demo = false;
@@ -57,9 +59,13 @@ static int run()
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // Enable Docking
     ImGui::StyleColorsDark();
 
-    G.window = win::create_window(System_Allocator);
+    // Initialize window
+    G.window        = win::create_window(System_Allocator);
     G.window->input = &G.input;
     G.window->init(width, height).unwrap();
+
+    // Initialize importers
+    G.importers.init_default_importers();
 
     // Initialize ECS
     G.ecs.init();
@@ -175,14 +181,29 @@ static int run()
 
 static int convert(Slice<Str> args)
 {
+    CREATE_SCOPED_ARENA(&System_Allocator, temp, MEGABYTES(5));
+
     ArgCollection arguments;
-    arguments.register_arg<Str>(
-        LIT("-i"),
-        LIT(""),
-        LIT("Input file to convert to an asset"));
-    arguments.register_arg<Str>(LIT("-o"), LIT(""), LIT("Output asset path"));
+    arguments.register_arg<Str>(LIT("i"), LIT(""), LIT("Input file "));
+    arguments.register_arg<Str>(LIT("o"), LIT(""), LIT("Output asset path"));
 
-    ASSERT(arguments.parse_args(args));
+    if (!arguments.parse_args(args)) {
+        print(LIT("Invalid arguments, exiting.\n"));
+        arguments.summary();
+        return -1;
+    }
 
-    return -1;
+    Str  in_path  = *arguments.get_arg<Str>(LIT("i"));
+    Str  out_path = *arguments.get_arg<Str>(LIT("o"));
+    auto out_tape = TBufferedFileTape<true>(open_file_write(out_path));
+
+    ImporterRegistry registry(temp);
+    registry.init_default_importers();
+    Asset asset = registry.import_asset_from_file(in_path, temp).unwrap();
+    if (!asset.write(temp, &out_tape)) {
+        print(LIT("Failed to convert import {}\n"), in_path);
+        return -1;
+    }
+
+    return 0;
 }
