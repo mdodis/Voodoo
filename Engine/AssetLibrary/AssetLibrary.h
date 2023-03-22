@@ -1,4 +1,6 @@
 #pragma once
+#include <glm/glm.hpp>
+
 #include "Base.h"
 #include "Reflection.h"
 #include "Result.h"
@@ -7,12 +9,25 @@
 namespace AssetKind {
     enum Type : u32
     {
-        Unrecognized = 0,
+        Unknown = 0,
         Texture,
         Mesh,
     };
 }
-typedef u32 EAssetKind;
+typedef AssetKind::Type EAssetKind;
+
+PROC_FMT_ENUM(AssetKind, {
+    FMT_ENUM_CASE(AssetKind, Unknown);
+    FMT_ENUM_CASE(AssetKind, Texture);
+    FMT_ENUM_CASE(AssetKind, Mesh);
+    FMT_ENUM_DEFAULT_CASE(Unknown);
+})
+
+PROC_PARSE_ENUM(AssetKind, {
+    PARSE_ENUM_CASE(AssetKind, Unknown);
+    PARSE_ENUM_CASE(AssetKind, Texture);
+    PARSE_ENUM_CASE(AssetKind, Mesh);
+})
 
 namespace TextureFormat {
     enum Type : u32
@@ -32,6 +47,32 @@ PROC_FMT_ENUM(TextureFormat, {
 PROC_PARSE_ENUM(TextureFormat, {
     PARSE_ENUM_CASE(TextureFormat, Unknown);
     PARSE_ENUM_CASE(TextureFormat, R8G8B8A8UInt);
+})
+
+namespace VertexFormat {
+    enum Type : u32
+    {
+        Unknown      = 0,
+        /**
+         * float position[3];
+         * float normal[3];
+         * float color[3];
+         * float uv[2];
+         */
+        P3fN3fC3fU2f = 1,
+    };
+}
+typedef VertexFormat::Type EVertexFormat;
+
+PROC_FMT_ENUM(VertexFormat, {
+    FMT_ENUM_CASE(VertexFormat, Unknown);
+    FMT_ENUM_CASE(VertexFormat, P3fN3fC3fU2f);
+    FMT_ENUM_DEFAULT_CASE(Unknown);
+})
+
+PROC_PARSE_ENUM(VertexFormat, {
+    PARSE_ENUM_CASE(VertexFormat, Unknown);
+    PARSE_ENUM_CASE(VertexFormat, P3fN3fC3fU2f);
 })
 
 namespace AssetLoadError {
@@ -79,6 +120,19 @@ struct TextureAsset {
     ETextureFormat format;
 };
 
+struct MeshBounds {
+    glm::vec3 origin;
+    float     radius;
+    glm::vec3 extents;
+};
+
+struct MeshAsset {
+    u64           vertex_buffer_size;
+    u64           index_buffer_size;
+    MeshBounds    bounds;
+    EVertexFormat format;
+};
+
 struct AssetInfo {
     /** Version ID */
     int               version;
@@ -91,6 +145,7 @@ struct AssetInfo {
 
     union {
         TextureAsset texture;
+        MeshAsset    mesh;
     };
 
     _inline bool is_compressed() const
@@ -157,10 +212,57 @@ struct TextureAssetDescriptor : IDescriptor {
     }
 };
 
+struct MeshBoundsDescriptor : IDescriptor {
+    FixedArrayDescriptor<glm::vec3, float, 3> origin_desc = {
+        OFFSET_OF(MeshBounds, origin), LIT("origin")};
+    PrimitiveDescriptor<float> radius_desc = {
+        OFFSET_OF(MeshBounds, radius), LIT("radius")};
+    FixedArrayDescriptor<glm::vec3, float, 3> extents_desc = {
+        OFFSET_OF(MeshBounds, extents), LIT("extents")};
+
+    IDescriptor* descs[3] = {
+        &origin_desc,
+        &radius_desc,
+        &extents_desc,
+    };
+
+    CUSTOM_DESC_DEFAULT(MeshBoundsDescriptor)
+    virtual Str type_name() override { return LIT("MeshBounds"); }
+    virtual Slice<IDescriptor*> subdescriptors(umm self) override
+    {
+        return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
+    }
+};
+
+struct MeshAssetDescriptor : IDescriptor {
+    PrimitiveDescriptor<u64> vertex_buffer_size_desc = {
+        OFFSET_OF(MeshAsset, vertex_buffer_size), LIT("vertex_buffer_size")};
+    PrimitiveDescriptor<u64> index_buffer_size_desc = {
+        OFFSET_OF(MeshAsset, index_buffer_size), LIT("index_buffer_size")};
+    MeshBoundsDescriptor bounds_desc = {
+        OFFSET_OF(MeshAsset, bounds), LIT("bounds")};
+    EnumDescriptor<EVertexFormat> format_desc = {
+        OFFSET_OF(MeshAsset, format), LIT("format")};
+
+    IDescriptor* descs[4] = {
+        &vertex_buffer_size_desc,
+        &index_buffer_size_desc,
+        &bounds_desc,
+        &format_desc,
+    };
+
+    CUSTOM_DESC_DEFAULT(MeshAssetDescriptor)
+    virtual Str type_name() override { return LIT("MeshAsset"); }
+    virtual Slice<IDescriptor*> subdescriptors(umm self) override
+    {
+        return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
+    }
+};
+
 struct AssetInfoDescriptor : IDescriptor {
     PrimitiveDescriptor<int> version_desc = {
         OFFSET_OF(AssetInfo, version), LIT("version")};
-    PrimitiveDescriptor<EAssetKind> kind_desc = {
+    EnumDescriptor<EAssetKind> kind_desc = {
         OFFSET_OF(AssetInfo, kind), LIT("kind")};
     EnumDescriptor<EAssetCompression> compression_desc = {
         OFFSET_OF(AssetInfo, compression), LIT("compression")};
@@ -169,6 +271,7 @@ struct AssetInfoDescriptor : IDescriptor {
 
     TextureAssetDescriptor texture_desc = {
         OFFSET_OF(AssetInfo, texture), LIT("texture")};
+    MeshAssetDescriptor mesh_desc = {OFFSET_OF(AssetInfo, mesh), LIT("mesh")};
 
     IDescriptor* descs_unrecognized[4] = {
         &version_desc,
@@ -185,6 +288,14 @@ struct AssetInfoDescriptor : IDescriptor {
         &texture_desc,
     };
 
+    IDescriptor* descs_mesh[5] = {
+        &version_desc,
+        &kind_desc,
+        &compression_desc,
+        &actual_size_desc,
+        &mesh_desc,
+    };
+
     CUSTOM_DESC_DEFAULT(AssetInfoDescriptor)
 
     virtual Str type_name() override { return LIT("AssetInfo"); }
@@ -192,7 +303,7 @@ struct AssetInfoDescriptor : IDescriptor {
     {
         AssetInfo* info = (AssetInfo*)self;
         switch (info->kind) {
-            case AssetKind::Unrecognized:
+            case AssetKind::Unknown:
             case AssetKind::Mesh:
             default:
                 return Slice<IDescriptor*>(
@@ -207,6 +318,8 @@ struct AssetInfoDescriptor : IDescriptor {
     }
 };
 
+DEFINE_DESCRIPTOR_OF_INL(MeshBounds)
+DEFINE_DESCRIPTOR_OF_INL(MeshAsset)
 DEFINE_DESCRIPTOR_OF_INL(TextureAsset)
 DEFINE_DESCRIPTOR_OF_INL(AssetInfo)
 

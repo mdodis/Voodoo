@@ -7,8 +7,10 @@ target_include_directories(assetlib PRIVATE "./")
 target_link_libraries(assetlib
     PUBLIC
     core
+    glm
     PRIVATE
     LZ4
-    stb_image)
+    stb_image
+    tinyobjloader)
 
 add_subdirectory(Tests)
