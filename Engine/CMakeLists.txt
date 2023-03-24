@@ -54,7 +54,6 @@ target_link_libraries(vkx
     core
     ${Vulkan_LIBRARY}
     VulkanMemoryAllocator
-    tinyobjloader
     imgui
     flecs
     assetlib

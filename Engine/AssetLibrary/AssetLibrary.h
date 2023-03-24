@@ -2,9 +2,12 @@
 #include <glm/glm.hpp>
 
 #include "Base.h"
+#include "Core/Utility.h"
 #include "Reflection.h"
 #include "Result.h"
 #include "Tape.h"
+
+using namespace core;
 
 namespace AssetKind {
     enum Type : u32
@@ -47,32 +50,6 @@ PROC_FMT_ENUM(TextureFormat, {
 PROC_PARSE_ENUM(TextureFormat, {
     PARSE_ENUM_CASE(TextureFormat, Unknown);
     PARSE_ENUM_CASE(TextureFormat, R8G8B8A8UInt);
-})
-
-namespace VertexFormat {
-    enum Type : u32
-    {
-        Unknown      = 0,
-        /**
-         * float position[3];
-         * float normal[3];
-         * float color[3];
-         * float uv[2];
-         */
-        P3fN3fC3fU2f = 1,
-    };
-}
-typedef VertexFormat::Type EVertexFormat;
-
-PROC_FMT_ENUM(VertexFormat, {
-    FMT_ENUM_CASE(VertexFormat, Unknown);
-    FMT_ENUM_CASE(VertexFormat, P3fN3fC3fU2f);
-    FMT_ENUM_DEFAULT_CASE(Unknown);
-})
-
-PROC_PARSE_ENUM(VertexFormat, {
-    PARSE_ENUM_CASE(VertexFormat, Unknown);
-    PARSE_ENUM_CASE(VertexFormat, P3fN3fC3fU2f);
 })
 
 namespace AssetLoadError {
@@ -118,12 +95,6 @@ struct TextureAsset {
     u32            height;
     u32            depth;
     ETextureFormat format;
-};
-
-struct MeshBounds {
-    glm::vec3 origin;
-    float     radius;
-    glm::vec3 extents;
 };
 
 struct MeshAsset {
@@ -174,8 +145,14 @@ struct Asset {
     Slice<u8> blob;
 
     bool write(IAllocator& allocator, Tape* output);
+
     static Result<Asset, EAssetLoadError> load(
         IAllocator& allocator, Tape* input);
+    static Result<Asset, EAssetLoadError> load(IAllocator& allocator, Str path)
+    {
+        auto t = open_read_tape(path);
+        return load(allocator, &t);
+    }
 
     static Result<AssetInfo, EAssetLoadError> probe(
         IAllocator& allocator, Tape* input);
@@ -304,16 +281,18 @@ struct AssetInfoDescriptor : IDescriptor {
         AssetInfo* info = (AssetInfo*)self;
         switch (info->kind) {
             case AssetKind::Unknown:
+
             case AssetKind::Mesh:
-            default:
-                return Slice<IDescriptor*>(
-                    descs_unrecognized,
-                    ARRAY_COUNT(descs_unrecognized));
+                return Slice<IDescriptor*>(descs_mesh, ARRAY_COUNT(descs_mesh));
 
             case AssetKind::Texture:
                 return Slice<IDescriptor*>(
                     descs_texture,
                     ARRAY_COUNT(descs_texture));
+            default:
+                return Slice<IDescriptor*>(
+                    descs_unrecognized,
+                    ARRAY_COUNT(descs_unrecognized));
         }
     }
 };

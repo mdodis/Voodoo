@@ -178,4 +178,5 @@ Result<Asset, Str> ImporterRegistry::import_asset_from_file(
 void ImporterRegistry::init_default_importers()
 {
     importers.add(Stb_Image_Importer);
+    importers.add(Tiny_OBJ_Loader_Importer);
 }

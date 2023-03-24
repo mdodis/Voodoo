@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 
+#include "AssetLibrary/AssetLibrary.h"
 #include "Result.h"
 #include "VulkanCommon.h"
 #include "vk_mem_alloc.h"
@@ -8,12 +9,6 @@
 struct AllocatedBuffer {
     VkBuffer      buffer     = VK_NULL_HANDLE;
     VmaAllocation allocation = VK_NULL_HANDLE;
-};
-
-struct VertexInputInfo {
-    Slice<VkVertexInputBindingDescription>   bindings;
-    Slice<VkVertexInputAttributeDescription> attributes;
-    VkPipelineVertexInputStateCreateFlags    flags = 0;
 };
 
 struct Vertex {
@@ -26,10 +21,12 @@ struct Vertex {
 
 struct Mesh {
     Slice<Vertex>   vertices;
+    Slice<u32>      indices;
     AllocatedBuffer gpu_buffer;
+    AllocatedBuffer gpu_index_buffer;
 
-    static Result<Mesh, Str> load_from_file(
-        IAllocator& allocator, const char* path);
+    static Result<Mesh, EAssetLoadError> load_from_asset(
+        IAllocator& allocator, Str path);
 };
 
 static _inline bool operator==(Mesh& left, Mesh& right)

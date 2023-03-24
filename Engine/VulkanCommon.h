@@ -1,7 +1,9 @@
 #pragma once
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan.h>
+
 #include "Containers/Slice.h"
+#include "Core/Utility.h"
 #include "Result.h"
 #include "Types.h"
 
@@ -28,6 +30,12 @@
         VkDebugUtilsMessageTypeFlagsEXT             type,          \
         const VkDebugUtilsMessengerCallbackDataEXT* callback_data, \
         void*                                       user_data)
+
+struct VertexInputInfo {
+    Slice<VkVertexInputBindingDescription>   bindings;
+    Slice<VkVertexInputAttributeDescription> attributes;
+    VkPipelineVertexInputStateCreateFlags    flags = 0;
+};
 
 /* Helpers */
 
@@ -102,7 +110,7 @@ Result<VkSwapchainKHR, VkResult> create_swapchain(
     IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info);
 
 TArray<VkQueueFamilyProperties> get_physical_device_queue_families(
-        VkPhysicalDevice physical_device, IAllocator& allocator);
+    VkPhysicalDevice physical_device, IAllocator& allocator);
 
 void print_physical_device_queue_families(VkPhysicalDevice device);
 
@@ -128,4 +136,9 @@ VkSamplerCreateInfo make_sampler_create_info(
     VkFilter             filters,
     VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-VkResult wait_for_fences_indefinitely(VkDevice device, u32 fence_count, const VkFence* fences, VkBool32 wait_all = VK_TRUE, u64 timeout = 1000000);
+VkResult wait_for_fences_indefinitely(
+    VkDevice       device,
+    u32            fence_count,
+    const VkFence* fences,
+    VkBool32       wait_all = VK_TRUE,
+    u64            timeout  = 1000000);

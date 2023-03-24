@@ -1021,11 +1021,12 @@ VkShaderModule Engine::load_shader(Str path)
 
 void Engine::upload_mesh(Mesh& mesh)
 {
-    const size_t buffer_size = mesh.vertices.size();
+    const size_t staging_buffer_size =
+        mesh.vertices.size() + mesh.indices.size();
 
     VkBufferCreateInfo staging_buffer_info = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size  = buffer_size,
+        .size  = staging_buffer_size,
         .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
     };
 
@@ -1042,51 +1043,102 @@ void Engine::upload_mesh(Mesh& mesh)
         &staging_buffer.buffer,
         &staging_buffer.allocation,
         0));
-    void* data;
-    vmaMapMemory(vmalloc, staging_buffer.allocation, &data);
+
+    // Copy data into staging buffer
+    void* data_;
+    vmaMapMemory(vmalloc, staging_buffer.allocation, &data_);
+    u8* data = (u8*)data_;
     memcpy(data, mesh.vertices.ptr, mesh.vertices.size());
+    memcpy(data + mesh.vertices.size(), mesh.indices.ptr, mesh.indices.size());
     vmaUnmapMemory(vmalloc, staging_buffer.allocation);
 
-    VkBufferCreateInfo buffer_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size  = buffer_size,
-        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-    };
-
-    VmaAllocationCreateInfo alloc_info = {
-        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-    };
-
-    VK_CHECK(vmaCreateBuffer(
-        vmalloc,
-        &buffer_info,
-        &alloc_info,
-        &mesh.gpu_buffer.buffer,
-        &mesh.gpu_buffer.allocation,
-        0));
-
-    immediate_submit_lambda([=](VkCommandBuffer cmd) {
-        VkBufferCopy copy = {
-            .srcOffset = 0,
-            .dstOffset = 0,
-            .size      = buffer_size,
+    // Vertex Buffer
+    {
+        VkBufferCreateInfo buffer_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size  = mesh.vertices.size(),
+            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         };
-        vkCmdCopyBuffer(
-            cmd,
-            staging_buffer.buffer,
-            mesh.gpu_buffer.buffer,
-            1,
-            &copy);
-    });
 
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
-            vmaDestroyBuffer(
-                vmalloc,
+        VmaAllocationCreateInfo alloc_info = {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        };
+
+        VK_CHECK(vmaCreateBuffer(
+            vmalloc,
+            &buffer_info,
+            &alloc_info,
+            &mesh.gpu_buffer.buffer,
+            &mesh.gpu_buffer.allocation,
+            0));
+
+        immediate_submit_lambda([=](VkCommandBuffer cmd) {
+            VkBufferCopy copy = {
+                .srcOffset = 0,
+                .dstOffset = 0,
+                .size      = mesh.vertices.size(),
+            };
+            vkCmdCopyBuffer(
+                cmd,
+                staging_buffer.buffer,
                 mesh.gpu_buffer.buffer,
-                mesh.gpu_buffer.allocation);
-        }));
+                1,
+                &copy);
+        });
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
+                vmaDestroyBuffer(
+                    vmalloc,
+                    mesh.gpu_buffer.buffer,
+                    mesh.gpu_buffer.allocation);
+            }));
+    }
+
+    // Index Buffer
+    {
+        VkBufferCreateInfo buffer_info = {
+            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            .size  = mesh.indices.size(),
+            .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        };
+
+        VmaAllocationCreateInfo alloc_info = {
+            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+        };
+
+        VK_CHECK(vmaCreateBuffer(
+            vmalloc,
+            &buffer_info,
+            &alloc_info,
+            &mesh.gpu_index_buffer.buffer,
+            &mesh.gpu_index_buffer.allocation,
+            0));
+
+        immediate_submit_lambda([=](VkCommandBuffer cmd) {
+            VkBufferCopy copy = {
+                .srcOffset = mesh.vertices.size(),
+                .dstOffset = 0,
+                .size      = mesh.indices.size(),
+            };
+            vkCmdCopyBuffer(
+                cmd,
+                staging_buffer.buffer,
+                mesh.gpu_index_buffer.buffer,
+                1,
+                &copy);
+        });
+
+        main_deletion_queue.add(
+            DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
+                vmaDestroyBuffer(
+                    vmalloc,
+                    mesh.gpu_index_buffer.buffer,
+                    mesh.gpu_index_buffer.allocation);
+            }));
+    }
 
     vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
 }
@@ -1447,8 +1499,13 @@ void Engine::draw()
         last_material = ro.material;
 
         VkDeviceSize offset = 0;
+        vkCmdBindIndexBuffer(
+            cmd,
+            ro.mesh->gpu_index_buffer.buffer,
+            offset,
+            VK_INDEX_TYPE_UINT32);
         vkCmdBindVertexBuffers(cmd, 0, 1, &ro.mesh->gpu_buffer.buffer, &offset);
-        vkCmdDraw(cmd, (u32)ro.mesh->vertices.count, 1, 0, u32(i));
+        vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -1714,17 +1771,21 @@ void Engine::init_default_meshes()
         .color    = {0, 1, 0},
     };
 
+    u32 indices[3] = {0, 1, 2};
+
     triangle_mesh.vertices = slice(vertices, 3);
+    triangle_mesh.indices  = slice(indices, 3);
     upload_mesh(triangle_mesh);
 
     monke_mesh =
-        Mesh::load_from_file(allocator, "Assets/monkey_smooth.obj").unwrap();
+        Mesh::load_from_asset(allocator, "Assets/monkey-smooth.asset").unwrap();
     upload_mesh(monke_mesh);
 
     // Lost Empire
     {
         Mesh lost_empire =
-            Mesh::load_from_file(allocator, "Assets/lost_empire.obj").unwrap();
+            Mesh::load_from_asset(allocator, "Assets/lost-empire.asset")
+                .unwrap();
         upload_mesh(lost_empire);
         meshes.add(LIT("lost_empire"), lost_empire);
     }

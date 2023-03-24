@@ -1,6 +1,9 @@
 #define MOK_WIN32_NO_FUNCTIONS
 #include "VulkanCommon.h"
+
 #include <set>
+
+#include "Containers/Extras.h"
 
 bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers)
 {
@@ -141,13 +144,12 @@ Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
 {
     SwapChainSupportInfo result(allocator);
 
-
     bool has_queue_with_present = false;
     auto families = get_physical_device_queue_families(device, allocator);
     DEFER(families.release());
     for (u32 i = 0; i < families.size; ++i) {
-        VkQueueFamilyProperties& family = families[i];
-        VkBool32 surface_supported = false;
+        VkQueueFamilyProperties& family            = families[i];
+        VkBool32                 surface_supported = false;
         VK_RETURN_IF_ERR(vkGetPhysicalDeviceSurfaceSupportKHR(
             device,
             i,
@@ -158,7 +160,6 @@ Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
             has_queue_with_present = true;
             break;
         }
-
     }
 
     if (!has_queue_with_present) {
@@ -490,7 +491,8 @@ VkSamplerCreateInfo make_sampler_create_info(
     };
 }
 
-TArray<VkQueueFamilyProperties> get_physical_device_queue_families(VkPhysicalDevice physical_device, IAllocator& allocator)
+TArray<VkQueueFamilyProperties> get_physical_device_queue_families(
+    VkPhysicalDevice physical_device, IAllocator& allocator)
 {
     u32 count;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, 0);
@@ -498,17 +500,26 @@ TArray<VkQueueFamilyProperties> get_physical_device_queue_families(VkPhysicalDev
     TArray<VkQueueFamilyProperties> result(&allocator);
     result.init_range(count);
 
-    vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, result.data);
+    vkGetPhysicalDeviceQueueFamilyProperties(
+        physical_device,
+        &count,
+        result.data);
 
     return result;
 }
 
-VkResult wait_for_fences_indefinitely(VkDevice device, u32 fence_count, const VkFence *fences, VkBool32 wait_all, u64 timeout)
+VkResult wait_for_fences_indefinitely(
+    VkDevice       device,
+    u32            fence_count,
+    const VkFence* fences,
+    VkBool32       wait_all,
+    u64            timeout)
 {
     VkResult result = VK_SUCCESS;
 
     for (;;) {
-        result = vkWaitForFences(device, fence_count, fences, wait_all, timeout);
+        result =
+            vkWaitForFences(device, fence_count, fences, wait_all, timeout);
         if (result == VK_SUCCESS) {
             break;
         } else if (result == VK_TIMEOUT) {
