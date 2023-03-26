@@ -22,7 +22,11 @@ struct DescriptorBuilder {
         VkShaderStageFlags     stage_flags);
 
     bool build(VkDescriptorSet& set, VkDescriptorSetLayout& layout);
-    bool build(VkDescriptorSet& set);
+    bool build(VkDescriptorSet& set)
+    {
+        VkDescriptorSetLayout layout;
+        return build(set, layout);
+    }
 
     DescriptorLayoutCache*               cache;
     DescriptorAllocator*                 descriptor_allocator;

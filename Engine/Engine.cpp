@@ -163,9 +163,9 @@ void Engine::init()
     init_framebuffers();
     init_sync_objects();
     init_descriptors();
+    init_default_images();
     init_pipelines();
     init_default_meshes();
-    init_default_images();
     init_imgui();
 
     is_initialized = true;
@@ -234,89 +234,16 @@ void Engine::init_commands()
 
 void Engine::init_descriptors()
 {
-    auto descriptor_pool_sizes = arr<VkDescriptorPoolSize>(
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 20},
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 10},
-        VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 10});
+    desc.allocator.init(System_Allocator, device);
+    desc.cache.init(device);
 
-    VkDescriptorPoolCreateInfo pool_create_info = {
-        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-        .pNext         = 0,
-        .flags         = 0,
-        .maxSets       = 10,
-        .poolSizeCount = descriptor_pool_sizes.count(),
-        .pPoolSizes    = descriptor_pool_sizes.elements,
-    };
+    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(5));
 
-    VK_CHECK(
-        vkCreateDescriptorPool(device, &pool_create_info, 0, &descriptor_pool));
-
-    // Global data at 0
-    VkDescriptorSetLayoutBinding global_binding = descriptor_set_layout_binding(
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        0);
-
-    VkDescriptorSetLayoutBinding bindings[] = {global_binding};
-
-    VkDescriptorSetLayoutCreateInfo set_info = {
-        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext        = 0,
-        .flags        = 0,
-        .bindingCount = ARRAY_COUNT(bindings),
-        .pBindings    = bindings,
-    };
-
-    VK_CHECK(
-        vkCreateDescriptorSetLayout(device, &set_info, 0, &global_set_layout));
-
-    // Per-object transforms at 1
-    VkDescriptorSetLayoutBinding object_binding = descriptor_set_layout_binding(
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0);
-
-    VkDescriptorSetLayoutCreateInfo set2_info = {
-        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext        = 0,
-        .flags        = 0,
-        .bindingCount = 1,
-        .pBindings    = &object_binding,
-    };
-
-    VK_CHECK(
-        vkCreateDescriptorSetLayout(device, &set2_info, 0, &object_set_layout));
-
-    // Textures at 2
-    VkDescriptorSetLayoutBinding texture_binding =
-        descriptor_set_layout_binding(
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            0);
-
-    VkDescriptorSetLayoutCreateInfo set3_info = {
-        .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-        .pNext        = 0,
-        .flags        = 0,
-        .bindingCount = 1,
-        .pBindings    = &texture_binding,
-    };
-
-    VK_CHECK(vkCreateDescriptorSetLayout(
-        device,
-        &set3_info,
-        0,
-        &texture_set_layout));
-
-    // global data buffer
+    // Global data buffer
+    // [Camera, Scene, PAD]
+    // [Camera, Scene, PAD]
+    // [Camera, Scene, PAD]
     {
-        /*
-            Buffer
-            [Camera, Scene, PAD]
-            [Camera, Scene, PAD]
-            [Camera, Scene, PAD]
-        */
-
         global.total_buffer_size =
             (u32)pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) *
             num_overlap_frames;
@@ -335,99 +262,59 @@ void Engine::init_descriptors()
                     global.buffer.buffer,
                     global.buffer.allocation);
             }));
+
+        for (int i = 0; i < num_overlap_frames; ++i) {
+            SAVE_ARENA(temp);
+
+            VkDescriptorBufferInfo buffer_info = {
+                .buffer = global.buffer.buffer,
+                .offset = 0,
+                .range  = sizeof(GPUGlobalInstanceData),
+            };
+
+            ASSERT(DescriptorBuilder::create(temp, &desc.cache, &desc.allocator)
+                       .bind_buffer(
+                           0,
+                           &buffer_info,
+                           VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                           VK_SHADER_STAGE_VERTEX_BIT |
+                               VK_SHADER_STAGE_FRAGMENT_BIT)
+                       .build(frames[i].global_descriptor, global_set_layout));
+        }
     }
 
-    for (int i = 0; i < num_overlap_frames; ++i) {
-        VkDescriptorSetAllocateInfo alloc_info = {
-            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext          = 0,
-            .descriptorPool = descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts        = &global_set_layout,
-        };
+    // Object data buffer
+    {
+        for (int i = 0; i < num_overlap_frames; ++i) {
+            SAVE_ARENA(temp);
+            const int max_objects = 10000;
+            frames[i].object_buffer =
+                create_buffer(
+                    sizeof(GPUObjectData) * max_objects,
+                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                    VMA_MEMORY_USAGE_CPU_TO_GPU)
+                    .unwrap();
 
-        VK_CHECK(vkAllocateDescriptorSets(
-            device,
-            &alloc_info,
-            &frames[i].global_descriptor));
+            VkDescriptorBufferInfo buffer_info = {
+                .buffer = frames[i].object_buffer.buffer,
+                .offset = 0,
+                .range  = sizeof(GPUObjectData) * max_objects};
 
-        VkDescriptorSetAllocateInfo object_set_alloc_info = {
-            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext          = 0,
-            .descriptorPool = descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts        = &object_set_layout,
-        };
-
-        VK_CHECK(vkAllocateDescriptorSets(
-            device,
-            &object_set_alloc_info,
-            &frames[i].object_descriptor));
-
-        const int max_objects = 10000;
-        frames[i].object_buffer =
-            create_buffer(
-                sizeof(GPUObjectData) * max_objects,
-                VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                VMA_MEMORY_USAGE_CPU_TO_GPU)
-                .unwrap();
-
-        VkDescriptorBufferInfo global_instance_buffer_info = {
-            .buffer = global.buffer.buffer,
-            .offset = 0,
-            .range  = sizeof(GPUGlobalInstanceData),
-        };
-
-        VkDescriptorBufferInfo object_buffer_info = {
-            .buffer = frames[i].object_buffer.buffer,
-            .offset = 0,
-            .range  = sizeof(GPUObjectData) * max_objects,
-        };
-
-        VkWriteDescriptorSet global_instance_set_write = write_descriptor_set(
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
-            frames[i].global_descriptor,
-            &global_instance_buffer_info,
-            0);
-
-        VkWriteDescriptorSet object_set_write = write_descriptor_set(
-            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-            frames[i].object_descriptor,
-            &object_buffer_info,
-            0);
-
-        VkWriteDescriptorSet write_sets[] = {
-            global_instance_set_write,
-            object_set_write,
-        };
-
-        vkUpdateDescriptorSets(
-            device,
-            ARRAY_COUNT(write_sets),
-            write_sets,
-            0,
-            0);
-
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
-                vmaDestroyBuffer(
-                    vmalloc,
-                    frames[i].object_buffer.buffer,
-                    frames[i].object_buffer.allocation);
-            }));
+            ASSERT(DescriptorBuilder::create(temp, &desc.cache, &desc.allocator)
+                       .bind_buffer(
+                           0,
+                           &buffer_info,
+                           VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                           VK_SHADER_STAGE_VERTEX_BIT)
+                       .build(frames[i].object_descriptor, object_set_layout));
+        }
     }
-
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vkDestroyDescriptorSetLayout(device, texture_set_layout, 0);
-            vkDestroyDescriptorSetLayout(device, object_set_layout, 0);
-            vkDestroyDescriptorSetLayout(device, global_set_layout, 0);
-            vkDestroyDescriptorPool(device, descriptor_pool, 0);
-        }));
 }
 
 void Engine::init_pipelines()
 {
+    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(5));
+
     // Untextured
     {
         VkPipelineLayout pipeline_layout;
@@ -492,6 +379,43 @@ void Engine::init_pipelines()
     }
     // Textured
     {
+        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(5));
+
+        VkDescriptorSet texture_set;
+        {
+            VkSamplerCreateInfo sampler_create_info =
+                make_sampler_create_info(VK_FILTER_NEAREST);
+
+            VkSampler blocky_sampler;
+            VK_CHECK(vkCreateSampler(
+                device,
+                &sampler_create_info,
+                0,
+                &blocky_sampler));
+
+            auto& t = textures.at(LIT("empire.diffuse"));
+
+            VkDescriptorImageInfo image_info = {
+                .sampler     = blocky_sampler,
+                .imageView   = t.view,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            };
+
+            DescriptorBuilder::create(temp_alloc, &desc.cache, &desc.allocator)
+                .bind_image(
+                    0,
+                    &image_info,
+                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                    VK_SHADER_STAGE_FRAGMENT_BIT)
+                .build(texture_set, texture_set_layout);
+
+            main_deletion_queue.add(
+                DeletionQueue::DeletionDelegate::create_lambda(
+                    [this, blocky_sampler]() {
+                        vkDestroySampler(device, blocky_sampler, 0);
+                    }));
+        }
+
         VkPipelineLayout pipeline_layout;
         // Create layout
         {
@@ -521,8 +445,6 @@ void Engine::init_pipelines()
         basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
         basic_shader_frag = load_shader(LIT("Shaders/Textured.frag.spv"));
 
-        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
-
         VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
         VkPipeline pipeline =
@@ -547,11 +469,12 @@ void Engine::init_pipelines()
             vkDestroyPipelineLayout(device, pipeline_layout, 0);
         });
 
-        create_material(
+        Material* m = create_material(
             pipeline,
             pipeline_layout,
             LIT("default.mesh.textured"));
 
+        m->texture_set = texture_set;
         vkDestroyShaderModule(device, basic_shader_vert, 0);
         vkDestroyShaderModule(device, basic_shader_frag, 0);
     }
@@ -1716,6 +1639,9 @@ void Engine::deinit()
             wait_for_fences_indefinitely(device, 1, &frames[i].fnc_render));
     }
 
+    desc.cache.deinit();
+    desc.allocator.deinit();
+
     swap_chain_deletion_queue.flush();
     main_deletion_queue.flush();
     vmaDestroyAllocator(vmalloc);
@@ -1826,44 +1752,8 @@ void Engine::init_default_images()
 
         textures.add(LIT("empire.diffuse"), new_texture);
 
-        // Bind descriptor set here
-        Material* mat = get_material(LIT("default.mesh.textured"));
-
-        VkSamplerCreateInfo sampler_create_info =
-            make_sampler_create_info(VK_FILTER_NEAREST);
-
-        VkSampler blocky_sampler;
-        VK_CHECK(
-            vkCreateSampler(device, &sampler_create_info, 0, &blocky_sampler));
-
-        VkDescriptorSetAllocateInfo alloc_info = {
-            .sType          = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-            .pNext          = 0,
-            .descriptorPool = descriptor_pool,
-            .descriptorSetCount = 1,
-            .pSetLayouts        = &texture_set_layout,
-        };
-        vkAllocateDescriptorSets(device, &alloc_info, &mat->texture_set);
-
-        VkDescriptorImageInfo image_info = {
-            .sampler     = blocky_sampler,
-            .imageView   = view,
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-
-        VkWriteDescriptorSet write_image = write_descriptor_set_image(
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            mat->texture_set,
-            &image_info,
-            0);
-
-        vkUpdateDescriptorSets(device, 1, &write_image, 0, nullptr);
-
         main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-            [this, blocky_sampler, view]() {
-                vkDestroySampler(device, blocky_sampler, 0);
-                vkDestroyImageView(device, view, 0);
-            }));
+            [this, view]() { vkDestroyImageView(device, view, 0); }));
     }
 }
 

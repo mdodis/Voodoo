@@ -46,4 +46,6 @@ void DescriptorLayoutCache::deinit()
         pair.key.release();
         vkDestroyDescriptorSetLayout(device, pair.val, nullptr);
     }
+
+    layout_cache.release();
 }

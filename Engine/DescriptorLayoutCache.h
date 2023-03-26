@@ -4,7 +4,7 @@
 #include "VulkanCommon.h"
 
 struct DescriptorLayoutCache {
-    DescriptorLayoutCache(IAllocator& allocator)
+    DescriptorLayoutCache(IAllocator& allocator = System_Allocator)
         : layout_cache(allocator), allocator(allocator)
     {}
 

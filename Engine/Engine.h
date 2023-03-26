@@ -5,6 +5,7 @@
 #include "AssetLibrary/AssetLibrary.h"
 #include "Containers/Map.h"
 #include "Core/DeletionQueue.h"
+#include "DescriptorBuilder.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
 #include "VulkanCommon.h"
@@ -138,6 +139,11 @@ struct Engine {
 
     Mesh triangle_mesh;
     Mesh monke_mesh;  // monke
+
+    struct {
+        DescriptorAllocator   allocator;
+        DescriptorLayoutCache cache;
+    } desc;
 
     struct {
         u32     family;
