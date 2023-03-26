@@ -39,6 +39,8 @@ struct ECS {
     void          run();
     flecs::entity create_entity(Str name);
 
+    void save_world(Str path);
+
     struct {
         flecs::query<EditorSelectableComponent> entity_view_query;
         flecs::query<>                          component_view_query;

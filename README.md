@@ -42,3 +42,4 @@ All third party libraries are included in source, so you only have to:
 - [Vulkan Memory Allocator](https://gpuopen.com/vulkan-memory-allocator/)
 - [Tinyobjloader](https://github.com/tinyobjloader/tinyobjloader)
 - [GLFW](https://www.glfw.org/)
+- [portable-file-dialogs](https://github.com/samhocevar/portable-file-dialogs)

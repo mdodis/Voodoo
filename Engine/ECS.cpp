@@ -158,3 +158,5 @@ void ECS::draw_editor()
     }
     ImGui::End();
 }
+
+void ECS::save_world(Str path) { world.to_json(); }

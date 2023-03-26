@@ -12,6 +12,7 @@
 #include "Serialization/JSON.h"
 #include "Time/Time.h"
 #include "imgui.h"
+#include "portable-file-dialogs.h"
 
 struct {
     Input            input{System_Allocator};
@@ -121,7 +122,20 @@ static int run()
         {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
+                    if (ImGui::MenuItem("Save World...")) {
+                        auto f = pfd::save_file(
+                                     "Save world to",
+                                     "",
+                                     {"JSON File (.json)", ",json"},
+                                     pfd::opt::force_overwrite)
+                                     .result();
+
+                        const char* save_file = f.c_str();
+                        G.ecs.save_world(Str(save_file));
+                    }
+
                     ImGui::Separator();
+
                     if (ImGui::MenuItem("Quit")) {
                         G.window->is_open = false;
                     }

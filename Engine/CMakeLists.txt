@@ -64,4 +64,5 @@ target_link_libraries(vkx
     imgui
     flecs
     assetlib
+    portable_file_dialogs
     )
