@@ -29,7 +29,6 @@ void Engine::init()
     framebuffers.alloc           = &allocator;
     main_deletion_queue          = DeletionQueue(allocator);
     swap_chain_deletion_queue    = DeletionQueue(allocator);
-    render_objects.alloc         = &allocator;
     meshes.init(allocator);
     materials.init(allocator);
     textures.init(allocator);
@@ -1363,7 +1362,7 @@ void Engine::draw()
             frame.object_buffer.allocation,
             &object_data));
         GPUObjectData* object_ssbo = (GPUObjectData*)object_data;
-        for (u64 i = 0; i < render_objects.size; ++i) {
+        for (u64 i = 0; i < render_objects.count; ++i) {
             RenderObject& ro     = render_objects[i];
             object_ssbo[i].model = ro.transform;
         }
@@ -1372,7 +1371,7 @@ void Engine::draw()
 
     Material* last_material = 0;
 
-    for (u64 i = 0; i < render_objects.size; ++i) {
+    for (u64 i = 0; i < render_objects.count; ++i) {
         RenderObject& ro = render_objects[i];
         if ((last_material == 0) || (*last_material != *ro.material)) {
             vkCmdBindPipeline(

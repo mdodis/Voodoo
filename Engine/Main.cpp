@@ -10,6 +10,7 @@
 #include "Memory/AllocTape.h"
 #include "Reflection.h"
 #include "Serialization/JSON.h"
+#include "Time/Time.h"
 #include "imgui.h"
 
 struct {
@@ -67,19 +68,7 @@ static int run()
     // Initialize importers
     G.importers.init_default_importers();
 
-    // Initialize ECS
-    G.ecs.init();
-    {
-        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
-        for (int i = 0; i < 10; ++i) {
-            SAVE_ARENA(temp);
-
-            Str  entity_name = format(temp, LIT("Entity #{}\0"), i);
-            auto ent         = G.ecs.create_entity(entity_name);
-            ent.set<TransformComponent>({{i, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
-        }
-    }
-
+    // Initialize engine
     Engine eng = {
         .window            = G.window,
         .input             = &G.input,
@@ -89,40 +78,36 @@ static int run()
     eng.init();
     DEFER(eng.deinit());
 
-    // Add render objects
-    RenderObject monke = {
-        .mesh      = eng.get_mesh(LIT("monke")),
-        .material  = eng.get_material(LIT("default.mesh")),
-        .transform = glm::mat4(1.0f),
-    };
-    RenderObject lost_empire = {
-        .mesh      = eng.get_mesh(LIT("lost_empire")),
-        .material  = eng.get_material(LIT("default.mesh.textured")),
-        .transform = glm::mat4(1.f),
-    };
+    // Initialize ECS
+    G.ecs.engine = &eng;
+    G.ecs.init();
+    {
+        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+        for (int i = 0; i < 10; ++i) {
+            SAVE_ARENA(temp);
 
-    eng.render_objects.add(monke);
-    eng.render_objects.add(lost_empire);
-    for (int x = -20; x <= 20; ++x) {
-        for (int y = -20; y <= 20; ++y) {
-            glm::mat4 transform =
-                glm::translate(
-                    glm::mat4(1.0f),
-                    glm::vec3((float)x, -2.f, (float)y)) *
-                glm::scale(glm::mat4(1.f), glm::vec3(.2f));
-
-            RenderObject triangle = {
-                .mesh      = eng.get_mesh(LIT("triangle")),
-                .material  = eng.get_material(LIT("default.mesh")),
-                .transform = transform,
-            };
-
-            eng.render_objects.add(triangle);
+            Str  entity_name = format(temp, LIT("Entity #{}\0"), i);
+            auto ent         = G.ecs.create_entity(entity_name);
+            ent.set<TransformComponent>(
+                {{i * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
         }
+
+        auto ent = G.ecs.create_entity(LIT("Lost Empire"));
+        ent.set<TransformComponent>({{0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
+        ent.set<MeshMaterialComponent>({
+            .mesh     = eng.get_mesh(LIT("lost_empire")),
+            .material = eng.get_material(LIT("default.mesh.textured")),
+        });
     }
 
+    TimeSpec last_time = now_time();
     G.window->poll();
     while (G.window->is_open) {
+        TimeSpec now   = now_time();
+        TimeSpec diff  = now - last_time;
+        float    delta = (float)diff.to_ms();
+        last_time      = now;
+
         G.input.update();
         eng.update();
 
@@ -161,6 +146,7 @@ static int run()
                 ImGui::Text(
                     "Swapchain format: %s",
                     string_VkFormat(eng.swap_chain_image_format));
+                ImGui::Text("App time (gpu + cpu): %f", delta);
                 ImGui::End();
             }
 

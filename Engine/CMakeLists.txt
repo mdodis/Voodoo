@@ -24,6 +24,7 @@ add_executable(vkx
     "./Input.cpp"
     "./ECS.h"
     "./ECS.cpp"
+    "./RenderObject.h"
     )
 
 if (UNIX)

@@ -4,6 +4,7 @@
 #include <glm/gtc/quaternion.hpp>
 
 #include "Containers/Array.h"
+#include "RenderObject.h"
 #include "Str.h"
 #include "flecs.h"
 
@@ -23,8 +24,16 @@ struct EditorSelectableComponent {
 };
 extern ECS_COMPONENT_DECLARE(EditorSelectableComponent);
 
+struct MeshMaterialComponent {
+    Mesh*     mesh;
+    Material* material;
+};
+extern ECS_COMPONENT_DECLARE(MeshMaterialComponent);
+
 struct ECS {
-    flecs::world  world;
+    flecs::world   world;
+    struct Engine* engine;
+
     void          init();
     void          deinit();
     void          run();
@@ -32,9 +41,15 @@ struct ECS {
 
     struct {
         flecs::query<EditorSelectableComponent> entity_view_query;
-        flecs::query<>          component_view_query;
+        flecs::query<>                          component_view_query;
         TArray<flecs::entity_t>                 selection = {&System_Allocator};
     } editor;
+
+    struct {
+        flecs::query<TransformComponent, MeshMaterialComponent>
+                             transform_view_query;
+        TArray<RenderObject> objects;
+    } rendering;
 
     void draw_editor();
 };

@@ -8,6 +8,7 @@
 #include "DescriptorBuilder.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
+#include "RenderObject.h"
 #include "VulkanCommon.h"
 #include "Window/Window.h"
 #include "vk_mem_alloc.h"
@@ -26,23 +27,6 @@ struct AllocatedImage {
 struct Texture {
     AllocatedImage image;
     VkImageView    view;
-};
-
-struct Material {
-    VkPipeline       pipeline        = VK_NULL_HANDLE;
-    VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
-    VkDescriptorSet  texture_set     = {VK_NULL_HANDLE};
-};
-
-static _inline bool operator==(Material& left, Material& right)
-{
-    return left.pipeline == right.pipeline;
-}
-
-struct RenderObject {
-    Mesh*     mesh;
-    Material* material;
-    glm::mat4 transform;
 };
 
 struct GPUCameraData {
@@ -124,10 +108,10 @@ struct Engine {
     DeletionQueue swap_chain_deletion_queue;
 
     // Scene Management
-    TMap<Str, Mesh>      meshes;
-    TMap<Str, Material>  materials;
-    TMap<Str, Texture>   textures;
-    TArray<RenderObject> render_objects;
+    TMap<Str, Mesh>     meshes;
+    TMap<Str, Material> materials;
+    TMap<Str, Texture>  textures;
+    Slice<RenderObject> render_objects;
 
     /** GPU Global Instance Data */
     struct {

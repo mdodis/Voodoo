@@ -1,11 +1,14 @@
 #include "ECS.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/quaternion.hpp>
 
+#include "Engine.h"
 #include "imgui.h"
 
 ECS_COMPONENT_DECLARE(TransformComponent);
 ECS_COMPONENT_DECLARE(EditorSelectableComponent);
+ECS_COMPONENT_DECLARE(MeshMaterialComponent);
 
 void ECS::init()
 {
@@ -13,6 +16,7 @@ void ECS::init()
     {
         ECS_COMPONENT_DEFINE(world, TransformComponent);
         ECS_COMPONENT_DEFINE(world, EditorSelectableComponent);
+        ECS_COMPONENT_DEFINE(world, MeshMaterialComponent);
     }
 
     // Editor queries
@@ -28,6 +32,14 @@ void ECS::init()
                 .build();
     }
 
+    // Rendering queries
+    {
+        rendering.objects.alloc = &System_Allocator;
+        rendering.transform_view_query =
+            world.query_builder<TransformComponent, MeshMaterialComponent>()
+                .build();
+    }
+
     // REST
     world.set<flecs::Rest>({});
 }
@@ -36,12 +48,44 @@ flecs::entity ECS::create_entity(Str name)
 {
     auto entity = world.entity(name.data);
     entity.set<EditorSelectableComponent>({false});
+    entity.set<MeshMaterialComponent>({
+        .mesh     = engine->get_mesh(LIT("monke")),
+        .material = engine->get_material(LIT("default.mesh")),
+    });
     return entity;
 }
 
 void ECS::deinit() { ecs_fini(world); }
 
-void ECS::run() { world.progress(); }
+void ECS::run()
+{
+    world.progress();
+
+    // Update render objects
+    {
+        rendering.objects.empty();
+
+        rendering.transform_view_query.each(
+            [this](
+                flecs::entity          e,
+                TransformComponent&    transform,
+                MeshMaterialComponent& meshmat) {
+                // Compute transform
+                glm::mat4 object_transform =
+                    glm::translate(glm::mat4(1.0f), transform.position) *
+                    glm::toMat4(transform.rotation) *
+                    glm::scale(glm::mat4(1.0f), transform.scale);
+
+                rendering.objects.add(RenderObject{
+                    .mesh      = meshmat.mesh,
+                    .material  = meshmat.material,
+                    .transform = object_transform,
+                });
+            });
+
+        engine->render_objects = slice(rendering.objects);
+    }
+}
 
 void ECS::draw_editor()
 {
@@ -74,9 +118,28 @@ void ECS::draw_editor()
                 flecs::entity comp = id.entity();
                 ImGui::Text("%s", comp.name().c_str());
                 if (comp.raw_id() == ecs_id(TransformComponent)) {
-                    auto*  t = entity.get_mut<TransformComponent>();
-                    float* v = glm::value_ptr(t->position);
-                    ImGui::DragFloat3("Position", v);
+                    auto* t = entity.get_mut<TransformComponent>();
+
+                    glm::vec3 euler =
+                        glm::degrees(glm::eulerAngles(t->rotation));
+
+                    ImGui::DragFloat3(
+                        "Position",
+                        glm::value_ptr(t->position),
+                        0.01f);
+                    ImGui::DragFloat3("Rotation", glm::value_ptr(euler), 0.01f);
+                    ImGui::DragFloat3("Scale", glm::value_ptr(t->scale), 0.01f);
+
+                    t->rotation =
+                        glm::angleAxis(
+                            glm::radians(euler.z),
+                            glm::vec3(0, 0, 1)) *
+                        glm::angleAxis(
+                            glm::radians(euler.y),
+                            glm::vec3(0, 1, 0)) *
+                        glm::angleAxis(
+                            glm::radians(euler.x),
+                            glm::vec3(1, 0, 0));
                 }
             });
             ImGui::PopID();
