@@ -96,8 +96,8 @@ static int run()
         auto ent = G.ecs.create_entity(LIT("Lost Empire"));
         ent.set<TransformComponent>({{0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
         ent.set<MeshMaterialComponent>({
-            .mesh     = eng.get_mesh(LIT("lost_empire")),
-            .material = eng.get_material(LIT("default.mesh.textured")),
+            .mesh_name     = LIT("lost_empire"),
+            .material_name = LIT("default.mesh.textured"),
         });
     }
 
@@ -195,7 +195,7 @@ static int convert(Slice<Str> args)
 
     Str  in_path  = *arguments.get_arg<Str>(LIT("i"));
     Str  out_path = *arguments.get_arg<Str>(LIT("o"));
-    auto out_tape = TBufferedFileTape<true>(open_file_write(out_path));
+    auto out_tape = BufferedWriteTape<true>(open_file_write(out_path));
 
     ImporterRegistry registry(temp);
     registry.init_default_importers();

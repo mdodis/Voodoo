@@ -6,10 +6,10 @@
 #include "Serialization/JSON.h"
 #include "lz4.h"
 
-bool Asset::write(IAllocator& allocator, Tape* output)
+bool Asset::write(IAllocator& allocator, WriteTape* output)
 {
-    AssetHeader header;
-    AllocTape   info_tape(allocator);
+    AssetHeader    header;
+    AllocWriteTape info_tape(allocator);
 
     Slice<u8> compressed_blob = blob;
 
@@ -40,7 +40,7 @@ bool Asset::write(IAllocator& allocator, Tape* output)
     json_serialize_pretty(&info_tape, &info);
     DEFER(info_tape.release());
 
-    header.info_len  = (u32)info_tape.wr_offset;
+    header.info_len  = (u32)info_tape.offset;
     header.blob_size = did_compress ? compressed_blob.size() : blob.size();
 
     if (!output->write(&header, sizeof(header))) return false;
@@ -53,14 +53,14 @@ bool Asset::write(IAllocator& allocator, Tape* output)
 }
 
 Result<AssetInfo, EAssetLoadError> Asset::probe(
-    IAllocator& allocator, Tape* input)
+    IAllocator& allocator, ReadTape* input)
 {
-    AssetHeader header;
-    AssetInfo   asset_info;
-    ParseTape   pt(input);
+    AssetHeader   header;
+    AssetInfo     asset_info;
+    ParseReadTape pt(*input);
     DEFER(pt.restore());
 
-    if (!pt.read_struct(&header)) return Err(AssetLoadError::InvalidFormat);
+    if (!pt.read_struct(header)) return Err(AssetLoadError::InvalidFormat);
 
     if (!deserialize(&pt, allocator, asset_info, json_deserialize))
         return Err(AssetLoadError::InvalidFormat);
@@ -73,7 +73,7 @@ Result<AssetInfo, EAssetLoadError> Asset::probe(
 Result<void, EAssetLoadError> Asset::unpack(
     IAllocator&      allocator,
     const AssetInfo& info,
-    Tape*            input,
+    ReadTape*        input,
     Slice<u8>&       buffer)
 {
     if (info.actual_size > buffer.size()) {
@@ -87,7 +87,7 @@ Result<void, EAssetLoadError> Asset::unpack(
         auto compressed_blob = alloc_slice<u8>(allocator, info.blob_size);
         DEFER(allocator.release(compressed_blob.ptr));
         // Read in the compressed blob
-        input->move(info.blob_offset);
+        input->seek(info.blob_offset);
         if (!input->read(compressed_blob.ptr, compressed_blob.size())) {
             return Err(AssetLoadError::InvalidFormat);
         }
@@ -97,7 +97,7 @@ Result<void, EAssetLoadError> Asset::unpack(
             (const char*)compressed_blob.ptr,
             (char*)buffer.ptr,
             compressed_blob.size(),
-            buffer.size());
+            (int)buffer.size());
 
         if (result <= 0) {
             return Err(AssetLoadError::CompressionFailed);
@@ -112,13 +112,14 @@ Result<void, EAssetLoadError> Asset::unpack(
     }
 }
 
-Result<Asset, EAssetLoadError> Asset::load(IAllocator& allocator, Tape* input)
+Result<Asset, EAssetLoadError> Asset::load(
+    IAllocator& allocator, ReadTape* input)
 {
     AssetInfo asset_info;
 
     // Get metadata
     {
-        ParseTape pt(input);
+        ParseReadTape pt(*input);
         DEFER(pt.restore());
 
         auto probe_result = Asset::probe(allocator, &pt);

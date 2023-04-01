@@ -4,6 +4,8 @@ set(SOURCES
     "./Core.cpp"
     "./Utility.h"
     "./Utility.cpp"
+    "./Archive.h"
+    "./Archive.cpp"
 )
 
 add_library(core STATIC ${SOURCES})

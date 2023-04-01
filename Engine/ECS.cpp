@@ -6,18 +6,9 @@
 #include "Engine.h"
 #include "imgui.h"
 
-ECS_COMPONENT_DECLARE(TransformComponent);
-ECS_COMPONENT_DECLARE(EditorSelectableComponent);
-ECS_COMPONENT_DECLARE(MeshMaterialComponent);
-
 void ECS::init()
 {
-    // Default components
-    {
-        ECS_COMPONENT_DEFINE(world, TransformComponent);
-        ECS_COMPONENT_DEFINE(world, EditorSelectableComponent);
-        ECS_COMPONENT_DEFINE(world, MeshMaterialComponent);
-    }
+    register_default_ecs_types(world);
 
     // Editor queries
     {
@@ -40,6 +31,16 @@ void ECS::init()
                 .build();
     }
 
+    // Serializer
+    {
+        world_serializer.init(System_Allocator);
+        auto register_func = Delegate<void, u64, IDescriptor*>::create_lambda(
+            [this](u64 id, IDescriptor* desc) {
+                world_serializer.register_descriptor(id, desc);
+            });
+        register_default_ecs_descriptors(register_func);
+    }
+
     // REST
     world.set<flecs::Rest>({});
 }
@@ -49,13 +50,17 @@ flecs::entity ECS::create_entity(Str name)
     auto entity = world.entity(name.data);
     entity.set<EditorSelectableComponent>({false});
     entity.set<MeshMaterialComponent>({
-        .mesh     = engine->get_mesh(LIT("monke")),
-        .material = engine->get_material(LIT("default.mesh")),
+        .mesh_name     = LIT("monke"),
+        .material_name = LIT("default.mesh"),
     });
     return entity;
 }
 
-void ECS::deinit() { ecs_fini(world); }
+void ECS::deinit()
+{
+    world_serializer.deinit();
+    ecs_fini(world);
+}
 
 void ECS::run()
 {
@@ -75,6 +80,15 @@ void ECS::run()
                     glm::translate(glm::mat4(1.0f), transform.position) *
                     glm::toMat4(transform.rotation) *
                     glm::scale(glm::mat4(1.0f), transform.scale);
+
+                if (meshmat.mesh == 0) {
+                    meshmat.mesh = engine->get_mesh(meshmat.mesh_name);
+                }
+
+                if (meshmat.material == 0) {
+                    meshmat.material =
+                        engine->get_material(meshmat.material_name);
+                }
 
                 rendering.objects.add(RenderObject{
                     .mesh      = meshmat.mesh,
@@ -159,4 +173,4 @@ void ECS::draw_editor()
     ImGui::End();
 }
 
-void ECS::save_world(Str path) { world.to_json(); }
+void ECS::save_world(Str path) {}

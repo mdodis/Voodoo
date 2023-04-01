@@ -15,6 +15,7 @@ namespace AssetKind {
         Unknown = 0,
         Texture,
         Mesh,
+        World,
     };
 }
 typedef AssetKind::Type EAssetKind;
@@ -23,6 +24,7 @@ PROC_FMT_ENUM(AssetKind, {
     FMT_ENUM_CASE(AssetKind, Unknown);
     FMT_ENUM_CASE(AssetKind, Texture);
     FMT_ENUM_CASE(AssetKind, Mesh);
+    FMT_ENUM_CASE(AssetKind, World);
     FMT_ENUM_DEFAULT_CASE(Unknown);
 })
 
@@ -30,6 +32,7 @@ PROC_PARSE_ENUM(AssetKind, {
     PARSE_ENUM_CASE(AssetKind, Unknown);
     PARSE_ENUM_CASE(AssetKind, Texture);
     PARSE_ENUM_CASE(AssetKind, Mesh);
+    PARSE_ENUM_CASE(AssetKind, World);
 })
 
 namespace TextureFormat {
@@ -104,6 +107,11 @@ struct MeshAsset {
     EVertexFormat format;
 };
 
+struct WorldAssetComponent {
+    Str name;
+    Raw data;
+};
+
 struct AssetInfo {
     /** Version ID */
     int               version;
@@ -144,10 +152,10 @@ struct Asset {
     AssetInfo info;
     Slice<u8> blob;
 
-    bool write(IAllocator& allocator, Tape* output);
+    bool write(IAllocator& allocator, WriteTape* output);
 
     static Result<Asset, EAssetLoadError> load(
-        IAllocator& allocator, Tape* input);
+        IAllocator& allocator, ReadTape* input);
     static Result<Asset, EAssetLoadError> load(IAllocator& allocator, Str path)
     {
         auto t = open_read_tape(path);
@@ -155,12 +163,12 @@ struct Asset {
     }
 
     static Result<AssetInfo, EAssetLoadError> probe(
-        IAllocator& allocator, Tape* input);
+        IAllocator& allocator, ReadTape* input);
 
     static Result<void, EAssetLoadError> unpack(
         IAllocator&      allocator,
         const AssetInfo& info,
-        Tape*            input,
+        ReadTape*        input,
         Slice<u8>&       buffer);
 };
 

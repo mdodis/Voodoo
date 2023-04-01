@@ -24,6 +24,10 @@ add_executable(vkx
     "./Input.cpp"
     "./ECS.h"
     "./ECS.cpp"
+    "./ECSTypes.h"
+    "./ECSTypes.cpp"
+    "./WorldSerializer.h"
+    "./WorldSerializer.cpp"
     "./RenderObject.h"
     )
 

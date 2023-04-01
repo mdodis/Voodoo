@@ -42,7 +42,7 @@ TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
         };
 
         FileHandle              fh = open_file_write("./asset.test.asset");
-        TBufferedFileTape<true> ft(fh);
+        BufferedWriteTape<true> ft(fh);
 
         REQUIRE(asset.write(System_Allocator, &ft), "Write asset");
     }
