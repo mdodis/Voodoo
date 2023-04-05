@@ -6,7 +6,7 @@
 #include "Serialization/JSON.h"
 #include "lz4.h"
 
-bool Asset::write(IAllocator& allocator, WriteTape* output)
+bool Asset::write(IAllocator& allocator, WriteTape* output, bool compress)
 {
     AssetHeader    header;
     AllocWriteTape info_tape(allocator);
@@ -16,7 +16,7 @@ bool Asset::write(IAllocator& allocator, WriteTape* output)
     bool did_compress = false;
 
     // Compress if needed
-    if (!info.is_compressed()) {
+    if (!info.is_compressed() && compress) {
         ASSERT(blob.size() < NumProps<int>::max);
 
         int max_size = LZ4_compressBound((int)blob.size());
@@ -83,11 +83,14 @@ Result<void, EAssetLoadError> Asset::unpack(
     ASSERT(info.blob_size != 0);
     ASSERT(info.blob_offset > 0);
 
+    // Skip to actual blob data
+    input->seek(info.blob_offset);
+
     if (info.is_compressed()) {
         auto compressed_blob = alloc_slice<u8>(allocator, info.blob_size);
         DEFER(allocator.release(compressed_blob.ptr));
         // Read in the compressed blob
-        input->seek(info.blob_offset);
+
         if (!input->read(compressed_blob.ptr, compressed_blob.size())) {
             return Err(AssetLoadError::InvalidFormat);
         }
@@ -137,10 +140,13 @@ Result<Asset, EAssetLoadError> Asset::load(
         return Err(asset_unpack_result.err());
     }
 
-    return Ok(Asset{
+    Asset result = Asset{
         .info = asset_info,
         .blob = slice(blob),
-    });
+    };
+    result.info.compression = AssetCompression::None;
+
+    return Ok(result);
 }
 
 void ImporterRegistry::register_importer(const Importer& importer)

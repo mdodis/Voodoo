@@ -24,9 +24,32 @@ struct SimpleObjectDescriptor : IDescriptor {
 
 DEFINE_DESCRIPTOR_OF_INL(SimpleObject)
 
+struct Float3 {
+    Float3()
+    {
+        values[0] = 0.0f;
+        values[1] = 0.0f;
+        values[2] = 0.0f;
+    }
+
+    Float3(float x, float y, float z)
+    {
+        values[0] = x;
+        values[1] = y;
+        values[2] = z;
+    }
+
+    float values[3];
+
+    float& operator[](int index) { return values[index]; }
+};
+
+using Float3Descriptor = FixedArrayDescriptor<Float3, float, 3>;
+
 struct ComplexObject {
     SimpleObject         another;
     TArray<SimpleObject> objects;
+    Float3               f3;
 };
 
 struct ComplexObjectDescriptor : IDescriptor {
@@ -34,10 +57,12 @@ struct ComplexObjectDescriptor : IDescriptor {
         OFFSET_OF(ComplexObject, another), LIT("another")};
     ArrayDescriptor<SimpleObject> objects_desc = {
         OFFSET_OF(ComplexObject, objects), LIT("objects")};
+    Float3Descriptor f3_desc = {OFFSET_OF(ComplexObject, f3), LIT("f3")};
 
-    IDescriptor* descs[2] = {
+    IDescriptor* descs[3] = {
         &another_desc,
         &objects_desc,
+        &f3_desc,
     };
 
     CUSTOM_DESC_OBJECT_DEFAULT(ComplexObject, descs)
@@ -98,6 +123,7 @@ TEST_CASE("Core/Archive", "archive serialize/deserialize complex")
                 .b = 20,
                 .s = LIT("Hello, world!"),
             },
+        .f3 = {1.0f, 2.0f, 3.0f},
     };
     object.objects.alloc = &System_Allocator;
     object.objects.add(SimpleObject{
@@ -148,6 +174,10 @@ TEST_CASE("Core/Archive", "archive serialize/deserialize complex")
             deser_object.objects[i].s == object.objects[i].s,
             "[i]s == [i]s");
     }
+
+    REQUIRE(deser_object.f3[0] == object.f3[0], "f3.x == f3.x");
+    REQUIRE(deser_object.f3[1] == object.f3[1], "f3.y == f3.y");
+    REQUIRE(deser_object.f3[2] == object.f3[2], "f3.z == f3.z");
 
     return MPASSED();
 }

@@ -37,13 +37,7 @@ struct TransformComponentDescriptor : public IDescriptor {
         &scale_desc,
     };
 
-    CUSTOM_DESC_DEFAULT(TransformComponentDescriptor)
-
-    virtual Str type_name() override { return LIT("TransformComponent"); }
-    virtual Slice<IDescriptor*> subdescriptors(umm self) override
-    {
-        return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
-    }
+    CUSTOM_DESC_OBJECT_DEFAULT(TransformComponent, descs)
 };
 DEFINE_DESCRIPTOR_OF_INL(TransformComponent);
 
@@ -68,13 +62,7 @@ struct MeshMaterialComponentDescriptor : public IDescriptor {
         &material_name_desc,
     };
 
-    CUSTOM_DESC_DEFAULT(MeshMaterialComponentDescriptor)
-
-    virtual Str type_name() override { return LIT("MeshMaterialComponent"); }
-    virtual Slice<IDescriptor*> subdescriptors(umm self) override
-    {
-        return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
-    }
+    CUSTOM_DESC_OBJECT_DEFAULT(MeshMaterialComponent, descs)
 };
 DEFINE_DESCRIPTOR_OF_INL(MeshMaterialComponent);
 

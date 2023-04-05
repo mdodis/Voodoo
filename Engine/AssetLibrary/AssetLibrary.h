@@ -15,7 +15,7 @@ namespace AssetKind {
         Unknown = 0,
         Texture,
         Mesh,
-        World,
+        Archive,
     };
 }
 typedef AssetKind::Type EAssetKind;
@@ -24,7 +24,7 @@ PROC_FMT_ENUM(AssetKind, {
     FMT_ENUM_CASE(AssetKind, Unknown);
     FMT_ENUM_CASE(AssetKind, Texture);
     FMT_ENUM_CASE(AssetKind, Mesh);
-    FMT_ENUM_CASE(AssetKind, World);
+    FMT_ENUM_CASE(AssetKind, Archive);
     FMT_ENUM_DEFAULT_CASE(Unknown);
 })
 
@@ -32,7 +32,7 @@ PROC_PARSE_ENUM(AssetKind, {
     PARSE_ENUM_CASE(AssetKind, Unknown);
     PARSE_ENUM_CASE(AssetKind, Texture);
     PARSE_ENUM_CASE(AssetKind, Mesh);
-    PARSE_ENUM_CASE(AssetKind, World);
+    PARSE_ENUM_CASE(AssetKind, Archive);
 })
 
 namespace TextureFormat {
@@ -107,10 +107,7 @@ struct MeshAsset {
     EVertexFormat format;
 };
 
-struct WorldAssetComponent {
-    Str name;
-    Raw data;
-};
+struct ArchiveAsset {};
 
 struct AssetInfo {
     /** Version ID */
@@ -125,6 +122,7 @@ struct AssetInfo {
     union {
         TextureAsset texture;
         MeshAsset    mesh;
+        ArchiveAsset archive;
     };
 
     _inline bool is_compressed() const
@@ -152,7 +150,7 @@ struct Asset {
     AssetInfo info;
     Slice<u8> blob;
 
-    bool write(IAllocator& allocator, WriteTape* output);
+    bool write(IAllocator& allocator, WriteTape* output, bool comrpess = true);
 
     static Result<Asset, EAssetLoadError> load(
         IAllocator& allocator, ReadTape* input);
@@ -190,7 +188,7 @@ struct TextureAssetDescriptor : IDescriptor {
     };
 
     CUSTOM_DESC_DEFAULT(TextureAssetDescriptor)
-    virtual Str type_name() override { return LIT("TextureAsset"); }
+    virtual Str type_name() const override { return LIT("TextureAsset"); }
     virtual Slice<IDescriptor*> subdescriptors(umm self) override
     {
         return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
@@ -212,7 +210,7 @@ struct MeshBoundsDescriptor : IDescriptor {
     };
 
     CUSTOM_DESC_DEFAULT(MeshBoundsDescriptor)
-    virtual Str type_name() override { return LIT("MeshBounds"); }
+    virtual Str type_name() const override { return LIT("MeshBounds"); }
     virtual Slice<IDescriptor*> subdescriptors(umm self) override
     {
         return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
@@ -237,7 +235,7 @@ struct MeshAssetDescriptor : IDescriptor {
     };
 
     CUSTOM_DESC_DEFAULT(MeshAssetDescriptor)
-    virtual Str type_name() override { return LIT("MeshAsset"); }
+    virtual Str type_name() const override { return LIT("MeshAsset"); }
     virtual Slice<IDescriptor*> subdescriptors(umm self) override
     {
         return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
@@ -281,15 +279,20 @@ struct AssetInfoDescriptor : IDescriptor {
         &mesh_desc,
     };
 
+    IDescriptor* descs_archive[4] = {
+        &version_desc,
+        &kind_desc,
+        &compression_desc,
+        &actual_size_desc,
+    };
+
     CUSTOM_DESC_DEFAULT(AssetInfoDescriptor)
 
-    virtual Str type_name() override { return LIT("AssetInfo"); }
+    virtual Str type_name() const override { return LIT("AssetInfo"); }
     virtual Slice<IDescriptor*> subdescriptors(umm self) override
     {
         AssetInfo* info = (AssetInfo*)self;
         switch (info->kind) {
-            case AssetKind::Unknown:
-
             case AssetKind::Mesh:
                 return Slice<IDescriptor*>(descs_mesh, ARRAY_COUNT(descs_mesh));
 
@@ -297,6 +300,13 @@ struct AssetInfoDescriptor : IDescriptor {
                 return Slice<IDescriptor*>(
                     descs_texture,
                     ARRAY_COUNT(descs_texture));
+
+            case AssetKind::Archive:
+                return Slice<IDescriptor*>(
+                    descs_archive,
+                    ARRAY_COUNT(descs_archive));
+
+            case AssetKind::Unknown:
             default:
                 return Slice<IDescriptor*>(
                     descs_unrecognized,
@@ -329,3 +339,17 @@ struct ImporterRegistry {
     void               register_importer(const Importer& importer);
     Result<Asset, Str> import_asset_from_file(Str path, IAllocator& allocator);
 };
+
+_inline Asset make_archive_asset(Slice<u8> blob)
+{
+    return Asset{
+        .info =
+            {
+                .version     = 1,
+                .kind        = AssetKind::Archive,
+                .compression = AssetCompression::None,
+                .actual_size = blob.count,
+            },
+        .blob = blob,
+    };
+}

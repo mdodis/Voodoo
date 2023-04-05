@@ -14,6 +14,7 @@ struct ECS {
     void          run();
     flecs::entity create_entity(Str name);
 
+    void open_world(Str path);
     void save_world(Str path);
     void draw_editor();
 

@@ -122,11 +122,21 @@ static int run()
         {
             if (ImGui::BeginMainMenuBar()) {
                 if (ImGui::BeginMenu("File")) {
+                    if (ImGui::MenuItem("Load world...")) {
+                        auto f = pfd::open_file(
+                                     "Open world",
+                                     "",
+                                     {"ASSET file (.asset)", "*.asset"})
+                                     .result();
+                        const char* open_file = f[0].c_str();
+                        G.ecs.open_world(Str(open_file));
+                    }
+
                     if (ImGui::MenuItem("Save World...")) {
                         auto f = pfd::save_file(
                                      "Save world to",
                                      "",
-                                     {"JSON File (.json)", ",json"},
+                                     {"ASSET File (.asset)", "*.asset"},
                                      pfd::opt::force_overwrite)
                                      .result();
 

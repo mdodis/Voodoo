@@ -41,7 +41,7 @@ if (UNIX)
     target_link_libraries(vkx PRIVATE glfw ${X11_LIBRARIES})
     target_include_directories(vkx PRIVATE ${X11_INCLUDE_DIRS})
 elseif(WIN32)
-
+    set_property(TARGET vkx PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     target_sources(vkx PUBLIC
         "./Window/Win32Window.h"
         "./Window/Win32Window.cpp"

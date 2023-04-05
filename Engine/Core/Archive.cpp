@@ -134,6 +134,7 @@ static bool serialize_array(WriteTape* out, DescPair pair, u64& size)
     if (!IS_A(pair.desc, IArrayDescriptor)) return false;
 
     IArrayDescriptor* d = (IArrayDescriptor*)pair.desc;
+    d->init_read();
 
     IDescriptor* sub         = d->get_subtype_descriptor();
     u64          array_count = d->size(pair.ptr);

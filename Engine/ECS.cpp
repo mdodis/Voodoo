@@ -85,10 +85,13 @@ void ECS::run()
                     meshmat.mesh = engine->get_mesh(meshmat.mesh_name);
                 }
 
+                ASSERT(meshmat.mesh);
+
                 if (meshmat.material == 0) {
                     meshmat.material =
                         engine->get_material(meshmat.material_name);
                 }
+                ASSERT(meshmat.material);
 
                 rendering.objects.add(RenderObject{
                     .mesh      = meshmat.mesh,
@@ -173,4 +176,10 @@ void ECS::draw_editor()
     ImGui::End();
 }
 
-void ECS::save_world(Str path) {}
+void ECS::open_world(Str path)
+{
+    world.delete_with<EditorSelectableComponent>();
+    world_serializer.import(world, path);
+}
+
+void ECS::save_world(Str path) { world_serializer.save(world, path); }
