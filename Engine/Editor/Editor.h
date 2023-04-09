@@ -7,12 +7,20 @@ namespace win {
     struct Window;
 }
 
+namespace events {
+    struct OnEntitySelectionChanged {};
+}  // namespace events
+
+
 struct EditorWindow {
     u64          id       = 0;
     virtual Str  name()   = 0;
     virtual void init()   = 0;
     virtual void draw()   = 0;
     virtual void deinit() = 0;
+
+    flecs::world& editor_world() const;
+    ECS&          ecs() const;
 
     _inline void kill() { id = 0; }
     _inline bool is_valid() const { return id != 0; }
@@ -35,8 +43,8 @@ struct Editor {
     }
 
     struct {
-        flecs::query<EditorSelectableComponent> entity_view_query;
-        flecs::query<>                          component_view_query;
+        flecs::query<const EditorSelectableComponent> entity_view_query;
+        flecs::query<>                                component_view_query;
     } queries;
 
     struct {

@@ -1,6 +1,7 @@
 #include "MenuRegistrar.h"
 
 #include "Memory/Extras.h"
+#include "Sort.h"
 #include "imgui.h"
 
 static TArray<Str> tokenize_string(IAllocator& allocator, Str s, char separator)
@@ -36,17 +37,45 @@ void MenuRegistrar::init()
 {
     menu_items.alloc = &System_Allocator;
     temp_arena       = Arena(&System_Allocator);
+    precedence.init(System_Allocator);
+
+    precedence.add(LIT("File"), 200);
+    precedence.add(LIT("Help"), -200);
 }
 
-void MenuRegistrar::register_item(Str name, Delegate<void> on_invoke)
+int MenuRegistrar::rank(const MenuItem& item) {
+    Str first_part = item.name.part(0, item.name.first_of('/'));
+    int category_precedence = 0;
+
+    if (precedence.contains(first_part)) {
+        category_precedence = precedence[first_part];
+    }
+
+    return item.priority + category_precedence;
+}
+
+void MenuRegistrar::register_item(
+    Str name, Delegate<void> on_invoke, int priority)
 {
     ASSERT(name.first_of('/') != name.len);
 
     MenuRegistrar::MenuItem item = {
         .name      = name,
         .on_invoke = on_invoke,
+        .priority  = priority,
     };
     menu_items.add(item);
+
+    auto compare_func =
+        sort::CompareFunc<MenuRegistrar::MenuItem>::create_lambda(
+            [this](
+                const MenuRegistrar::MenuItem& left,
+                const MenuRegistrar::MenuItem& right) { 
+                    return rank(left) > rank(right);
+            });
+
+    auto s = slice(menu_items);
+    sort::quicksort(s, compare_func);
 }
 
 void MenuRegistrar::draw()

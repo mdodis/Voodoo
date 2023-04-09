@@ -3,6 +3,7 @@
 #include "ECSTypes.h"
 #include "WorldSerializer.h"
 #include "flecs.h"
+#include "Delegates.h"
 
 struct EntityReference {
     ecs_entity_t id;
@@ -17,6 +18,8 @@ struct ECS {
     void open_world(Str path);
     void save_world(Str path);
     void draw_editor();
+
+    void defer(Delegate<void>&& delegate);
 
     WorldSerializer world_serializer;
     flecs::world    world;

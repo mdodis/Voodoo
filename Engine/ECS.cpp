@@ -173,6 +173,13 @@ void ECS::draw_editor()
     ImGui::End();
 }
 
+void ECS::defer(Delegate<void>&& delegate)
+{
+    world.defer([delegate]() {
+        delegate.call();
+    });
+}
+
 void ECS::open_world(Str path)
 {
     world.delete_with<EditorSelectableComponent>();
