@@ -8,6 +8,8 @@ add_executable(vkx
     "./Window/Window.h"
     "./Window/Window.cpp"
     "./Main.cpp"
+    "./PipelineBuilder.h"
+    "./PipelineBuilder.cpp"
     "./Engine.h"
     "./Engine.cpp"
     "./VulkanCommon.h"
@@ -39,6 +41,8 @@ add_executable(vkx
     "./Editor/HierarchyEditorWindow.cpp"
     "./Editor/InspectorEditorWindow.h"
     "./Editor/InspectorEditorWindow.cpp"
+    "./ImmediateDrawQueue.h"
+    "./ImmediateDrawQueue.cpp"
     )
 
 if (UNIX)
