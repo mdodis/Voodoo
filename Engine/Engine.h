@@ -19,11 +19,6 @@ struct MeshPushConstants {
     glm::mat4 transform;
 };
 
-struct AllocatedImage {
-    VkImage       image;
-    VmaAllocation allocation;
-};
-
 struct Texture {
     AllocatedImage image;
     VkImageView    view;
@@ -75,8 +70,9 @@ struct Engine {
     bool                 is_initialized     = false;
     VkExtent2D           extent             = {0, 0};
 
-    // Rendering Objects
+    VMA vma;
 
+    // Rendering Objects
     VkInstance                 instance;
     VkSurfaceKHR               surface;
     VkPhysicalDevice           physical_device;
@@ -88,7 +84,6 @@ struct Engine {
     TArray<VkImageView>        swap_chain_image_views;
     VkRenderPass               render_pass;
     TArray<VkFramebuffer>      framebuffers;
-    VmaAllocator               vmalloc;
     VkDescriptorPool           descriptor_pool;
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
@@ -181,11 +176,6 @@ private:
     void recreate_swapchain();
 
     void on_resize_presentation();
-
-    Result<AllocatedBuffer, VkResult> create_buffer(
-        size_t             alloc_size,
-        VkBufferUsageFlags usage,
-        VmaMemoryUsage     memory_usage);
 
     FrameData& get_current_frame();
 

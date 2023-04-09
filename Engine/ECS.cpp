@@ -40,9 +40,6 @@ void ECS::init()
             });
         register_default_ecs_descriptors(register_func);
     }
-
-    // REST
-    world.set<flecs::Rest>({});
 }
 
 flecs::entity ECS::create_entity(Str name)

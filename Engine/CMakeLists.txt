@@ -29,6 +29,16 @@ add_executable(vkx
     "./WorldSerializer.h"
     "./WorldSerializer.cpp"
     "./RenderObject.h"
+    "./VMA.h"
+    "./VMA.cpp"
+    "./Editor/Editor.h"
+    "./Editor/Editor.cpp"
+    "./Editor/MenuRegistrar.h"
+    "./Editor/MenuRegistrar.cpp"
+    "./Editor/HierarchyEditorWindow.h"
+    "./Editor/HierarchyEditorWindow.cpp"
+    "./Editor/InspectorEditorWindow.h"
+    "./Editor/InspectorEditorWindow.cpp"
     )
 
 if (UNIX)

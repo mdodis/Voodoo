@@ -5,6 +5,7 @@
 #include <glm/gtx/compatibility.hpp>
 #include <glm/gtx/norm.hpp>
 
+#include "EngineConfig.h"
 #include "Memory/Extras.h"
 #include "backends/imgui_impl_vulkan.h"
 
@@ -139,15 +140,7 @@ void Engine::init()
     }
 
     // VM Allocator
-    {
-        VmaAllocatorCreateInfo create_info = {
-            .physicalDevice = physical_device,
-            .device         = device,
-            .instance       = instance,
-        };
-
-        VK_CHECK(vmaCreateAllocator(&create_info, &vmalloc));
-    }
+    vma.init(physical_device, device, instance);
 
     vkGetPhysicalDeviceProperties(physical_device, &physical_device_properties);
     print(
@@ -248,19 +241,15 @@ void Engine::init_descriptors()
             num_overlap_frames;
 
         global.buffer =
-            create_buffer(
+            VMA_CREATE_BUFFER(
+                vma,
                 global.total_buffer_size,
                 VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                 VMA_MEMORY_USAGE_CPU_TO_GPU)
                 .unwrap();
 
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vmaDestroyBuffer(
-                    vmalloc,
-                    global.buffer.buffer,
-                    global.buffer.allocation);
-            }));
+        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+            [this]() { VMA_DESTROY_BUFFER(vma, global.buffer); }));
 
         for (int i = 0; i < num_overlap_frames; ++i) {
             SAVE_ARENA(temp);
@@ -288,11 +277,17 @@ void Engine::init_descriptors()
             SAVE_ARENA(temp);
             const int max_objects = 10000;
             frames[i].object_buffer =
-                create_buffer(
+                VMA_CREATE_BUFFER(
+                    vma,
                     sizeof(GPUObjectData) * max_objects,
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                     VMA_MEMORY_USAGE_CPU_TO_GPU)
                     .unwrap();
+
+            main_deletion_queue.add(
+                DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
+                    VMA_DESTROY_BUFFER(vma, frames[i].object_buffer);
+                }));
 
             VkDescriptorBufferInfo buffer_info = {
                 .buffer = frames[i].object_buffer.buffer,
@@ -792,30 +787,6 @@ size_t Engine::pad_uniform_buffer_size(size_t original_size)
     return aligned_size;
 }
 
-Result<AllocatedBuffer, VkResult> Engine::create_buffer(
-    size_t alloc_size, VkBufferUsageFlags usage, VmaMemoryUsage memory_usage)
-{
-    VkBufferCreateInfo buffer_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size  = alloc_size,
-        .usage = usage,
-    };
-
-    VmaAllocationCreateInfo alloc_info = {};
-    alloc_info.usage                   = memory_usage;
-
-    AllocatedBuffer result;
-    // allocate the buffer
-    VK_RETURN_IF_ERR(vmaCreateBuffer(
-        vmalloc,
-        &buffer_info,
-        &alloc_info,
-        &result.buffer,
-        &result.allocation,
-        nullptr));
-    return Ok(result);
-}
-
 void Engine::immediate_submit(ImmediateSubmitDelegate&& submit_delegate)
 {
     VkCommandBuffer          cmd        = upload.buffer;
@@ -946,54 +917,30 @@ void Engine::upload_mesh(Mesh& mesh)
     const size_t staging_buffer_size =
         mesh.vertices.size() + mesh.indices.size();
 
-    VkBufferCreateInfo staging_buffer_info = {
-        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-        .size  = staging_buffer_size,
-        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-    };
-
-    VmaAllocationCreateInfo staging_alloc_info = {
-        .usage = VMA_MEMORY_USAGE_CPU_ONLY,
-    };
-
-    AllocatedBuffer staging_buffer;
-
-    VK_CHECK(vmaCreateBuffer(
-        vmalloc,
-        &staging_buffer_info,
-        &staging_alloc_info,
-        &staging_buffer.buffer,
-        &staging_buffer.allocation,
-        0));
+    AllocatedBuffer staging_buffer =
+        VMA_CREATE_BUFFER(
+            vma,
+            staging_buffer_size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_ONLY)
+            .unwrap();
 
     // Copy data into staging buffer
-    void* data_;
-    vmaMapMemory(vmalloc, staging_buffer.allocation, &data_);
-    u8* data = (u8*)data_;
+    u8* data = (u8*)VMA_MAP(vma, staging_buffer);
     memcpy(data, mesh.vertices.ptr, mesh.vertices.size());
     memcpy(data + mesh.vertices.size(), mesh.indices.ptr, mesh.indices.size());
-    vmaUnmapMemory(vmalloc, staging_buffer.allocation);
+    VMA_UNMAP(vma, staging_buffer);
 
     // Vertex Buffer
     {
-        VkBufferCreateInfo buffer_info = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size  = mesh.vertices.size(),
-            .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        };
-
-        VmaAllocationCreateInfo alloc_info = {
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        };
-
-        VK_CHECK(vmaCreateBuffer(
-            vmalloc,
-            &buffer_info,
-            &alloc_info,
-            &mesh.gpu_buffer.buffer,
-            &mesh.gpu_buffer.allocation,
-            0));
+        mesh.gpu_buffer =
+            VMA_CREATE_BUFFER(
+                vma,
+                mesh.vertices.size(),
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY)
+                .unwrap();
 
         immediate_submit_lambda([=](VkCommandBuffer cmd) {
             VkBufferCopy copy = {
@@ -1009,35 +956,20 @@ void Engine::upload_mesh(Mesh& mesh)
                 &copy);
         });
 
-        main_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
-                vmaDestroyBuffer(
-                    vmalloc,
-                    mesh.gpu_buffer.buffer,
-                    mesh.gpu_buffer.allocation);
-            }));
+        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+            [this, mesh]() { VMA_DESTROY_BUFFER(vma, mesh.gpu_buffer); }));
     }
 
     // Index Buffer
     {
-        VkBufferCreateInfo buffer_info = {
-            .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
-            .size  = mesh.indices.size(),
-            .usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
-                     VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-        };
-
-        VmaAllocationCreateInfo alloc_info = {
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-        };
-
-        VK_CHECK(vmaCreateBuffer(
-            vmalloc,
-            &buffer_info,
-            &alloc_info,
-            &mesh.gpu_index_buffer.buffer,
-            &mesh.gpu_index_buffer.allocation,
-            0));
+        mesh.gpu_index_buffer =
+            VMA_CREATE_BUFFER(
+                vma,
+                mesh.indices.size(),
+                VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                VMA_MEMORY_USAGE_GPU_ONLY)
+                .unwrap();
 
         immediate_submit_lambda([=](VkCommandBuffer cmd) {
             VkBufferCopy copy = {
@@ -1055,14 +987,11 @@ void Engine::upload_mesh(Mesh& mesh)
 
         main_deletion_queue.add(
             DeletionQueue::DeletionDelegate::create_lambda([this, mesh]() {
-                vmaDestroyBuffer(
-                    vmalloc,
-                    mesh.gpu_index_buffer.buffer,
-                    mesh.gpu_index_buffer.allocation);
+                VMA_DESTROY_BUFFER(vma, mesh.gpu_index_buffer);
             }));
     }
 
-    vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
+    VMA_DESTROY_BUFFER(vma, staging_buffer);
 }
 
 Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
@@ -1078,19 +1007,17 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
     VkDeviceSize image_size   = info.actual_size;
 
     AllocatedBuffer staging_buffer =
-        create_buffer(
+        VMA_CREATE_BUFFER(
+            vma,
             image_size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VMA_MEMORY_USAGE_CPU_ONLY)
             .unwrap();
 
-    void* data;
-    VK_RETURN_IF_ERR(vmaMapMemory(vmalloc, staging_buffer.allocation, &data));
+    void*     data = VMA_MAP(vma, staging_buffer);
     Slice<u8> buffer_ptr((u8*)data, image_size);
     Asset::unpack(temp, info, &read_tape, buffer_ptr).unwrap();
-    vmaUnmapMemory(vmalloc, staging_buffer.allocation);
-
-    // stbi_image_free(pixels);
+    VMA_UNMAP(vma, staging_buffer);
 
     VkExtent3D image_extent = {
         .width  = (u32)info.texture.width,
@@ -1116,13 +1043,14 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
     };
 
     AllocatedImage result;
-    VK_RETURN_IF_ERR(vmaCreateImage(
-        vmalloc,
-        &image_create_info,
-        &image_allocation_info,
-        &result.image,
-        &result.allocation,
-        0));
+    {
+        auto create_result =
+            VMA_CREATE_IMAGE(vma, image_create_info, VMA_MEMORY_USAGE_GPU_ONLY);
+
+        if (!create_result.ok()) return Err(create_result.err());
+
+        result = create_result.value();
+    }
 
     immediate_submit_lambda([&](VkCommandBuffer cmd) {
         VkImageSubresourceRange range = {
@@ -1202,12 +1130,10 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
             &layout_change_barrier);
     });
 
-    main_deletion_queue.add(
-        DeletionQueue::DeletionDelegate::create_lambda([this, result]() {
-            vmaDestroyImage(vmalloc, result.image, result.allocation);
-        }));
+    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+        [this, result]() { VMA_DESTROY_IMAGE(vma, result); }));
 
-    vmaDestroyBuffer(vmalloc, staging_buffer.buffer, staging_buffer.allocation);
+    VMA_DESTROY_BUFFER(vma, staging_buffer);
 
     return Ok(result);
 }
@@ -1338,11 +1264,7 @@ void Engine::draw()
             .ambient_color = {glm::sin(framed), 0, cos(framed), 1},
         };
 
-        u8* global_instance_data_ptr;
-        VK_CHECK(vmaMapMemory(
-            vmalloc,
-            global.buffer.allocation,
-            (void**)&global_instance_data_ptr));
+        u8* global_instance_data_ptr = (u8*)VMA_MAP(vma, global.buffer);
 
         global_instance_data_ptr +=
             pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) * frame_idx;
@@ -1351,22 +1273,19 @@ void Engine::draw()
             &global_instance_data,
             sizeof(GPUGlobalInstanceData));
 
-        vmaUnmapMemory(vmalloc, global.buffer.allocation);
+        VMA_UNMAP(vma, global.buffer);
     }
 
     // Write object data
     {
-        void* object_data;
-        VK_CHECK(vmaMapMemory(
-            vmalloc,
-            frame.object_buffer.allocation,
-            &object_data));
-        GPUObjectData* object_ssbo = (GPUObjectData*)object_data;
+        GPUObjectData* object_ssbo =
+            (GPUObjectData*)VMA_MAP(vma, frame.object_buffer);
+
         for (u64 i = 0; i < render_objects.count; ++i) {
             RenderObject& ro     = render_objects[i];
             object_ssbo[i].model = ro.transform;
         }
-        vmaUnmapMemory(vmalloc, frame.object_buffer.allocation);
+        VMA_UNMAP(vma, frame.object_buffer);
     }
 
     Material* last_material = 0;
@@ -1510,7 +1429,7 @@ void Engine::recreate_swapchain()
         u32                 num_images;
         CreateSwapchainInfo info = {
             .physical_device = physical_device,
-            .format          = VK_FORMAT_B8G8R8A8_SRGB,
+            .format          = VK_FORMAT_B8G8R8A8_UINT,
             .color_space     = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
             .surface         = surface,
             .graphics_family = graphics.family,
@@ -1587,19 +1506,13 @@ void Engine::recreate_swapchain()
             .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         };
 
-        VmaAllocationCreateInfo image_allocation_info = {
-            .usage = VMA_MEMORY_USAGE_GPU_ONLY,
-            .requiredFlags =
-                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
-        };
-
-        VK_CHECK(vmaCreateImage(
-            vmalloc,
-            &image_create_info,
-            &image_allocation_info,
-            &depth_image.image,
-            &depth_image.allocation,
-            0));
+        depth_image =
+            VMA_CREATE_IMAGE2(
+                vma,
+                image_create_info,
+                VMA_MEMORY_USAGE_GPU_ONLY,
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+                .unwrap();
 
         VkImageViewCreateInfo view_create_info = {
             .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -1622,10 +1535,7 @@ void Engine::recreate_swapchain()
         swap_chain_deletion_queue.add(
             DeletionQueue::DeletionDelegate::create_lambda([this]() {
                 vkDestroyImageView(device, depth_image_view, 0);
-                vmaDestroyImage(
-                    vmalloc,
-                    depth_image.image,
-                    depth_image.allocation);
+                VMA_DESTROY_IMAGE(vma, depth_image);
             }));
     }
 }
@@ -1643,7 +1553,7 @@ void Engine::deinit()
 
     swap_chain_deletion_queue.flush();
     main_deletion_queue.flush();
-    vmaDestroyAllocator(vmalloc);
+    vma.deinit();
     vkDestroyDevice(device, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
     vkDestroyInstance(instance, 0);

@@ -4,6 +4,7 @@
 #include "AssetLibrary/AssetLibrary.h"
 #include "Base.h"
 #include "ECS.h"
+#include "Editor/Editor.h"
 #include "Engine.h"
 #include "FileSystem/Extras.h"
 #include "FileSystem/FileSystem.h"
@@ -12,15 +13,12 @@
 #include "Serialization/JSON.h"
 #include "Time/Time.h"
 #include "imgui.h"
-#include "portable-file-dialogs.h"
 
 struct {
-    Input            input{System_Allocator};
-    win::Window*     window;
-    ImporterRegistry importers{System_Allocator};
-
-    ECS  ecs;
-    bool imgui_demo = false;
+    Input        input{System_Allocator};
+    win::Window* window;
+    ECS          ecs;
+    bool         imgui_demo = false;
 } G;
 
 static int run();
@@ -66,9 +64,6 @@ static int run()
     G.window->input = &G.input;
     G.window->init(width, height).unwrap();
 
-    // Initialize importers
-    G.importers.init_default_importers();
-
     // Initialize engine
     Engine eng = {
         .window            = G.window,
@@ -101,6 +96,10 @@ static int run()
         });
     }
 
+    // Initialize Editor
+    The_Editor.init(G.window, &eng, &G.ecs);
+    DEFER(The_Editor.deinit());
+
     TimeSpec last_time = now_time();
     G.window->poll();
     while (G.window->is_open) {
@@ -114,71 +113,7 @@ static int run()
 
         G.ecs.run();
 
-        eng.imgui_new_frame();
-        G.window->imgui_new_frame();
-
-        ImGui::NewFrame();
-
-        {
-            if (ImGui::BeginMainMenuBar()) {
-                if (ImGui::BeginMenu("File")) {
-                    if (ImGui::MenuItem("Load world...")) {
-                        auto f = pfd::open_file(
-                                     "Open world",
-                                     "",
-                                     {"ASSET file (.asset)", "*.asset"})
-                                     .result();
-                        const char* open_file = f[0].c_str();
-                        G.ecs.open_world(Str(open_file));
-                    }
-
-                    if (ImGui::MenuItem("Save World...")) {
-                        auto f = pfd::save_file(
-                                     "Save world to",
-                                     "",
-                                     {"ASSET File (.asset)", "*.asset"},
-                                     pfd::opt::force_overwrite)
-                                     .result();
-
-                        const char* save_file = f.c_str();
-                        G.ecs.save_world(Str(save_file));
-                    }
-
-                    ImGui::Separator();
-
-                    if (ImGui::MenuItem("Quit")) {
-                        G.window->is_open = false;
-                    }
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Help")) {
-                    if (ImGui::MenuItem("IMGUI")) {
-                        G.imgui_demo = true;
-                    }
-                    ImGui::EndMenu();
-                }
-                ImGui::EndMainMenuBar();
-            }
-
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImGui::DockSpaceOverViewport(
-                viewport,
-                ImGuiDockNodeFlags_PassthruCentralNode);
-
-            {
-                ImGui::Begin("Engine - General");
-                ImGui::Text(
-                    "Swapchain format: %s",
-                    string_VkFormat(eng.swap_chain_image_format));
-                ImGui::Text("App time (gpu + cpu): %f", delta);
-                ImGui::End();
-            }
-
-            if (G.imgui_demo) {
-                ImGui::ShowDemoWindow(&G.imgui_demo);
-            }
-        }
-        G.ecs.draw_editor();
+        The_Editor.draw();
 
         ImGui::Render();
         eng.draw();
