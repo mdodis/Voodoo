@@ -6,59 +6,16 @@
 #include "Containers/Map.h"
 #include "Core/DeletionQueue.h"
 #include "DescriptorBuilder.h"
+#include "EngineTypes.h"
+#include "ImmediateDrawQueue.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
 #include "RenderObject.h"
 #include "VulkanCommon.h"
 #include "Window/Window.h"
 #include "vk_mem_alloc.h"
+
 using namespace win;
-
-struct MeshPushConstants {
-    glm::vec4 data;
-    glm::mat4 transform;
-};
-
-struct Texture {
-    AllocatedImage image;
-    VkImageView    view;
-};
-
-struct GPUCameraData {
-    glm::mat4 view;
-    glm::mat4 proj;
-    glm::mat4 viewproj;
-};
-
-struct GPUSceneData {
-    glm::vec4 fog_color;  // w: exponent
-    glm::vec4 ambient_color;
-};
-
-struct GPUObjectData {
-    glm::mat4 model;
-};
-
-struct GPUGlobalInstanceData {
-    GPUCameraData camera;
-    GPUSceneData  scene;
-};
-
-struct FrameData {
-    VkSemaphore     sem_present, sem_render;
-    VkFence         fnc_render;
-    VkCommandPool   pool;
-    VkCommandBuffer main_cmd_buffer;
-    VkDescriptorSet global_descriptor;
-    AllocatedBuffer object_buffer;
-    VkDescriptorSet object_descriptor;
-};
-
-struct UploadContext {
-    VkFence         fnc_upload;
-    VkCommandPool   pool;
-    VkCommandBuffer buffer;
-};
 
 struct Engine {
     Window*     window;
@@ -107,6 +64,9 @@ struct Engine {
     TMap<Str, Material> materials;
     TMap<Str, Texture>  textures;
     Slice<RenderObject> render_objects;
+
+    // Immediate
+    ImmediateDrawQueue imm;
 
     /** GPU Global Instance Data */
     struct {

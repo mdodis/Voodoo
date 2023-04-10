@@ -10,6 +10,7 @@ add_executable(vkx
     "./Main.cpp"
     "./PipelineBuilder.h"
     "./PipelineBuilder.cpp"
+    "./EngineTypes.h"
     "./Engine.h"
     "./Engine.cpp"
     "./VulkanCommon.h"
@@ -41,6 +42,8 @@ add_executable(vkx
     "./Editor/HierarchyEditorWindow.cpp"
     "./Editor/InspectorEditorWindow.h"
     "./Editor/InspectorEditorWindow.cpp"
+    "./Editor/ModelToVertexArrayEditorWindow.h"
+    "./Editor/ModelToVertexArrayEditorWindow.cpp"
     "./ImmediateDrawQueue.h"
     "./ImmediateDrawQueue.cpp"
     )

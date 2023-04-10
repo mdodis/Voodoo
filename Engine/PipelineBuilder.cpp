@@ -75,6 +75,8 @@ void PipelineBuilder::init_defaults()
         .dynamicStateCount = 0,
         .pDynamicStates    = 0,
     };
+
+    layout = VK_NULL_HANDLE;
 }
 
 PipelineBuilder& PipelineBuilder::add_shader_stage(
@@ -180,6 +182,8 @@ PipelineBuilder& PipelineBuilder::add_dynamic_state(
 
 Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
 {
+    ASSERT(layout != VK_NULL_HANDLE && "set_layout must have been called during build stage");
+
     VkPipelineViewportStateCreateInfo viewport_info = {
         .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
         .viewportCount = 1,

@@ -95,4 +95,6 @@ bool DescriptorBuilder::build(
         writes.data,
         0,
         nullptr);
+
+    return true;
 }

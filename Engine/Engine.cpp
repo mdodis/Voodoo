@@ -160,6 +160,8 @@ void Engine::init()
     init_pipelines();
     init_default_meshes();
     init_imgui();
+    
+    imm.init(device, render_pass, vma, &desc.cache, &desc.allocator);
 
     is_initialized = true;
 }
@@ -1350,10 +1352,14 @@ void Engine::draw()
         vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
+    imm.box(glm::vec3(0,0,0), glm::vec3(1,1,1));
+
+    imm.draw(cmd, view, proj);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRenderPass(cmd);
     vkEndCommandBuffer(cmd);
 
+    imm.clear();
     // Submit
     VkPipelineStageFlags wait_stage =
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1549,6 +1555,8 @@ void Engine::deinit()
             wait_for_fences_indefinitely(device, 1, &frames[i].fnc_render));
     }
 
+    imm.deinit();
+    
     desc.cache.deinit();
     desc.allocator.deinit();
 

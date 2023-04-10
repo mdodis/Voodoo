@@ -96,13 +96,12 @@ Editor The_Editor;
 
 /* Default menu items */
 
-static StaticMenuItem File_Quit_Item(
-    LIT("File/Quit"), Delegate<void>::create_lambda([]() {
+STATIC_MENU_ITEM("File/Quit",
+    {
         The_Editor.host.window->is_open = false;
-    }), -200);
+    }, -200);
 
-static StaticMenuItem File_Load_World_Item(
-    LIT("File/Load World..."), Delegate<void>::create_lambda([]() {
+STATIC_MENU_ITEM("File/Load World...", {
         auto f =
             pfd::open_file("Open world", "", {"ASSET file (.asset)", "*.asset"})
                 .result();
@@ -110,23 +109,27 @@ static StaticMenuItem File_Load_World_Item(
             const char* open_file = f[0].c_str();
             The_Editor.host.ecs->open_world(Str(open_file));
         }
-    }));
+    }, 0);
 
-static StaticMenuItem File_Save_World_Item(
-    LIT("File/Save World..."), Delegate<void>::create_lambda([]() {
+STATIC_MENU_ITEM(
+    "File/Save World...",
+    {
         auto f = pfd::save_file(
                      "Save world to",
                      "",
                      {"ASSET File (.asset)", "*.asset"},
                      pfd::opt::none)
                      .result();
-        
+
         if (!f.empty()) {
             const char* save_file = f.c_str();
             The_Editor.host.ecs->save_world(Str(save_file));
         }
+    },
+    0);
 
-    }));
+STATIC_MENU_ITEM(
+    "Help/ImGui", { The_Editor.imgui_demo = !The_Editor.imgui_demo; }, -200);
 
 flecs::world& EditorWindow::editor_world() const
 {

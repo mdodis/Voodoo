@@ -107,12 +107,12 @@ private:
 };
 
 #define VMA_CREATE_BUFFER(vma, alloc_size, usage, memory_usage) \
-    vma.create_buffer(alloc_size, usage, memory_usage, __FILE__, __LINE__)
+    (vma).create_buffer(alloc_size, usage, memory_usage, __FILE__, __LINE__)
 
-#define VMA_DESTROY_BUFFER(vma, buffer) vma.destroy_buffer(buffer)
+#define VMA_DESTROY_BUFFER(vma, buffer) (vma).destroy_buffer(buffer)
 
 #define VMA_CREATE_IMAGE_(vma, info, usage, required_flags, file, line) \
-    vma.create_image(info, usage, required_flags, file, line)
+    (vma).create_image(info, usage, required_flags, file, line)
 
 #define VMA_CREATE_IMAGE(vma, info, usage) \
     VMA_CREATE_IMAGE_(vma, info, usage, 0, __FILE__, __LINE__)
@@ -122,8 +122,8 @@ private:
 
 #define VMA_DESTROY_IMAGE(vma, image) vma.destroy_image(image)
 
-#define VMA_MAP(vma, buffer) vma.map(buffer)
-#define VMA_UNMAP(vma, buffer) vma.unmap(buffer)
+#define VMA_MAP(vma, buffer) (vma).map(buffer)
+#define VMA_UNMAP(vma, buffer) (vma).unmap(buffer)
 
 using AllocatedBuffer = VMA::Buffer;
 using AllocatedImage  = VMA::Image;
