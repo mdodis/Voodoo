@@ -160,7 +160,7 @@ void Engine::init()
     init_pipelines();
     init_default_meshes();
     init_imgui();
-    
+
     imm.init(device, render_pass, vma, &desc.cache, &desc.allocator);
 
     is_initialized = true;
@@ -1141,6 +1141,148 @@ Result<AllocatedImage, VkResult> Engine::upload_image_from_file(Str path)
     return Ok(result);
 }
 
+Result<AllocatedImage, VkResult> Engine::upload_image(const Asset& asset)
+{
+    CREATE_SCOPED_ARENA(&allocator, temp, MEGABYTES(5));
+
+    AssetInfo info = asset.info;
+    ASSERT(info.kind == AssetKind::Texture);
+    ASSERT(info.texture.format == TextureFormat::R8G8B8A8UInt);
+
+    VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
+    VkDeviceSize image_size   = info.actual_size;
+
+    AllocatedBuffer staging_buffer =
+        VMA_CREATE_BUFFER(
+            vma,
+            image_size,
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VMA_MEMORY_USAGE_CPU_ONLY)
+            .unwrap();
+
+    DEFER(VMA_DESTROY_BUFFER(vma, staging_buffer));
+
+    void* data = VMA_MAP(vma, staging_buffer);
+    memcpy(data, asset.blob.ptr, image_size);
+    VMA_UNMAP(vma, staging_buffer);
+
+    VkExtent3D image_extent = {
+        .width  = (u32)info.texture.width,
+        .height = (u32)info.texture.height,
+        .depth  = 1,
+    };
+
+    VkImageCreateInfo image_create_info = {
+        .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext       = 0,
+        .imageType   = VK_IMAGE_TYPE_2D,
+        .format      = image_format,
+        .extent      = image_extent,
+        .mipLevels   = 1,
+        .arrayLayers = 1,
+        .samples     = VK_SAMPLE_COUNT_1_BIT,
+        .tiling      = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+    };
+
+    VmaAllocationCreateInfo image_allocation_info = {
+        .usage = VMA_MEMORY_USAGE_GPU_ONLY,
+    };
+
+    AllocatedImage result;
+    {
+        auto create_result =
+            VMA_CREATE_IMAGE(vma, image_create_info, VMA_MEMORY_USAGE_GPU_ONLY);
+
+        if (!create_result.ok()) return Err(create_result.err());
+
+        result = create_result.value();
+    }
+
+    immediate_submit_lambda([&](VkCommandBuffer cmd) {
+        VkImageSubresourceRange range = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = 1,
+            .baseArrayLayer = 0,
+            .layerCount     = 1,
+        };
+
+        VkImageMemoryBarrier transfer_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext            = 0,
+            .srcAccessMask    = 0,
+            .dstAccessMask    = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .image            = result.image,
+            .subresourceRange = range,
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &transfer_barrier);
+
+        VkBufferImageCopy copy_region = {
+            .bufferOffset      = 0,
+            .bufferRowLength   = 0,
+            .bufferImageHeight = 0,
+            .imageSubresource =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .mipLevel       = 0,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+            .imageExtent = image_extent,
+        };
+
+        vkCmdCopyBufferToImage(
+            cmd,
+            staging_buffer.buffer,
+            result.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &copy_region);
+
+        VkImageMemoryBarrier layout_change_barrier = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .pNext            = 0,
+            .srcAccessMask    = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask    = VK_ACCESS_SHADER_READ_BIT,
+            .oldLayout        = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image            = result.image,
+            .subresourceRange = range,
+        };
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &layout_change_barrier);
+    });
+
+    main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
+        [this, result]() { VMA_DESTROY_IMAGE(vma, result); }));
+
+    return Ok(result);
+}
+
 void Engine::draw()
 {
     FrameData& frame = get_current_frame();
@@ -1352,7 +1494,7 @@ void Engine::draw()
         vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
-    imm.box(glm::vec3(0,0,0), glm::vec3(1,1,1));
+    imm.box(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 
     imm.draw(cmd, view, proj);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
@@ -1360,6 +1502,7 @@ void Engine::draw()
     vkEndCommandBuffer(cmd);
 
     imm.clear();
+
     // Submit
     VkPipelineStageFlags wait_stage =
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1556,7 +1699,7 @@ void Engine::deinit()
     }
 
     imm.deinit();
-    
+
     desc.cache.deinit();
     desc.allocator.deinit();
 

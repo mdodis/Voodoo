@@ -1,5 +1,7 @@
 #pragma once
 
+#include "AssetLibrary/AssetLibrary.h"
+#include "Containers/Map.h"
 #include "ECS.h"
 #include "Memory/Extras.h"
 
@@ -11,6 +13,12 @@ namespace events {
     struct OnEntitySelectionChanged {};
 }  // namespace events
 
+struct EditorTexture {
+    AllocatedImage  image;
+    VkImageView     view;
+    VkSampler       sampler;
+    VkDescriptorSet descriptor;
+};
 
 struct EditorWindow {
     u64          id       = 0;
@@ -53,9 +61,14 @@ struct Editor {
         struct ECS*    ecs;
     } host;
 
-    TArray<EditorWindow*> windows;
-    u64                   next_window_id;
-    bool                  imgui_demo = false;
+    void           add_texture_from_file(Str path, Str name);
+    EditorTexture* get_texture(Str name);
+
+    ImporterRegistry         importers{System_Allocator};
+    TArray<EditorWindow*>    windows;
+    TMap<Str, EditorTexture> textures;
+    u64                      next_window_id;
+    bool                     imgui_demo = false;
 };
 
 extern Editor The_Editor;

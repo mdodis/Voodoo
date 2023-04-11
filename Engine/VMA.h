@@ -120,7 +120,7 @@ private:
 #define VMA_CREATE_IMAGE2(vma, info, usage, required_flags) \
     VMA_CREATE_IMAGE_(vma, info, usage, required_flags, __FILE__, __LINE__)
 
-#define VMA_DESTROY_IMAGE(vma, image) vma.destroy_image(image)
+#define VMA_DESTROY_IMAGE(vma, image) (vma).destroy_image(image)
 
 #define VMA_MAP(vma, buffer) (vma).map(buffer)
 #define VMA_UNMAP(vma, buffer) (vma).unmap(buffer)

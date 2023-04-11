@@ -121,6 +121,7 @@ struct Engine {
     Material*                        get_material(Str id);
     void                             upload_mesh(Mesh& mesh);
     Result<AllocatedImage, VkResult> upload_image_from_file(Str path);
+    Result<AllocatedImage, VkResult> upload_image(const Asset& asset);
 
 private:
     void init_imgui();

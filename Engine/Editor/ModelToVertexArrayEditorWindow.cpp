@@ -8,7 +8,15 @@ void ModelToVertexArrayEditorWindow::init() {}
 
 void ModelToVertexArrayEditorWindow::draw()
 {
-    Str s = LIT("hello");
+    Str            s = LIT("hello");
+    
+    EditorTexture* t = The_Editor.get_texture(LIT("icons.dnd"));
+
+    ImGui::Text("Drop a file here to convert it");
+
+    ImVec2 image_size = ImVec2(64, 64);
+    ImGui::SetCursorPosX((ImGui::GetWindowSize().x - image_size.x) * 0.5f);
+    ImGui::Image((ImTextureID)t->descriptor, image_size);
 
     ImGuiInputTextFlags text_flags = ImGuiInputTextFlags_ReadOnly;
     ImGui::InputTextMultiline(

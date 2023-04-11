@@ -16,3 +16,4 @@ Build*/**.obj
 Build*/
 **/CMakeSettings.json
 **.ini
+**/docs/*

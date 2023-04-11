@@ -197,8 +197,9 @@ void ImmediateDrawQueue::init(
 void ImmediateDrawQueue::deinit()
 {
     boxes.release();
-
+    VMA_DESTROY_BUFFER(*pvma, global_buffer);
     VMA_DESTROY_BUFFER(*pvma, object_buffer);
+    VMA_DESTROY_BUFFER(*pvma, cube_buffer);
     vkDestroyPipelineLayout(device, pipeline_layout, 0);
     vkDestroyPipeline(device, pipeline, 0);
 }
