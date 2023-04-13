@@ -1,5 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include "GLFWWindow.h"
+
 #include "backends/imgui_impl_glfw.h"
 #define MOK_GLFW_VIRTUAL_KEYCODES_AUTO_INCLUDE 0
 #include "Compat/GLFWVirtualKeycodes.h"
@@ -23,7 +24,7 @@ namespace win {
         // Bind events
         glfwSetKeyCallback(window, GLFWWindow::callback_keyboard);
         glfwSetCursorPosCallback(window, GLFWWindow::callback_cursor_pos);
-//        glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_FALSE);
+        //        glfwSetInputMode(window, GLFW_STICKY_KEYS, GLFW_FALSE);
 
         if (glfwRawMouseMotionSupported()) {
             print(LIT("Raw mouse motion: supported\n"));
@@ -37,7 +38,7 @@ namespace win {
         return Ok<void>();
     }
 
-    void GLFWWindow::get_extents(i32 &x, i32 &y)
+    void GLFWWindow::get_extents(i32& x, i32& y)
     {
         glfwGetWindowSize(window, &x, &y);
     }
@@ -56,15 +57,14 @@ namespace win {
         glfwDestroyWindow(window);
     }
 
-    void GLFWWindow::imgui_new_frame()
-    {
-        ImGui_ImplGlfw_NewFrame();
-    }
+    void GLFWWindow::imgui_new_frame() { ImGui_ImplGlfw_NewFrame(); }
 
-    Result<VkSurfaceKHR, VkResult> GLFWWindow::create_surface(VkInstance instance)
+    Result<VkSurfaceKHR, VkResult> GLFWWindow::create_surface(
+        VkInstance instance)
     {
         VkSurfaceKHR surface;
-        VkResult result = glfwCreateWindowSurface(instance, window, NULL, &surface);
+        VkResult     result =
+            glfwCreateWindowSurface(instance, window, NULL, &surface);
 
         if (result != VK_SUCCESS) return Err(result);
 
@@ -73,38 +73,48 @@ namespace win {
 
     void GLFWWindow::set_lock_cursor(bool value)
     {
-        glfwSetInputMode(window, GLFW_CURSOR, value ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+        glfwSetInputMode(
+            window,
+            GLFW_CURSOR,
+            value ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
         return;
     }
 
-    Slice<const char *> GLFWWindow::get_required_extensions()
+    Slice<const char*> GLFWWindow::get_required_extensions()
     {
-        u32 count;
+        u32          count;
         const char** extensions = glfwGetRequiredInstanceExtensions(&count);
         ASSERT(extensions != NULL);
         return slice(extensions, count);
     }
 
-    void GLFWWindow::callback_keyboard(::GLFWwindow *window, int key, int scancode, int action, int mods)
+    EWindowSupportFlags GLFWWindow::get_support_flags()
+    {
+        return EWindowSupportFlags(0);
+    }
+
+    void GLFWWindow::callback_keyboard(
+        ::GLFWwindow* window, int key, int scancode, int action, int mods)
     {
         GLFWWindow* self = (GLFWWindow*)glfwGetWindowUserPointer(window);
-        if (action == GLFW_REPEAT)
-            return;
+        if (action == GLFW_REPEAT) return;
 
         bool down = (action == GLFW_PRESS);
         self->input->send_input(glfw_key_to_input_key(key), down);
     }
 
-    void GLFWWindow::callback_cursor_pos(GLFWwindow *window, double xpos, double ypos)
+    void GLFWWindow::callback_cursor_pos(
+        GLFWwindow* window, double xpos, double ypos)
     {
         GLFWWindow* self = (GLFWWindow*)glfwGetWindowUserPointer(window);
 
-        self->input->send_axis_delta(InputAxis::MouseX, (xpos - self->last_xpos));
-        self->input->send_axis_delta(InputAxis::MouseY, (ypos - self->last_ypos));
+        self->input
+            ->send_axis_delta(InputAxis::MouseX, (xpos - self->last_xpos));
+        self->input
+            ->send_axis_delta(InputAxis::MouseY, (ypos - self->last_ypos));
 
         self->last_xpos = xpos;
         self->last_ypos = ypos;
     }
 
-
-}
+}  // namespace win

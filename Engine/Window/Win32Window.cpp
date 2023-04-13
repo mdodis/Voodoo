@@ -1,13 +1,16 @@
 #include "Win32Window.h"
+
+#include "Compat/Win32VirtualKeycodes.h"
 #include "Win32ImGUI.h"
 #include "Win32Vulkan.h"
-#include "Compat/Win32VirtualKeycodes.h"
+#include "imgui.h"
 
 namespace win {
     static WIN32_DECLARE_WNDPROC(wnd_proc_handler);
 
     Result<void, EWindowError> Win32Window::init(i32 width, i32 height)
     {
+        // Register class
         wnd_class            = {};
         wnd_class.size       = sizeof(wnd_class);
         wnd_class.cursor     = Win32::LoadCursorA(0, Win32::Cursor::A_Arrow);
@@ -19,6 +22,7 @@ namespace win {
             return Err(WindowError::Register);
         }
 
+        // Create window
         auto        style = Win32::Style::OverlappedWindow;
         Win32::RECT rect  = {
              .left   = 0,
@@ -56,7 +60,7 @@ namespace win {
         Win32::UpdateWindow(hwnd);
         is_open = true;
 
-        // Raw input
+        // Raw mouse input
         Win32::RAWINPUTDEVICE rid[1];
         rid[0].usUsagePage = Win32::HIDUsagePage::Generic;
         rid[0].usUsage     = Win32::HIDUsage::Mouse;
@@ -66,10 +70,14 @@ namespace win {
 
         win32_imgui_init(hwnd);
 
+        // Initialize drag and drop
+        dnd_handle        = Win32::register_dnd(hwnd, &dnd);
+        is_dragging_files = false;
+
         return Ok<void>();
     }
 
-    void Win32Window::get_extents(i32 &x, i32 &y)
+    void Win32Window::get_extents(i32& x, i32& y)
     {
         Win32::RECT r;
         Win32::GetClientRect(hwnd, &r);
@@ -96,19 +104,25 @@ namespace win {
         if (needs_resize) {
             on_resized.call_safe();
         }
+
+        if (is_dragging_files) {
+            
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
+                ImGui::SetDragDropPayload("FILES", (void*)dnd.dropped_files.data, dnd.dropped_files.size);
+                ImGui::BeginTooltip();
+                ImGui::Text("Files");
+                ImGui::EndTooltip();
+                ImGui::EndDragDropSource();
+            }
+        }
     }
 
-    void Win32Window::destroy()
-    {
-        Win32::DestroyWindow(hwnd);
-    }
+    void Win32Window::destroy() { Win32::DestroyWindow(hwnd); }
 
-    void Win32Window::imgui_new_frame()
-    {
-        win32_imgui_new_frame();
-    }
+    void Win32Window::imgui_new_frame() { win32_imgui_new_frame(); }
 
-    Result<VkSurfaceKHR, VkResult> Win32Window::create_surface(VkInstance instance)
+    Result<VkSurfaceKHR, VkResult> Win32Window::create_surface(
+        VkInstance instance)
     {
         return win32_create_surface(instance, hwnd, Win32::GetModuleHandleA(0));
     }
@@ -119,9 +133,14 @@ namespace win {
         Win32::ShowCursor(!cursor_locked);
     }
 
-    Slice<const char *> Win32Window::get_required_extensions()
+    Slice<const char*> Win32Window::get_required_extensions()
     {
         return win32_get_required_extensions();
+    }
+
+    EWindowSupportFlags Win32Window::get_support_flags()
+    {
+        return EWindowSupportFlags(WindowSupportFlags::DragAndDrop);
     }
 
     WIN32_DECLARE_WNDPROC(Win32Window::wnd_proc)
@@ -203,5 +222,42 @@ namespace win {
         return w->wnd_proc(hwnd, msg, wparam, lparam);
     }
 
+    Win32::HRESULT DnDHandler::drag_enter(
+        Win32::DataObject& data_object, Win32::DWORD key_state)
+    {
+        parent->is_dragging_files = true;
+        ImGuiIO& io               = ImGui::GetIO();
+        io.AddMouseButtonEvent(1, true);
 
-}
+        return Win32::HResult::Ok;
+    }
+
+    void DnDHandler::drag_leave() { parent->is_dragging_files = false; }
+
+    Win32::HRESULT DnDHandler::drag_over(
+        Win32::DWORD key_state, Win32::POINT point)
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMousePosEvent((f32)point.x, (f32)point.y);
+
+        return Win32::HResult::Ok;
+    }
+
+    void DnDHandler::drag_drop_begin() { 
+        for (Str s : dropped_files) {
+            System_Allocator.release((umm)s.data);
+        }
+        dropped_files.empty(); 
+    }
+
+    Win32::HRESULT DnDHandler::drag_drop(Str path) {
+        dropped_files.add(path.clone(System_Allocator));
+        return Win32::HResult::Ok;
+    }
+
+    void DnDHandler::drag_drop_finish() {
+        ImGuiIO& io = ImGui::GetIO();
+        io.AddMouseButtonEvent(1, false);
+    }
+
+}  // namespace win

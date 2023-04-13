@@ -62,6 +62,8 @@ elseif(WIN32)
     target_sources(vkx PUBLIC
         "./Window/Win32Window.h"
         "./Window/Win32Window.cpp"
+        "./Window/Win32DnD.h"
+        "./Window/Win32DnD.cpp"
         "./Window/Win32ImGUI.h"
         "./Window/Win32ImGUI.cpp"
         "./Window/Win32Vulkan.h"
