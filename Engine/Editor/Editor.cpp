@@ -45,6 +45,8 @@ void Editor::draw()
 
     ImGui::NewFrame();
 
+    host.window->imgui_process();
+
     get_menu_registrar()->draw();
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();

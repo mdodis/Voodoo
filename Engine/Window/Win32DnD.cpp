@@ -94,14 +94,14 @@ struct Win32DropTargetProxy : IDropTarget {
             for (UINT i = 0; i < file_count; ++i) {
                 SAVE_ARENA(temp);
 
-                UINT   size = DragQueryFileW(hdrop, i, NULL, 0);
+                UINT   size = DragQueryFileW(hdrop, i, NULL, 0) + 1;
                 LPWSTR wstr =
                     (LPWSTR)System_Allocator.reserve(size * sizeof(wchar_t));
 
                 UINT copied = DragQueryFileW(hdrop, i, wstr, size);
-                ASSERT(copied == size);
+                ASSERT(copied <= size);
 
-                Str path = wstr_to_multibyte(wstr, size, temp);
+                Str path = wstr_to_multibyte(wstr, copied, temp);
                 iface->drag_drop(path);
             }
 

@@ -71,6 +71,7 @@ namespace win {
         win32_imgui_init(hwnd);
 
         // Initialize drag and drop
+        dnd.parent        = this;
         dnd_handle        = Win32::register_dnd(hwnd, &dnd);
         is_dragging_files = false;
 
@@ -104,22 +105,34 @@ namespace win {
         if (needs_resize) {
             on_resized.call_safe();
         }
-
-        if (is_dragging_files) {
-            
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
-                ImGui::SetDragDropPayload("FILES", (void*)dnd.dropped_files.data, dnd.dropped_files.size);
-                ImGui::BeginTooltip();
-                ImGui::Text("Files");
-                ImGui::EndTooltip();
-                ImGui::EndDragDropSource();
-            }
-        }
     }
 
     void Win32Window::destroy() { Win32::DestroyWindow(hwnd); }
 
     void Win32Window::imgui_new_frame() { win32_imgui_new_frame(); }
+
+    void Win32Window::imgui_process()
+    {
+        if (is_dragging_files || just_dropped_files) {
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
+                ImGui::SetDragDropPayload(
+                    "FILES",
+                    &dnd.dropped_files,
+                    sizeof(TArray<Str>));
+                ImGui::BeginTooltip();
+                ImGui::Text("Files");
+                ImGui::EndTooltip();
+                ImGui::EndDragDropSource();
+            }
+
+        }
+
+        
+        if (just_dropped_files) {
+            just_dropped_files = false;
+            is_dragging_files  = false;
+        }
+    }
 
     Result<VkSurfaceKHR, VkResult> Win32Window::create_surface(
         VkInstance instance)
@@ -238,26 +251,35 @@ namespace win {
         Win32::DWORD key_state, Win32::POINT point)
     {
         ImGuiIO& io = ImGui::GetIO();
+        
+        Win32::ScreenToClient(parent->hwnd, &point);
         io.AddMousePosEvent((f32)point.x, (f32)point.y);
 
         return Win32::HResult::Ok;
     }
 
     void DnDHandler::drag_drop_begin() { 
-        for (Str s : dropped_files) {
-            System_Allocator.release((umm)s.data);
-        }
-        dropped_files.empty(); 
+        clear();
     }
 
-    Win32::HRESULT DnDHandler::drag_drop(Str path) {
+    Win32::HRESULT DnDHandler::drag_drop(Str path)
+    {
         dropped_files.add(path.clone(System_Allocator));
         return Win32::HResult::Ok;
     }
 
-    void DnDHandler::drag_drop_finish() {
+    void DnDHandler::drag_drop_finish()
+    {
         ImGuiIO& io = ImGui::GetIO();
         io.AddMouseButtonEvent(1, false);
+        parent->just_dropped_files = true;
+    }
+
+    void DnDHandler::clear() {
+        for (Str s : dropped_files) {
+            System_Allocator.release((umm)s.data);
+        }
+        dropped_files.empty();
     }
 
 }  // namespace win

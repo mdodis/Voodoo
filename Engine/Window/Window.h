@@ -27,7 +27,8 @@ namespace win {
     struct Window {
         Input*         input;
         bool           is_open;
-        bool           is_dragging_files;
+        bool           is_dragging_files = false;
+        bool           just_dropped_files = false;
         Delegate<void> on_resized;
 
         virtual Result<void, EWindowError>     init(i32 width, i32 height) = 0;
@@ -35,6 +36,7 @@ namespace win {
         virtual void                           poll()                      = 0;
         virtual void                           destroy()                   = 0;
         virtual void                           imgui_new_frame()           = 0;
+        virtual void                           imgui_process()             = 0;
         virtual Result<VkSurfaceKHR, VkResult> create_surface(
             VkInstance instance)                                = 0;
         virtual void                set_lock_cursor(bool value) = 0;
