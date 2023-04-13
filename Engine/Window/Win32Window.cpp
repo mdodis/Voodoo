@@ -127,7 +127,6 @@ namespace win {
 
         }
 
-        
         if (just_dropped_files) {
             just_dropped_files = false;
             is_dragging_files  = false;
@@ -240,7 +239,7 @@ namespace win {
     {
         parent->is_dragging_files = true;
         ImGuiIO& io               = ImGui::GetIO();
-        io.AddMouseButtonEvent(1, true);
+        io.AddMouseButtonEvent(0, true);
 
         return Win32::HResult::Ok;
     }
@@ -271,7 +270,7 @@ namespace win {
     void DnDHandler::drag_drop_finish()
     {
         ImGuiIO& io = ImGui::GetIO();
-        io.AddMouseButtonEvent(1, false);
+        io.AddMouseButtonEvent(0, false);
         parent->just_dropped_files = true;
     }
 
