@@ -97,6 +97,40 @@ void Editor::add_window(EditorWindow* window)
 
 void Editor::kill_window(EditorWindow* window) { window->id = 0; }
 
+void Editor::apply_color_scheme(const EditorColorScheme& scheme)
+{
+    // clang-format off
+    ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_Border]               = *((ImVec4*)&scheme.border);
+    colors[ImGuiCol_FrameBg]              = *((ImVec4*)&scheme.frame_bg);
+    colors[ImGuiCol_FrameBgHovered]       = *((ImVec4*)&scheme.frame_bg_hovered);
+    colors[ImGuiCol_FrameBgActive]        = *((ImVec4*)&scheme.frame_bg_active);
+    colors[ImGuiCol_TitleBg]              = *((ImVec4*)&scheme.title_bg);
+    colors[ImGuiCol_TitleBgActive]        = *((ImVec4*)&scheme.title_bg_active);
+    colors[ImGuiCol_CheckMark]            = *((ImVec4*)&scheme.check_mark);
+    colors[ImGuiCol_SliderGrab]           = *((ImVec4*)&scheme.slider_grab);
+    colors[ImGuiCol_SliderGrabActive]     = *((ImVec4*)&scheme.slider_grab_active);
+    colors[ImGuiCol_Button]               = *((ImVec4*)&scheme.button);
+    colors[ImGuiCol_ButtonHovered]        = *((ImVec4*)&scheme.button_hovered);
+    colors[ImGuiCol_ButtonActive]         = *((ImVec4*)&scheme.button_active);
+    colors[ImGuiCol_Header]               = *((ImVec4*)&scheme.header);
+    colors[ImGuiCol_HeaderHovered]        = *((ImVec4*)&scheme.header_hovered);
+    colors[ImGuiCol_HeaderActive]         = *((ImVec4*)&scheme.header_active);
+    colors[ImGuiCol_ResizeGrip]           = *((ImVec4*)&scheme.resize_grip);
+    colors[ImGuiCol_ResizeGripHovered]    = *((ImVec4*)&scheme.resize_grip_hovered);
+    colors[ImGuiCol_ResizeGripActive]     = *((ImVec4*)&scheme.resize_grip_active);
+    colors[ImGuiCol_Tab]                  = *((ImVec4*)&scheme.tab);
+    colors[ImGuiCol_TabHovered]           = *((ImVec4*)&scheme.tab_hovered);
+    colors[ImGuiCol_TabActive]            = *((ImVec4*)&scheme.tab_active);
+    colors[ImGuiCol_DockingPreview]       = *((ImVec4*)&scheme.docking_preview);
+    colors[ImGuiCol_PlotLinesHovered]     = *((ImVec4*)&scheme.plot_lines_hovered);
+    colors[ImGuiCol_PlotHistogram]        = *((ImVec4*)&scheme.plot_histogram);
+    colors[ImGuiCol_PlotHistogramHovered] = *((ImVec4*)&scheme.plot_histogram_hovered);
+    colors[ImGuiCol_TextSelectedBg]       = *((ImVec4*)&scheme.text_selection_bg);
+    colors[ImGuiCol_DragDropTarget]       = *((ImVec4*)&scheme.drag_drop_target);
+    // clang-format on
+}
+
 void Editor::add_texture_from_file(Str path, Str name)
 {
     Asset texture_asset =
@@ -147,13 +181,15 @@ void Editor::add_texture_from_file(Str path, Str name)
     textures.add(name, editor_texture);
 }
 
-EditorTexture* Editor::get_texture(Str name) { 
+EditorTexture* Editor::get_texture(Str name)
+{
     if (textures.contains(name)) return &textures[name];
     return nullptr;
 }
 
-void Editor::deinit() { 
-    windows.release(); 
+void Editor::deinit()
+{
+    windows.release();
 
     for (auto pair : textures) {
         vkDestroyImageView(host.engine->device, pair.val.view, nullptr);

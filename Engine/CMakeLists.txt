@@ -44,6 +44,7 @@ add_executable(vkx
     "./Editor/InspectorEditorWindow.cpp"
     "./Editor/ModelToVertexArrayEditorWindow.h"
     "./Editor/ModelToVertexArrayEditorWindow.cpp"
+    "./Editor/ColorScheme.h"
     "./ImmediateDrawQueue.h"
     "./ImmediateDrawQueue.cpp"
     )

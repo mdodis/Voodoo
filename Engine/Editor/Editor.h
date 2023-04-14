@@ -1,6 +1,7 @@
 #pragma once
 
 #include "AssetLibrary/AssetLibrary.h"
+#include "ColorScheme.h"
 #include "Containers/Map.h"
 #include "ECS.h"
 #include "Memory/Extras.h"
@@ -41,6 +42,8 @@ struct Editor {
 
     void add_window(EditorWindow* window);
     void kill_window(EditorWindow* window);
+
+    void apply_color_scheme(const EditorColorScheme& scheme);
 
     template <typename T>
     _inline T* create_window()
