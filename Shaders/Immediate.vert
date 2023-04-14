@@ -6,7 +6,10 @@ layout (location = 0) out vec3 vColor;
 
 struct GPUObjectData {
     mat4 model;
-    vec3 color;
+    vec4 color;
+    vec4 unused_0;
+    vec4 unused_1;
+    vec4 unused_2;
 };
 
 struct GPUCameraData {
@@ -25,10 +28,10 @@ layout (std140, set = 1, binding = 0) readonly buffer ObjectBuffer {
 
 void main()
 {
-    mat4 modelMatrix = objectBuffer.objects[gl_BaseInstance].model;
+    mat4 modelMatrix = objectBuffer.objects[gl_InstanceIndex].model;
     mat4 transform = globalData.camera.viewproj * modelMatrix;
 
-    vColor = objectBuffer.objects[gl_BaseInstance].color;
+    vColor = objectBuffer.objects[gl_InstanceIndex].color.xyz;
 
     gl_Position = transform * vec4(vPosition, 1.0f);
 }

@@ -47,6 +47,93 @@ static ImmediateDrawQueue::Vertex Cube_Vertices[] = {
 };
 // clang-format on
 
+static ImmediateDrawQueue::Vertex Cylinder_Vertices[] = {
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{1.000000f, 0.000000f, -1.000000f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{-1.000000f, -0.707107f, -0.707107f}},
+    {{-1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, -1.000000f, 0.000000f}},
+    {{1.000000f, -1.000000f, 0.000000f}},
+    {{1.000000f, -0.707107f, 0.707107f}},
+    {{-1.000000f, -1.000000f, 0.000000f}},
+    {{1.000000f, -0.707107f, 0.707107f}},
+    {{-1.000000f, -0.707107f, 0.707107f}},
+    {{-1.000000f, -0.707107f, 0.707107f}},
+    {{1.000000f, -0.707107f, 0.707107f}},
+    {{1.000000f, 0.000000f, 1.000000f}},
+    {{-1.000000f, -0.707107f, 0.707107f}},
+    {{1.000000f, 0.000000f, 1.000000f}},
+    {{-1.000000f, 0.000000f, 1.000000f}},
+    {{-1.000000f, 0.000000f, 1.000000f}},
+    {{1.000000f, 0.000000f, 1.000000f}},
+    {{1.000000f, 0.707107f, 0.707107f}},
+    {{-1.000000f, 0.000000f, 1.000000f}},
+    {{1.000000f, 0.707107f, 0.707107f}},
+    {{-1.000000f, 0.707107f, 0.707107f}},
+    {{-1.000000f, 0.707107f, 0.707107f}},
+    {{1.000000f, 0.707107f, 0.707107f}},
+    {{1.000000f, 1.000000f, 0.000000f}},
+    {{-1.000000f, 0.707107f, 0.707107f}},
+    {{1.000000f, 1.000000f, 0.000000f}},
+    {{-1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, 0.000000f, -1.000000f}},
+    {{1.000000f, 0.707107f, -0.707107f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, 0.707107f, -0.707107f}},
+    {{1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, 0.707107f, 0.707107f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, 0.707107f, 0.707107f}},
+    {{1.000000f, 0.000000f, 1.000000f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, 0.000000f, 1.000000f}},
+    {{1.000000f, -0.707107f, 0.707107f}},
+    {{1.000000f, -0.707107f, -0.707107f}},
+    {{1.000000f, -0.707107f, 0.707107f}},
+    {{1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, 0.707107f, -0.707107f}},
+    {{-1.000000f, 1.000000f, 0.000000f}},
+    {{1.000000f, 0.707107f, -0.707107f}},
+    {{-1.000000f, 0.707107f, -0.707107f}},
+    {{-1.000000f, 0.707107f, -0.707107f}},
+    {{1.000000f, 0.707107f, -0.707107f}},
+    {{1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 0.707107f, -0.707107f}},
+    {{1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, -0.707107f, -0.707107f}},
+    {{-1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, -1.000000f, 0.000000f}},
+    {{-1.000000f, -0.707107f, 0.707107f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, -0.707107f, 0.707107f}},
+    {{-1.000000f, 0.000000f, 1.000000f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 0.000000f, 1.000000f}},
+    {{-1.000000f, 0.707107f, 0.707107f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 0.707107f, 0.707107f}},
+    {{-1.000000f, 1.000000f, 0.000000f}},
+    {{-1.000000f, 0.000000f, -1.000000f}},
+    {{-1.000000f, 1.000000f, 0.000000f}},
+    {{-1.000000f, 0.707107f, -0.707107f}},
+};
+
 /*
 
 Separate vertex buffer / object
@@ -146,6 +233,24 @@ void ImmediateDrawQueue::init(
         VMA_UNMAP(vma, cube_buffer);
     }
 
+    // Cylinder vertex buffer
+    {
+        const size_t buffer_size =
+            sizeof(Vertex) * ARRAY_COUNT(Cylinder_Vertices);
+
+        cylinder_buffer =
+            VMA_CREATE_BUFFER(
+                vma,
+                buffer_size,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU)
+                .unwrap();
+
+        u8* data = (u8*)VMA_MAP(vma, cylinder_buffer);
+        memcpy(data, Cylinder_Vertices, buffer_size);
+        VMA_UNMAP(vma, cylinder_buffer);
+    }
+
     auto layouts =
         arr<VkDescriptorSetLayout>(global_set_layout, object_set_layout);
 
@@ -198,7 +303,7 @@ void ImmediateDrawQueue::init(
             .set_render_pass(render_pass)
             .set_layout(pipeline_layout)
             .set_vertex_input_info(vertex_input_info)
-            .set_depth_test(false, true, VK_COMPARE_OP_ALWAYS)
+            .set_depth_test(false, true, VK_COMPARE_OP_LESS)
             .build(device)
             .unwrap();
 
@@ -209,9 +314,12 @@ void ImmediateDrawQueue::init(
 void ImmediateDrawQueue::deinit()
 {
     boxes.release();
+    cylinders.release();
+
     VMA_DESTROY_BUFFER(*pvma, global_buffer);
     VMA_DESTROY_BUFFER(*pvma, object_buffer);
     VMA_DESTROY_BUFFER(*pvma, cube_buffer);
+    VMA_DESTROY_BUFFER(*pvma, cylinder_buffer);
     vkDestroyPipelineLayout(device, pipeline_layout, 0);
     vkDestroyPipeline(device, pipeline, 0);
 }
@@ -228,13 +336,25 @@ void ImmediateDrawQueue::draw(
     VMA_UNMAP(*pvma, global_buffer);
 
     GPUObjectData* objects = (GPUObjectData*)VMA_MAP(*pvma, object_buffer);
+    u32            c       = 0;
+
     for (const Box& box : boxes) {
-        *objects = {
+        objects[c] = {
             .matrix = glm::translate(glm::mat4(1.0f), box.center) *
                       glm::scale(glm::mat4(1.0f), box.extents),
-            .color = glm::vec3(1, 0, 0),
+            .color = glm::vec4(1, 0, 0, 1),
         };
-        objects++;
+        c++;
+    }
+
+    for (const Cylinder& cylinder : cylinders) {
+        objects[c] = {
+            .matrix = glm::translate(glm::mat4(1.0f), cylinder.center) *
+                      // glm::rotate(glm::mat4(1.0f), 0.0f, cylinder.forward) *
+                      glm::scale(glm::mat4(1.0f), cylinder.extents),
+            .color = glm::vec4(0, 1, 0, 1),
+        };
+        c++;
     }
     VMA_UNMAP(*pvma, object_buffer);
 
@@ -261,10 +381,23 @@ void ImmediateDrawQueue::draw(
         0,
         nullptr);
 
+    // Boxes
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &cube_buffer.buffer, &offset);
-
     vkCmdDraw(cmd, ARRAY_COUNT(Cube_Vertices), (u32)boxes.size, 0, 0);
+
+    // Cylinders
+    vkCmdBindVertexBuffers(cmd, 0, 1, &cylinder_buffer.buffer, &offset);
+    vkCmdDraw(
+        cmd,
+        ARRAY_COUNT(Cylinder_Vertices),
+        (u32)cylinders.size,
+        0,
+        (u32)boxes.size);
 }
 
-void ImmediateDrawQueue::clear() { boxes.empty(); }
+void ImmediateDrawQueue::clear()
+{
+    boxes.empty();
+    cylinders.empty();
+}

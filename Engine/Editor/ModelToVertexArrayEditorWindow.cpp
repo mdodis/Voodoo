@@ -54,23 +54,32 @@ bool ModelToVertexArrayEditorWindow::convert_file(Str path)
         The_Editor.importers.import_asset_from_file(path, temp).unwrap();
     ASSERT(asset.info.kind == AssetKind::Mesh);
     ASSERT(asset.info.mesh.format == core::VertexFormat::P3fN3fC3fU2f);
-    size_t num_vertices = asset.info.mesh.vertex_buffer_size;
 
-    Vertex_P3fN3fC3fU2f* v = (Vertex_P3fN3fC3fU2f*)asset.blob.ptr;
+    const size_t num_vertices = asset.info.mesh.vertex_buffer_size;
+    const size_t num_indices  = asset.info.mesh.index_buffer_size;
+
+    Vertex_P3fN3fC3fU2f* vertices = (Vertex_P3fN3fC3fU2f*)asset.blob.ptr;
+    u32*                 indices =
+        (u32*)asset.blob.ptr + num_vertices * sizeof(Vertex_P3fN3fC3fU2f);
 
     AllocWriteTape out(System_Allocator);
-    
+
     format(&out, LIT("static float vertices[] = {\n"));
 
-    for (size_t i = 0; i < num_vertices; ++i) {
+    for (size_t index = 0; index < num_indices; ++index) {
+        const Vertex_P3fN3fC3fU2f& vertex = vertices[index];
+
         format(
             &out,
             LIT("{}f, {}f, {}f,\n"),
-            v[i].position.x,
-            v[i].position.y,
-            v[i].position.z);
+            vertex.position.x,
+            vertex.position.y,
+            vertex.position.z);
     }
     format(&out, LIT("};\n"));
+    if (current_data.len > 0) {
+        System_Allocator.release((umm)current_data.data);
+    }
 
     current_data = Str(out.ptr, out.size);
 
