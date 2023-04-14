@@ -10,6 +10,8 @@ namespace win {
 
     Result<void, EWindowError> Win32Window::init(i32 width, i32 height)
     {
+        Win32::SetProcessDPIAware();
+
         // Register class
         wnd_class            = {};
         wnd_class.size       = sizeof(wnd_class);
@@ -124,7 +126,6 @@ namespace win {
                 ImGui::EndTooltip();
                 ImGui::EndDragDropSource();
             }
-
         }
 
         if (just_dropped_files) {
@@ -250,16 +251,14 @@ namespace win {
         Win32::DWORD key_state, Win32::POINT point)
     {
         ImGuiIO& io = ImGui::GetIO();
-        
+
         Win32::ScreenToClient(parent->hwnd, &point);
         io.AddMousePosEvent((f32)point.x, (f32)point.y);
 
         return Win32::HResult::Ok;
     }
 
-    void DnDHandler::drag_drop_begin() { 
-        clear();
-    }
+    void DnDHandler::drag_drop_begin() { clear(); }
 
     Win32::HRESULT DnDHandler::drag_drop(Str path)
     {
@@ -274,7 +273,8 @@ namespace win {
         parent->just_dropped_files = true;
     }
 
-    void DnDHandler::clear() {
+    void DnDHandler::clear()
+    {
         for (Str s : dropped_files) {
             System_Allocator.release((umm)s.data);
         }

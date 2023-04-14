@@ -7,6 +7,38 @@
 #include "imgui.h"
 #include "portable-file-dialogs.h"
 
+// clang-format off
+static EditorColorScheme Default_Color_Scheme = {
+    .border                 = {0.57f, 0.57f, 0.57f, 0.50f},
+    .frame_bg               = {0.12f, 0.12f, 0.12f, 0.39f},
+    .frame_bg_hovered       = {0.15f, 0.15f, 0.15f, 0.39f},
+    .frame_bg_active        = {0.58f, 0.58f, 0.58f, 0.39f},
+    .title_bg               = {0.44f, 0.00f, 0.07f, 1.00f},
+    .title_bg_active        = {0.94f, 0.00f, 0.16f, 1.00f},
+    .check_mark             = {0.94f, 0.00f, 0.16f, 1.00f},
+    .slider_grab            = {0.94f, 0.00f, 0.16f, 0.39f},
+    .slider_grab_active     = {0.94f, 0.26f, 0.05f, 1.00f},
+    .button                 = {0.64f, 0.64f, 0.64f, 0.39f},
+    .button_hovered         = {0.64f, 0.64f, 0.64f, 0.71f},
+    .button_active          = {0.94f, 0.26f, 0.05f, 1.00f},
+    .header                 = {0.44f, 0.00f, 0.07f, 1.00f},
+    .header_hovered         = {0.69f, 0.00f, 0.11f, 1.00f},
+    .header_active          = {0.94f, 0.26f, 0.05f, 1.00f},
+    .resize_grip            = {0.44f, 0.00f, 0.07f, 1.00f},
+    .resize_grip_hovered    = {0.69f, 0.00f, 0.11f, 1.00f},
+    .resize_grip_active     = {0.94f, 0.26f, 0.05f, 1.00f},
+    .tab                    = {0.44f, 0.00f, 0.07f, 1.00f},
+    .tab_hovered            = {0.69f, 0.00f, 0.11f, 1.00f},
+    .tab_active             = {0.99f, 0.00f, 0.16f, 1.00f},
+    .docking_preview        = {0.94f, 0.00f, 0.16f, 1.00f},
+    .plot_lines_hovered     = {0.09f, 0.94f, 0.73f, 1.00f},
+    .plot_histogram         = {0.94f, 0.00f, 0.16f, 1.00f},
+    .plot_histogram_hovered = {0.09f, 0.94f, 0.73f, 1.00f},
+    .text_selection_bg      = {0.53f, 0.53f, 0.53f, 0.35f},
+    .drag_drop_target       = {0.94f, 0.26f, 0.05f, 1.00f},
+};
+// clang-format on
+
 void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
 {
     host.window = host_window;
@@ -35,6 +67,8 @@ void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
     next_window_id = 1;
 
     add_texture_from_file(LIT("EditorAssets/DnD.png"), LIT("icons.dnd"));
+
+    apply_color_scheme(Default_Color_Scheme);
 }
 
 void Editor::draw()
