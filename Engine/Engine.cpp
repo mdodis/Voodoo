@@ -1494,19 +1494,6 @@ void Engine::draw()
         vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
-    imm.box(
-        glm::vec3(glm::sin(float(frame_num) / 120.0f) * 2.0f, 0, 0),
-        glm::vec3(1, 1, 1));
-
-    imm.box(
-        glm::vec3(glm::sin(float(frame_num) / 120.0f) * 2.0f, 2, 0),
-        glm::vec3(1, 1, 1));
-
-
-    imm.cylinder(
-        glm::vec3(0, 0, 0),
-        glm::vec3(0, 1, -1));
-
     imm.draw(cmd, view, proj);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRenderPass(cmd);

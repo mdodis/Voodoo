@@ -67,6 +67,8 @@ struct Editor {
     void           add_texture_from_file(Str path, Str name);
     EditorTexture* get_texture(Str name);
 
+    struct ImmediateDrawQueue& immediate_draw_queue() const;
+
     ImporterRegistry         importers{System_Allocator};
     TArray<EditorWindow*>    windows;
     TMap<Str, EditorTexture> textures;

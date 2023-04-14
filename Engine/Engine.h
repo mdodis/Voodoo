@@ -126,6 +126,7 @@ struct Engine {
 private:
     void init_imgui();
     void init_default_renderpass();
+    void init_framebuffer_renderpass();
     void init_pipelines();
     void init_framebuffers();
     void init_descriptors();

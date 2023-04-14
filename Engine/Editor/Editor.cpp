@@ -1,6 +1,7 @@
 #include "Editor.h"
 
 #include "Engine.h"
+#include "Gizmos.h"
 #include "MenuRegistrar.h"
 #include "Window/Window.h"
 #include "backends/imgui_impl_vulkan.h"
@@ -106,6 +107,9 @@ void Editor::draw()
         }
 
         ImGui::End();
+    }
+
+    if (ed::gizmos::box(glm::vec3(0))) {
     }
 
     // Free windows with invalid ids
@@ -219,6 +223,11 @@ EditorTexture* Editor::get_texture(Str name)
 {
     if (textures.contains(name)) return &textures[name];
     return nullptr;
+}
+
+ImmediateDrawQueue& Editor::immediate_draw_queue() const
+{
+    return host.engine->imm;
 }
 
 void Editor::deinit()

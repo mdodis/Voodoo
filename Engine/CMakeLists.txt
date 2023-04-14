@@ -36,6 +36,8 @@ add_executable(vkx
     "./VMA.cpp"
     "./Editor/Editor.h"
     "./Editor/Editor.cpp"
+    "./Editor/Gizmos.h"
+    "./Editor/Gizmos.cpp"
     "./Editor/MenuRegistrar.h"
     "./Editor/MenuRegistrar.cpp"
     "./Editor/HierarchyEditorWindow.h"
