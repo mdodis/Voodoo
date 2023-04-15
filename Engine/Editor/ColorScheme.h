@@ -27,6 +27,7 @@ struct EditorColorScheme {
     Vec4 tab;
     Vec4 tab_hovered;
     Vec4 tab_active;
+    Vec4 tab_unfocused_active;
     Vec4 docking_preview;
     Vec4 plot_lines_hovered;
     Vec4 plot_histogram;
@@ -60,6 +61,7 @@ struct EditorColorSchemeDescriptor : IDescriptor {
     Vec4Descriptor tab_desc                    = { OFFSET_OF(EditorColorScheme, tab),                    LIT("tab"),                    };
     Vec4Descriptor tab_hovered_desc            = { OFFSET_OF(EditorColorScheme, tab_hovered),            LIT("tab_hovered"),            };
     Vec4Descriptor tab_active_desc             = { OFFSET_OF(EditorColorScheme, tab_active),             LIT("tab_active"),             };
+    Vec4Descriptor tab_unfocused_active_desc   = { OFFSET_OF(EditorColorScheme, tab_unfocused_active),   LIT("tab_unfocused_active"),             };
     Vec4Descriptor docking_preview_desc        = { OFFSET_OF(EditorColorScheme, docking_preview),        LIT("docking_preview"),        };
     Vec4Descriptor plot_lines_hovered_desc     = { OFFSET_OF(EditorColorScheme, plot_lines_hovered),     LIT("plot_lines_hovered"),     };
     Vec4Descriptor plot_histogram_desc         = { OFFSET_OF(EditorColorScheme, plot_histogram),         LIT("plot_histogram"),         };
@@ -68,7 +70,7 @@ struct EditorColorSchemeDescriptor : IDescriptor {
     Vec4Descriptor drag_drop_target_desc       = { OFFSET_OF(EditorColorScheme, drag_drop_target),       LIT("drag_drop_target"),       };
     // clang-format on
 
-    IDescriptor* descs[27] = {
+    IDescriptor* descs[28] = {
         &border_desc,
         &frame_bg_desc,
         &frame_bg_hovered_desc,
@@ -90,6 +92,7 @@ struct EditorColorSchemeDescriptor : IDescriptor {
         &tab_desc,
         &tab_hovered_desc,
         &tab_active_desc,
+        &tab_unfocused_active_desc,
         &docking_preview_desc,
         &plot_lines_hovered_desc,
         &plot_histogram_desc,

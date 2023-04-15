@@ -31,6 +31,7 @@ static EditorColorScheme Default_Color_Scheme = {
     .tab                    = {0.44f, 0.00f, 0.07f, 1.00f},
     .tab_hovered            = {0.69f, 0.00f, 0.11f, 1.00f},
     .tab_active             = {0.99f, 0.00f, 0.16f, 1.00f},
+    .tab_unfocused_active   = {0.94f, 0.00f, 0.16f, 1.00f},
     .docking_preview        = {0.94f, 0.00f, 0.16f, 1.00f},
     .plot_lines_hovered     = {0.09f, 0.94f, 0.73f, 1.00f},
     .plot_histogram         = {0.94f, 0.00f, 0.16f, 1.00f},
@@ -160,6 +161,7 @@ void Editor::apply_color_scheme(const EditorColorScheme& scheme)
     colors[ImGuiCol_Tab]                  = *((ImVec4*)&scheme.tab);
     colors[ImGuiCol_TabHovered]           = *((ImVec4*)&scheme.tab_hovered);
     colors[ImGuiCol_TabActive]            = *((ImVec4*)&scheme.tab_active);
+    colors[ImGuiCol_TabUnfocusedActive]   = *((ImVec4*)&scheme.tab_unfocused_active);
     colors[ImGuiCol_DockingPreview]       = *((ImVec4*)&scheme.docking_preview);
     colors[ImGuiCol_PlotLinesHovered]     = *((ImVec4*)&scheme.plot_lines_hovered);
     colors[ImGuiCol_PlotHistogram]        = *((ImVec4*)&scheme.plot_histogram);
