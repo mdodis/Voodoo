@@ -36,22 +36,28 @@ struct Engine {
     VkPhysicalDeviceProperties physical_device_properties;
     VkDevice                   device;
     VkSwapchainKHR             swap_chain;
-    VkFormat                   swap_chain_image_format;
-    TArray<VkImage>            swap_chain_images;
-    TArray<VkImageView>        swap_chain_image_views;
-    VkRenderPass               render_pass;
-    TArray<VkFramebuffer>      framebuffers;
-    VkDescriptorPool           descriptor_pool;
-    VkDescriptorSetLayout      global_set_layout;
-    VkDescriptorSetLayout      object_set_layout;
-    VkDescriptorSetLayout      texture_set_layout;
+    FrameData                  frames[num_overlap_frames];
 
-    FrameData frames[num_overlap_frames];
+    struct {
+        AllocatedImage color_image;
+        VkImageView    color_image_view;
+        VkFormat       color_image_format = VK_FORMAT_R8G8B8_UNORM;
 
-    // Depth Buffer
-    AllocatedImage depth_image;
-    VkImageView    depth_image_view;
-    VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
+        AllocatedImage depth_image;
+        VkImageView    depth_image_view;
+        VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
+
+        VkFramebuffer framebuffer;
+        VkRenderPass  render_pass;
+    } color_pass;
+
+    struct {
+        TArray<VkImage>       images;
+        TArray<VkImageView>   image_views;
+        VkFormat              image_format;
+        TArray<VkFramebuffer> framebuffers;
+        VkRenderPass          render_pass;
+    } present_pass;
 
     // Statistics
     u32 frame_num = 0;
@@ -125,8 +131,8 @@ struct Engine {
 
 private:
     void init_imgui();
-    void init_default_renderpass();
-    void init_framebuffer_renderpass();
+    void init_swapchain_render_pass();
+    void init_color_render_pass();
     void init_pipelines();
     void init_framebuffers();
     void init_descriptors();

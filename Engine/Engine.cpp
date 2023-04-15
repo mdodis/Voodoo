@@ -152,7 +152,7 @@ void Engine::init()
 
     init_commands();
     init_input();
-    init_default_renderpass();
+    init_swapchain_render_pass();
     init_framebuffers();
     init_sync_objects();
     init_descriptors();
@@ -477,7 +477,7 @@ void Engine::init_pipelines()
     }
 }
 
-void Engine::init_default_renderpass()
+void Engine::init_swapchain_render_pass()
 {
     VkAttachmentDescription color_attachment = {
         .format         = swap_chain_image_format,
@@ -495,8 +495,72 @@ void Engine::init_default_renderpass()
         .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
     };
 
+    VkSubpassDescription subpass = {
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount    = 1,
+        .pColorAttachments       = &color_attachment_ref,
+        .pDepthStencilAttachment = nullptr,
+    };
+
+    VkSubpassDependency dependency = {
+        .srcSubpass    = VK_SUBPASS_EXTERNAL,
+        .dstSubpass    = 0,
+        .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = 0,
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
+
+    VkAttachmentDescription attachments[1] = {
+        color_attachment,
+    };
+
+    VkSubpassDependency dependencies[1] = {
+        dependency,
+    };
+
+    VkRenderPassCreateInfo create_info = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments    = attachments,
+        .subpassCount    = 1,
+        .pSubpasses      = &subpass,
+        .dependencyCount = 1,
+        .pDependencies   = dependencies,
+    };
+
+    VK_CHECK(vkCreateRenderPass(
+        device,
+        &create_info,
+        0,
+        &graphics.swapchain_render_pass));
+
+    main_deletion_queue.add(
+        DeletionQueue::DeletionDelegate::create_lambda([this]() {
+            vkDestroyRenderPass(device, graphics.swapchain_render_pass, 0);
+        }));
+}
+
+void Engine::init_color_render_pass()
+{
+    VkAttachmentDescription color_attachment = {
+        .format         = color_pass.color_image_format,
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+
+    VkAttachmentReference color_attachment_ref = {
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    };
+
     VkAttachmentDescription depth_attachment = {
-        .format         = depth_image_format,
+        .format         = color_pass.depth_image_format,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
         .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
@@ -519,12 +583,13 @@ void Engine::init_default_renderpass()
     };
 
     VkSubpassDependency dependency = {
-        .srcSubpass    = VK_SUBPASS_EXTERNAL,
-        .dstSubpass    = 0,
-        .srcStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .srcSubpass      = VK_SUBPASS_EXTERNAL,
+        .dstSubpass      = 0,
+        .srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .dstStageMask    = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        .srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .dstAccessMask   = VK_ACCESS_SHADER_READ_BIT,
+        .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
     };
 
     VkSubpassDependency depth_dependency = {
@@ -534,8 +599,9 @@ void Engine::init_default_renderpass()
                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
         .dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
                         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-        .srcAccessMask = 0,
-        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .srcAccessMask   = 0,
+        .dstAccessMask   = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT,
     };
 
     VkAttachmentDescription attachments[2] = {
@@ -558,10 +624,65 @@ void Engine::init_default_renderpass()
         .pDependencies   = dependencies,
     };
 
-    VK_CHECK(vkCreateRenderPass(device, &create_info, 0, &render_pass));
+    VK_CHECK(
+        vkCreateRenderPass(device, &create_info, 0, &color_pass.render_pass));
 
     main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-        [this]() { vkDestroyRenderPass(this->device, this->render_pass, 0); }));
+        [this]() { vkDestroyRenderPass(device, color_pass.render_pass, 0); }));
+
+    // Images
+    VkImageCreateInfo color_image_create_info = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+    };
+    color_pass.color_image =
+        VMA_CREATE_IMAGE2(
+            vma,
+            color_image_create_info,
+            VMA_MEMORY_USAGE_GPU_ONLY,
+            VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+            .unwrap();
+
+    VkImageViewCreateInfo color_image_view_create_info = {
+        .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .pNext    = nullptr,
+        .flags    = 0,
+        .image    = color_pass.color_image.image,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format   = color_pass.color_image_format,
+        .components =
+            {
+                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+            },
+        .subresourceRange =
+            {
+                .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel   = 0,
+                .levelCount     = 1,
+                .baseArrayLayer = 0,
+                .layerCount     = 1,
+            },
+    };
+
+    // Framebuffer
+    VkFramebufferCreateInfo framebuffer_create_info = {
+        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+        .pNext           = nullptr,
+        .flags           = 0,
+        .renderPass      = color_pass.render_pass,
+        .attachmentCount = 2,
+
+    };
+
+    VK_CHECK(vkCreateFramebuffer(
+        device,
+        framebuffer_create_info,
+        0,
+        &color_pass.framebuffer));
 }
 
 void Engine::init_framebuffers()
@@ -1350,7 +1471,7 @@ void Engine::draw()
 
     VkRenderPassBeginInfo rp_begin_info = {
         .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass  = render_pass,
+        .renderPass  = graphics.color_render_pass,
         .framebuffer = framebuffers[next_image_index],
         .renderArea =
             {
