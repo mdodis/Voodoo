@@ -27,9 +27,11 @@ struct EditorWindow {
     virtual void init()   = 0;
     virtual void draw()   = 0;
     virtual void deinit() = 0;
+    virtual bool has_padding() { return true; };
 
-    flecs::world& editor_world() const;
-    ECS&          ecs() const;
+    struct Engine& engine() const;
+    flecs::world&  editor_world() const;
+    ECS&           ecs() const;
 
     _inline void kill() { id = 0; }
     _inline bool is_valid() const { return id != 0; }

@@ -26,6 +26,7 @@ struct Engine {
     static constexpr int num_overlap_frames = 2;
     bool                 is_initialized     = false;
     VkExtent2D           extent             = {0, 0};
+    bool                 do_blit_pass       = true;
 
     VMA vma;
 
@@ -36,22 +37,44 @@ struct Engine {
     VkPhysicalDeviceProperties physical_device_properties;
     VkDevice                   device;
     VkSwapchainKHR             swap_chain;
-    VkFormat                   swap_chain_image_format;
-    TArray<VkImage>            swap_chain_images;
-    TArray<VkImageView>        swap_chain_image_views;
-    VkRenderPass               render_pass;
-    TArray<VkFramebuffer>      framebuffers;
-    VkDescriptorPool           descriptor_pool;
+    FrameData                  frames[num_overlap_frames];
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
     VkDescriptorSetLayout      texture_set_layout;
 
-    FrameData frames[num_overlap_frames];
+    /**
+     * @brief structs that relate to rendering to texture.
+     * This texture will then be used as a shader resource for
+     * the presentation pass
+     */
+    struct {
+        AllocatedImage color_image;
+        VkImageView    color_image_view;
+        VkFormat       color_image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
-    // Depth Buffer
-    AllocatedImage depth_image;
-    VkImageView    depth_image_view;
-    VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
+        AllocatedImage depth_image;
+        VkImageView    depth_image_view;
+        VkFormat       depth_image_format = VK_FORMAT_D32_SFLOAT;
+
+        VkFramebuffer framebuffer;
+        VkRenderPass  render_pass;
+
+        DeletionQueue deletion{System_Allocator};
+        VkExtent2D    extent;
+    } color_pass;
+
+    struct {
+        TArray<VkImage>       images;
+        TArray<VkImageView>   image_views;
+        VkFormat              image_format;
+        TArray<VkFramebuffer> framebuffers;
+        VkRenderPass          render_pass;
+        VkPipelineLayout      pipeline_layout;
+        VkPipeline            pipeline;
+        VkDescriptorSetLayout texture_set_layout;
+        VkDescriptorSet       texture_set = VK_NULL_HANDLE;
+        VkSampler             texture_sampler;
+    } present_pass;
 
     // Statistics
     u32 frame_num = 0;
@@ -108,7 +131,12 @@ struct Engine {
     void init();
     void deinit();
     void draw();
+    void draw_color_pass(VkCommandBuffer cmd, FrameData& frame, u32 frame_idx);
+    void draw_present_pass(
+        VkCommandBuffer cmd, FrameData& frame, u32 frame_idx);
     void imgui_new_frame();
+
+    void resize_offscreen_buffer(u32 width, u32 height);
 
     /**
      * Used to update debug camera
@@ -125,8 +153,8 @@ struct Engine {
 
 private:
     void init_imgui();
-    void init_default_renderpass();
-    void init_framebuffer_renderpass();
+    void init_present_render_pass();
+    void init_color_render_pass();
     void init_pipelines();
     void init_framebuffers();
     void init_descriptors();
