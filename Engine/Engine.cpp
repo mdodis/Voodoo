@@ -151,12 +151,13 @@ void Engine::init()
     desc.allocator.init(System_Allocator, device);
     desc.cache.init(device);
 
+    init_color_render_pass();
     recreate_swapchain();
+    init_present_render_pass();
 
     init_commands();
     init_input();
-    init_color_render_pass();
-    init_present_render_pass();
+
     init_framebuffers();
     init_sync_objects();
     init_descriptors();
@@ -547,30 +548,6 @@ void Engine::init_present_render_pass()
 
     CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
 
-    VkSamplerCreateInfo sampler_create_info =
-        make_sampler_create_info(VK_FILTER_LINEAR);
-
-    VK_CHECK(vkCreateSampler(
-        device,
-        &sampler_create_info,
-        0,
-        &present_pass.texture_sampler));
-
-    VkDescriptorImageInfo image_binding_info = {
-        .sampler     = present_pass.texture_sampler,
-        .imageView   = color_pass.color_image_view,
-        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-    };
-
-    ASSERT(
-        DescriptorBuilder::create(temp, &desc.cache, &desc.allocator)
-            .bind_image(
-                0,
-                &image_binding_info,
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                VK_SHADER_STAGE_FRAGMENT_BIT)
-            .build(present_pass.texture_set, present_pass.texture_set_layout));
-
     VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext                  = nullptr,
@@ -692,87 +669,6 @@ void Engine::init_color_render_pass()
 
     main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
         [this]() { vkDestroyRenderPass(device, color_pass.render_pass, 0); }));
-
-    // Images
-    VkImageCreateInfo color_image_create_info = {
-        .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext     = 0,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format    = color_pass.color_image_format,
-        .extent =
-            {
-                .width  = extent.width,
-                .height = extent.height,
-                .depth  = 1,
-            },
-        .mipLevels   = 1,
-        .arrayLayers = 1,
-        .samples     = VK_SAMPLE_COUNT_1_BIT,
-        .tiling      = VK_IMAGE_TILING_OPTIMAL,
-        .usage =
-            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-    };
-
-    color_pass.color_image =
-        VMA_CREATE_IMAGE2(
-            vma,
-            color_image_create_info,
-            VMA_MEMORY_USAGE_GPU_ONLY,
-            VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-            .unwrap();
-
-    VkImageViewCreateInfo color_image_view_create_info = {
-        .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .pNext    = nullptr,
-        .flags    = 0,
-        .image    = color_pass.color_image.image,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format   = color_pass.color_image_format,
-        .components =
-            {
-                .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-            },
-        .subresourceRange =
-            {
-                .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel   = 0,
-                .levelCount     = 1,
-                .baseArrayLayer = 0,
-                .layerCount     = 1,
-            },
-    };
-
-    VK_CHECK(vkCreateImageView(
-        device,
-        &color_image_view_create_info,
-        0,
-        &color_pass.color_image_view));
-
-    auto framebuffer_attachments = arr<VkImageView>(
-        color_pass.color_image_view,
-        color_pass.depth_image_view);
-
-    // Framebuffer
-    VkFramebufferCreateInfo framebuffer_create_info = {
-        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .pNext           = nullptr,
-        .flags           = 0,
-        .renderPass      = color_pass.render_pass,
-        .attachmentCount = framebuffer_attachments.count(),
-        .pAttachments    = framebuffer_attachments.elements,
-        .width           = extent.width,
-        .height          = extent.height,
-        .layers          = 1,
-    };
-
-    VK_CHECK(vkCreateFramebuffer(
-        device,
-        &framebuffer_create_info,
-        0,
-        &color_pass.framebuffer));
 }
 
 void Engine::init_framebuffers()
@@ -1914,7 +1810,70 @@ void Engine::recreate_swapchain()
 
     // Create color buffer
     {
-        // @todo
+        VkImageCreateInfo color_image_create_info = {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext     = 0,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format    = color_pass.color_image_format,
+            .extent =
+                {
+                    .width  = extent.width,
+                    .height = extent.height,
+                    .depth  = 1,
+                },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        };
+
+        color_pass.color_image =
+            VMA_CREATE_IMAGE2(
+                vma,
+                color_image_create_info,
+                VMA_MEMORY_USAGE_GPU_ONLY,
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+                .unwrap();
+
+        swap_chain_deletion_queue.add_lambda([&]() {
+            VMA_DESTROY_IMAGE(vma, color_pass.color_image);
+        });
+
+        VkImageViewCreateInfo color_image_view_create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext    = nullptr,
+            .flags    = 0,
+            .image    = color_pass.color_image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = color_pass.color_image_format,
+            .components =
+                {
+                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+                },
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+
+        VK_CHECK(vkCreateImageView(
+            device,
+            &color_image_view_create_info,
+            0,
+            &color_pass.color_image_view));
+
+        swap_chain_deletion_queue.add_lambda([&]() {
+            vkDestroyImageView(device, color_pass.color_image_view, 0);
+        });
     }
 
     // Create depth buffer
@@ -1970,6 +1929,85 @@ void Engine::recreate_swapchain()
                 vkDestroyImageView(device, color_pass.depth_image_view, 0);
                 VMA_DESTROY_IMAGE(vma, color_pass.depth_image);
             }));
+    }
+
+    // Framebuffer
+    {
+        auto framebuffer_attachments = arr<VkImageView>(
+            color_pass.color_image_view,
+            color_pass.depth_image_view);
+
+        // Framebuffer
+        VkFramebufferCreateInfo framebuffer_create_info = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext           = nullptr,
+            .flags           = 0,
+            .renderPass      = color_pass.render_pass,
+            .attachmentCount = framebuffer_attachments.count(),
+            .pAttachments    = framebuffer_attachments.elements,
+            .width           = extent.width,
+            .height          = extent.height,
+            .layers          = 1,
+        };
+
+        VK_CHECK(vkCreateFramebuffer(
+            device,
+            &framebuffer_create_info,
+            0,
+            &color_pass.framebuffer));
+
+        swap_chain_deletion_queue.add_lambda([&]() {
+            vkDestroyFramebuffer(device, color_pass.framebuffer, 0);
+        });
+    }
+
+    // Texture descriptor
+
+    if (present_pass.texture_set == VK_NULL_HANDLE) {
+        VkSamplerCreateInfo sampler_create_info =
+            make_sampler_create_info(VK_FILTER_LINEAR);
+
+        VK_CHECK(vkCreateSampler(
+            device,
+            &sampler_create_info,
+            0,
+            &present_pass.texture_sampler));
+
+        VkDescriptorImageInfo image_binding_info = {
+            .sampler     = present_pass.texture_sampler,
+            .imageView   = color_pass.color_image_view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        ASSERT(DescriptorBuilder::create(
+                   System_Allocator,
+                   &desc.cache,
+                   &desc.allocator)
+                   .bind_image(
+                       0,
+                       &image_binding_info,
+                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                       VK_SHADER_STAGE_FRAGMENT_BIT)
+                   .build(
+                       present_pass.texture_set,
+                       present_pass.texture_set_layout));
+    } else {
+        VkDescriptorImageInfo image_binding_info = {
+            .sampler     = present_pass.texture_sampler,
+            .imageView   = color_pass.color_image_view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        VkWriteDescriptorSet write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = nullptr,
+            .dstSet          = present_pass.texture_set,
+            .dstBinding      = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo      = &image_binding_info,
+        };
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
     }
 }
 

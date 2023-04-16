@@ -68,7 +68,7 @@ struct Engine {
         VkPipelineLayout      pipeline_layout;
         VkPipeline            pipeline;
         VkDescriptorSetLayout texture_set_layout;
-        VkDescriptorSet       texture_set;
+        VkDescriptorSet       texture_set = VK_NULL_HANDLE;
         VkSampler             texture_sampler;
     } present_pass;
 
