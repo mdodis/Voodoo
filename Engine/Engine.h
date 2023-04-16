@@ -26,6 +26,7 @@ struct Engine {
     static constexpr int num_overlap_frames = 2;
     bool                 is_initialized     = false;
     VkExtent2D           extent             = {0, 0};
+    bool                 do_blit_pass       = true;
 
     VMA vma;
 
@@ -57,6 +58,9 @@ struct Engine {
 
         VkFramebuffer framebuffer;
         VkRenderPass  render_pass;
+
+        DeletionQueue deletion{System_Allocator};
+        VkExtent2D    extent;
     } color_pass;
 
     struct {
@@ -131,6 +135,8 @@ struct Engine {
     void draw_present_pass(
         VkCommandBuffer cmd, FrameData& frame, u32 frame_idx);
     void imgui_new_frame();
+
+    void resize_offscreen_buffer(u32 width, u32 height);
 
     /**
      * Used to update debug camera

@@ -98,6 +98,13 @@ void Editor::draw()
         if (!window->is_valid()) continue;
 
         bool is_window_open = true;
+
+        int style_var_count = 0;
+        if (!window->has_padding()) {
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+            style_var_count++;
+        }
+
         ImGui::Begin(window->name().data, &is_window_open);
 
         if (is_window_open) {
@@ -107,6 +114,7 @@ void Editor::draw()
         }
 
         ImGui::End();
+        ImGui::PopStyleVar(style_var_count);
     }
 
     if (ed::gizmos::box(glm::vec3(0))) {
@@ -279,6 +287,8 @@ STATIC_MENU_ITEM(
 
 STATIC_MENU_ITEM(
     "Help/ImGui", { The_Editor.imgui_demo = !The_Editor.imgui_demo; }, -200);
+
+Engine& EditorWindow::engine() const { return *The_Editor.host.engine; }
 
 flecs::world& EditorWindow::editor_world() const
 {

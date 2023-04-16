@@ -44,6 +44,8 @@ add_executable(vkx
     "./Editor/HierarchyEditorWindow.cpp"
     "./Editor/InspectorEditorWindow.h"
     "./Editor/InspectorEditorWindow.cpp"
+    "./Editor/WorldViewEditorWindow.h"
+    "./Editor/WorldViewEditorWindow.cpp"
     "./Editor/ModelToVertexArrayEditorWindow.h"
     "./Editor/ModelToVertexArrayEditorWindow.cpp"
     "./Editor/ColorScheme.h"

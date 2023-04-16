@@ -872,7 +872,7 @@ void Engine::init_imgui()
         .MSAASamples     = VK_SAMPLE_COUNT_1_BIT,
         .CheckVkResultFn = imgui_check_vk_result,
     };
-    ASSERT(ImGui_ImplVulkan_Init(&vk_init_info, color_pass.render_pass));
+    ASSERT(ImGui_ImplVulkan_Init(&vk_init_info, present_pass.render_pass));
 
     immediate_submit_lambda([&](VkCommandBuffer cmd) {
         ASSERT(ImGui_ImplVulkan_CreateFontsTexture(cmd));
@@ -887,6 +887,215 @@ void Engine::init_imgui()
 }
 
 void Engine::imgui_new_frame() { ImGui_ImplVulkan_NewFrame(); }
+
+void Engine::resize_offscreen_buffer(u32 width, u32 height)
+{
+    vkDeviceWaitIdle(device);
+    color_pass.deletion.flush();
+
+    // Create color buffer
+    {
+        VkImageCreateInfo color_image_create_info = {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext     = 0,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format    = color_pass.color_image_format,
+            .extent =
+                {
+                    .width  = width,
+                    .height = height,
+                    .depth  = 1,
+                },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = VK_IMAGE_USAGE_SAMPLED_BIT |
+                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        };
+
+        color_pass.color_image =
+            VMA_CREATE_IMAGE2(
+                vma,
+                color_image_create_info,
+                VMA_MEMORY_USAGE_GPU_ONLY,
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+                .unwrap();
+
+        VkImageViewCreateInfo color_image_view_create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .pNext    = nullptr,
+            .flags    = 0,
+            .image    = color_pass.color_image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = color_pass.color_image_format,
+            .components =
+                {
+                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+                    .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+                },
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+
+        VK_CHECK(vkCreateImageView(
+            device,
+            &color_image_view_create_info,
+            0,
+            &color_pass.color_image_view));
+
+        color_pass.deletion.add_lambda([&]() {
+            vkDestroyImageView(device, color_pass.color_image_view, 0);
+            VMA_DESTROY_IMAGE(vma, color_pass.color_image);
+        });
+    }
+
+    // Create depth buffer
+    {
+        VkImageCreateInfo image_create_info = {
+            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .imageType = VK_IMAGE_TYPE_2D,
+            .format    = color_pass.depth_image_format,
+            .extent =
+                {
+                    .width  = extent.width,
+                    .height = extent.height,
+                    .depth  = 1,
+                },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL,
+            .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        };
+
+        color_pass.depth_image =
+            VMA_CREATE_IMAGE2(
+                vma,
+                image_create_info,
+                VMA_MEMORY_USAGE_GPU_ONLY,
+                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+                .unwrap();
+
+        VkImageViewCreateInfo view_create_info = {
+            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image    = color_pass.depth_image.image,
+            .viewType = VK_IMAGE_VIEW_TYPE_2D,
+            .format   = color_pass.depth_image_format,
+            .subresourceRange =
+                {
+                    .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
+                    .baseMipLevel   = 0,
+                    .levelCount     = 1,
+                    .baseArrayLayer = 0,
+                    .layerCount     = 1,
+                },
+        };
+
+        VK_CHECK(vkCreateImageView(
+            device,
+            &view_create_info,
+            0,
+            &color_pass.depth_image_view));
+
+        color_pass.deletion.add_lambda([&]() {
+            vkDestroyImageView(device, color_pass.depth_image_view, 0);
+            VMA_DESTROY_IMAGE(vma, color_pass.depth_image);
+        });
+    }
+
+    // Framebuffer
+    {
+        auto framebuffer_attachments = arr<VkImageView>(
+            color_pass.color_image_view,
+            color_pass.depth_image_view);
+
+        // Framebuffer
+        VkFramebufferCreateInfo framebuffer_create_info = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .pNext           = nullptr,
+            .flags           = 0,
+            .renderPass      = color_pass.render_pass,
+            .attachmentCount = framebuffer_attachments.count(),
+            .pAttachments    = framebuffer_attachments.elements,
+            .width           = width,
+            .height          = height,
+            .layers          = 1,
+        };
+
+        VK_CHECK(vkCreateFramebuffer(
+            device,
+            &framebuffer_create_info,
+            0,
+            &color_pass.framebuffer));
+
+        color_pass.deletion.add_lambda([&]() {
+            vkDestroyFramebuffer(device, color_pass.framebuffer, 0);
+        });
+    }
+
+    // Texture descriptor
+
+    if (present_pass.texture_set == VK_NULL_HANDLE) {
+        VkSamplerCreateInfo sampler_create_info =
+            make_sampler_create_info(VK_FILTER_LINEAR);
+
+        VK_CHECK(vkCreateSampler(
+            device,
+            &sampler_create_info,
+            0,
+            &present_pass.texture_sampler));
+
+        VkDescriptorImageInfo image_binding_info = {
+            .sampler     = present_pass.texture_sampler,
+            .imageView   = color_pass.color_image_view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        ASSERT(DescriptorBuilder::create(
+                   System_Allocator,
+                   &desc.cache,
+                   &desc.allocator)
+                   .bind_image(
+                       0,
+                       &image_binding_info,
+                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                       VK_SHADER_STAGE_FRAGMENT_BIT)
+                   .build(
+                       present_pass.texture_set,
+                       present_pass.texture_set_layout));
+    } else {
+        VkDescriptorImageInfo image_binding_info = {
+            .sampler     = present_pass.texture_sampler,
+            .imageView   = color_pass.color_image_view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        };
+
+        VkWriteDescriptorSet write = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .pNext           = nullptr,
+            .dstSet          = present_pass.texture_set,
+            .dstBinding      = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo      = &image_binding_info,
+        };
+        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    }
+
+    color_pass.extent = {
+        .width  = width,
+        .height = height,
+    };
+}
 
 // Other
 FrameData& Engine::get_current_frame()
@@ -1427,7 +1636,7 @@ void Engine::draw_color_pass(
         .renderArea =
             {
                 .offset = {0, 0},
-                .extent = extent,
+                .extent = color_pass.extent,
             },
         .clearValueCount = ARRAY_COUNT(clear_values),
         .pClearValues    = clear_values,
@@ -1437,8 +1646,8 @@ void Engine::draw_color_pass(
     VkViewport viewport = {
         .x        = 0,
         .y        = 0,
-        .width    = (float)extent.width,
-        .height   = (float)extent.height,
+        .width    = (float)color_pass.extent.width,
+        .height   = (float)color_pass.extent.height,
         .minDepth = 0.f,
         .maxDepth = 1.f,
     };
@@ -1460,7 +1669,7 @@ void Engine::draw_color_pass(
         glm::lookAt(debug_camera.position, camera_target, camera_up);
     glm::mat4 proj = glm::perspective(
         glm::radians(70.f),
-        (float(extent.width) / float(extent.height)),
+        (float(color_pass.extent.width) / float(color_pass.extent.height)),
         0.1f,
         200.0f);
     proj[1][1] *= -1;
@@ -1567,7 +1776,7 @@ void Engine::draw_color_pass(
     }
 
     imm.draw(cmd, view, proj);
-    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+
     vkCmdEndRenderPass(cmd);
 }
 
@@ -1599,23 +1808,26 @@ void Engine::draw_present_pass(
         &render_pass_begin_info,
         VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(
-        cmd,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        present_pass.pipeline);
+    if (do_blit_pass) {
+        vkCmdBindPipeline(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            present_pass.pipeline);
 
-    vkCmdBindDescriptorSets(
-        cmd,
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        present_pass.pipeline_layout,
-        0,
-        1,
-        &present_pass.texture_set,
-        0,
-        nullptr);
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            present_pass.pipeline_layout,
+            0,
+            1,
+            &present_pass.texture_set,
+            0,
+            nullptr);
 
-    vkCmdDraw(cmd, 6, 1, 0, 0);
+        vkCmdDraw(cmd, 6, 1, 0, 0);
+    }
 
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRenderPass(cmd);
 }
 
@@ -1668,6 +1880,7 @@ void Engine::draw()
     VK_CHECK(vkBeginCommandBuffer(cmd, &begin_info));
 
     draw_color_pass(cmd, frame, next_image_index);
+
     draw_present_pass(cmd, frame, next_image_index);
 
     vkEndCommandBuffer(cmd);
@@ -1808,206 +2021,8 @@ void Engine::recreate_swapchain()
             }));
     }
 
-    // Create color buffer
-    {
-        VkImageCreateInfo color_image_create_info = {
-            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .pNext     = 0,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format    = color_pass.color_image_format,
-            .extent =
-                {
-                    .width  = extent.width,
-                    .height = extent.height,
-                    .depth  = 1,
-                },
-            .mipLevels   = 1,
-            .arrayLayers = 1,
-            .samples     = VK_SAMPLE_COUNT_1_BIT,
-            .tiling      = VK_IMAGE_TILING_OPTIMAL,
-            .usage       = VK_IMAGE_USAGE_SAMPLED_BIT |
-                     VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-        };
-
-        color_pass.color_image =
-            VMA_CREATE_IMAGE2(
-                vma,
-                color_image_create_info,
-                VMA_MEMORY_USAGE_GPU_ONLY,
-                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-                .unwrap();
-
-        swap_chain_deletion_queue.add_lambda([&]() {
-            VMA_DESTROY_IMAGE(vma, color_pass.color_image);
-        });
-
-        VkImageViewCreateInfo color_image_view_create_info = {
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext    = nullptr,
-            .flags    = 0,
-            .image    = color_pass.color_image.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = color_pass.color_image_format,
-            .components =
-                {
-                    .r = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .g = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .b = VK_COMPONENT_SWIZZLE_IDENTITY,
-                    .a = VK_COMPONENT_SWIZZLE_IDENTITY,
-                },
-            .subresourceRange =
-                {
-                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel   = 0,
-                    .levelCount     = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount     = 1,
-                },
-        };
-
-        VK_CHECK(vkCreateImageView(
-            device,
-            &color_image_view_create_info,
-            0,
-            &color_pass.color_image_view));
-
-        swap_chain_deletion_queue.add_lambda([&]() {
-            vkDestroyImageView(device, color_pass.color_image_view, 0);
-        });
-    }
-
-    // Create depth buffer
-    {
-        VkImageCreateInfo image_create_info = {
-            .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format    = color_pass.depth_image_format,
-            .extent =
-                {
-                    .width  = extent.width,
-                    .height = extent.height,
-                    .depth  = 1,
-                },
-            .mipLevels   = 1,
-            .arrayLayers = 1,
-            .samples     = VK_SAMPLE_COUNT_1_BIT,
-            .tiling      = VK_IMAGE_TILING_OPTIMAL,
-            .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        };
-
-        color_pass.depth_image =
-            VMA_CREATE_IMAGE2(
-                vma,
-                image_create_info,
-                VMA_MEMORY_USAGE_GPU_ONLY,
-                VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-                .unwrap();
-
-        VkImageViewCreateInfo view_create_info = {
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image    = color_pass.depth_image.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = color_pass.depth_image_format,
-            .subresourceRange =
-                {
-                    .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
-                    .baseMipLevel   = 0,
-                    .levelCount     = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount     = 1,
-                },
-        };
-
-        VK_CHECK(vkCreateImageView(
-            device,
-            &view_create_info,
-            0,
-            &color_pass.depth_image_view));
-
-        swap_chain_deletion_queue.add(
-            DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vkDestroyImageView(device, color_pass.depth_image_view, 0);
-                VMA_DESTROY_IMAGE(vma, color_pass.depth_image);
-            }));
-    }
-
-    // Framebuffer
-    {
-        auto framebuffer_attachments = arr<VkImageView>(
-            color_pass.color_image_view,
-            color_pass.depth_image_view);
-
-        // Framebuffer
-        VkFramebufferCreateInfo framebuffer_create_info = {
-            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-            .pNext           = nullptr,
-            .flags           = 0,
-            .renderPass      = color_pass.render_pass,
-            .attachmentCount = framebuffer_attachments.count(),
-            .pAttachments    = framebuffer_attachments.elements,
-            .width           = extent.width,
-            .height          = extent.height,
-            .layers          = 1,
-        };
-
-        VK_CHECK(vkCreateFramebuffer(
-            device,
-            &framebuffer_create_info,
-            0,
-            &color_pass.framebuffer));
-
-        swap_chain_deletion_queue.add_lambda([&]() {
-            vkDestroyFramebuffer(device, color_pass.framebuffer, 0);
-        });
-    }
-
-    // Texture descriptor
-
-    if (present_pass.texture_set == VK_NULL_HANDLE) {
-        VkSamplerCreateInfo sampler_create_info =
-            make_sampler_create_info(VK_FILTER_LINEAR);
-
-        VK_CHECK(vkCreateSampler(
-            device,
-            &sampler_create_info,
-            0,
-            &present_pass.texture_sampler));
-
-        VkDescriptorImageInfo image_binding_info = {
-            .sampler     = present_pass.texture_sampler,
-            .imageView   = color_pass.color_image_view,
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-
-        ASSERT(DescriptorBuilder::create(
-                   System_Allocator,
-                   &desc.cache,
-                   &desc.allocator)
-                   .bind_image(
-                       0,
-                       &image_binding_info,
-                       VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                       VK_SHADER_STAGE_FRAGMENT_BIT)
-                   .build(
-                       present_pass.texture_set,
-                       present_pass.texture_set_layout));
-    } else {
-        VkDescriptorImageInfo image_binding_info = {
-            .sampler     = present_pass.texture_sampler,
-            .imageView   = color_pass.color_image_view,
-            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        };
-
-        VkWriteDescriptorSet write = {
-            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext           = nullptr,
-            .dstSet          = present_pass.texture_set,
-            .dstBinding      = 0,
-            .descriptorCount = 1,
-            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-            .pImageInfo      = &image_binding_info,
-        };
-        vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    if (do_blit_pass) {
+        resize_offscreen_buffer(extent.width, extent.height);
     }
 }
 
