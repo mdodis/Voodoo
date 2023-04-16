@@ -26,11 +26,11 @@ static VK_PROC_DEBUG_CALLBACK(debug_callback)
 
 void Engine::init()
 {
-    swap_chain_images.alloc      = &allocator;
-    swap_chain_image_views.alloc = &allocator;
-    framebuffers.alloc           = &allocator;
-    main_deletion_queue          = DeletionQueue(allocator);
-    swap_chain_deletion_queue    = DeletionQueue(allocator);
+    present_pass.images.alloc       = &allocator;
+    present_pass.image_views.alloc  = &allocator;
+    present_pass.framebuffers.alloc = &allocator;
+    main_deletion_queue             = DeletionQueue(allocator);
+    swap_chain_deletion_queue       = DeletionQueue(allocator);
     meshes.init(allocator);
     materials.init(allocator);
     textures.init(allocator);
@@ -148,11 +148,15 @@ void Engine::init()
         LIT("Min GPU Buffer Alignment: {}\n"),
         physical_device_properties.limits.minUniformBufferOffsetAlignment);
 
+    desc.allocator.init(System_Allocator, device);
+    desc.cache.init(device);
+
     recreate_swapchain();
 
     init_commands();
     init_input();
-    init_swapchain_render_pass();
+    init_color_render_pass();
+    init_present_render_pass();
     init_framebuffers();
     init_sync_objects();
     init_descriptors();
@@ -161,7 +165,7 @@ void Engine::init()
     init_default_meshes();
     init_imgui();
 
-    imm.init(device, render_pass, vma, &desc.cache, &desc.allocator);
+    imm.init(device, color_pass.render_pass, vma, &desc.cache, &desc.allocator);
 
     is_initialized = true;
 }
@@ -229,9 +233,6 @@ void Engine::init_commands()
 
 void Engine::init_descriptors()
 {
-    desc.allocator.init(System_Allocator, device);
-    desc.cache.init(device);
-
     CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(5));
 
     // Global data buffer
@@ -356,7 +357,7 @@ void Engine::init_pipelines()
                 .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
                 .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .set_polygon_mode(VK_POLYGON_MODE_FILL)
-                .set_render_pass(render_pass)
+                .set_render_pass(color_pass.render_pass)
                 .set_layout(pipeline_layout)
                 .set_vertex_input_info(vertex_input_info)
                 .set_depth_test(true, true, VK_COMPARE_OP_LESS)
@@ -454,7 +455,7 @@ void Engine::init_pipelines()
                 .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
                 .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
                 .set_polygon_mode(VK_POLYGON_MODE_FILL)
-                .set_render_pass(render_pass)
+                .set_render_pass(color_pass.render_pass)
                 .set_layout(pipeline_layout)
                 .set_vertex_input_info(vertex_input_info)
                 .set_depth_test(true, true, VK_COMPARE_OP_LESS)
@@ -477,10 +478,10 @@ void Engine::init_pipelines()
     }
 }
 
-void Engine::init_swapchain_render_pass()
+void Engine::init_present_render_pass()
 {
     VkAttachmentDescription color_attachment = {
-        .format         = swap_chain_image_format,
+        .format         = present_pass.image_format,
         .samples        = VK_SAMPLE_COUNT_1_BIT,
         .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
@@ -529,16 +530,78 @@ void Engine::init_swapchain_render_pass()
         .pDependencies   = dependencies,
     };
 
-    VK_CHECK(vkCreateRenderPass(
-        device,
-        &create_info,
-        0,
-        &graphics.swapchain_render_pass));
+    VK_CHECK(
+        vkCreateRenderPass(device, &create_info, 0, &present_pass.render_pass));
 
     main_deletion_queue.add(
         DeletionQueue::DeletionDelegate::create_lambda([this]() {
-            vkDestroyRenderPass(device, graphics.swapchain_render_pass, 0);
+            vkDestroyRenderPass(device, present_pass.render_pass, 0);
         }));
+
+    // Pipeline
+
+    VkShaderModule vert_mod = load_shader(LIT("Shaders/Present.vert.spv"));
+    DEFER(vkDestroyShaderModule(device, vert_mod, 0));
+    VkShaderModule frag_mod = load_shader(LIT("Shaders/Present.frag.spv"));
+    DEFER(vkDestroyShaderModule(device, frag_mod, 0));
+
+    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+
+    VkSamplerCreateInfo sampler_create_info =
+        make_sampler_create_info(VK_FILTER_LINEAR);
+
+    VK_CHECK(vkCreateSampler(
+        device,
+        &sampler_create_info,
+        0,
+        &present_pass.texture_sampler));
+
+    VkDescriptorImageInfo image_binding_info = {
+        .sampler     = present_pass.texture_sampler,
+        .imageView   = color_pass.color_image_view,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
+
+    ASSERT(
+        DescriptorBuilder::create(temp, &desc.cache, &desc.allocator)
+            .bind_image(
+                0,
+                &image_binding_info,
+                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                VK_SHADER_STAGE_FRAGMENT_BIT)
+            .build(present_pass.texture_set, present_pass.texture_set_layout));
+
+    VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext                  = nullptr,
+        .flags                  = 0,
+        .setLayoutCount         = 1,
+        .pSetLayouts            = &present_pass.texture_set_layout,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr,
+    };
+
+    VK_CHECK(vkCreatePipelineLayout(
+        device,
+        &pipeline_layout_create_info,
+        0,
+        &present_pass.pipeline_layout));
+    VertexInputInfo vertex_input_info;
+
+    present_pass.pipeline =
+        PipelineBuilder(temp)
+            .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, vert_mod)
+            .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, frag_mod)
+            .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
+            .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
+            .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
+            .set_polygon_mode(VK_POLYGON_MODE_FILL)
+            .set_render_pass(present_pass.render_pass)
+            .set_layout(present_pass.pipeline_layout)
+            .set_vertex_input_info(vertex_input_info)
+            .set_depth_test(false, false, VK_COMPARE_OP_ALWAYS)
+            .build(device)
+            .unwrap();
 }
 
 void Engine::init_color_render_pass()
@@ -632,10 +695,24 @@ void Engine::init_color_render_pass()
 
     // Images
     VkImageCreateInfo color_image_create_info = {
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = nullptr,
-        .flags = 0,
+        .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .pNext     = 0,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format    = color_pass.color_image_format,
+        .extent =
+            {
+                .width  = extent.width,
+                .height = extent.height,
+                .depth  = 1,
+            },
+        .mipLevels   = 1,
+        .arrayLayers = 1,
+        .samples     = VK_SAMPLE_COUNT_1_BIT,
+        .tiling      = VK_IMAGE_TILING_OPTIMAL,
+        .usage =
+            VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
     };
+
     color_pass.color_image =
         VMA_CREATE_IMAGE2(
             vma,
@@ -668,19 +745,32 @@ void Engine::init_color_render_pass()
             },
     };
 
+    VK_CHECK(vkCreateImageView(
+        device,
+        &color_image_view_create_info,
+        0,
+        &color_pass.color_image_view));
+
+    auto framebuffer_attachments = arr<VkImageView>(
+        color_pass.color_image_view,
+        color_pass.depth_image_view);
+
     // Framebuffer
     VkFramebufferCreateInfo framebuffer_create_info = {
         .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
         .pNext           = nullptr,
         .flags           = 0,
         .renderPass      = color_pass.render_pass,
-        .attachmentCount = 2,
-
+        .attachmentCount = framebuffer_attachments.count(),
+        .pAttachments    = framebuffer_attachments.elements,
+        .width           = extent.width,
+        .height          = extent.height,
+        .layers          = 1,
     };
 
     VK_CHECK(vkCreateFramebuffer(
         device,
-        framebuffer_create_info,
+        &framebuffer_create_info,
         0,
         &color_pass.framebuffer));
 }
@@ -689,29 +779,38 @@ void Engine::init_framebuffers()
 {
     VkFramebufferCreateInfo create_info = {
         .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = render_pass,
-        .attachmentCount = 2,
+        .renderPass      = present_pass.render_pass,
+        .attachmentCount = 1,
         .width           = extent.width,
         .height          = extent.height,
         .layers          = 1,
     };
 
-    const u32 swapchain_image_count = (u32)swap_chain_images.size;
-    framebuffers.init_range(swapchain_image_count);
+    const u32 swapchain_image_count = (u32)present_pass.images.size;
+    present_pass.framebuffers.init_range(swapchain_image_count);
 
     for (u32 i = 0; i < swapchain_image_count; ++i) {
-        VkImageView attachments[2] = {
-            swap_chain_image_views[i],
-            depth_image_view,
+        VkImageView attachments[1] = {
+            present_pass.image_views[i],
         };
+
         create_info.pAttachments = attachments;
-        VK_CHECK(
-            vkCreateFramebuffer(device, &create_info, 0, &framebuffers[i]));
+        VK_CHECK(vkCreateFramebuffer(
+            device,
+            &create_info,
+            0,
+            &present_pass.framebuffers[i]));
 
         swap_chain_deletion_queue.add(
             DeletionQueue::DeletionDelegate::create_lambda([this, i]() {
-                vkDestroyFramebuffer(this->device, framebuffers[i], 0);
-                vkDestroyImageView(this->device, swap_chain_image_views[i], 0);
+                vkDestroyFramebuffer(
+                    this->device,
+                    present_pass.framebuffers[i],
+                    0);
+                vkDestroyImageView(
+                    this->device,
+                    present_pass.image_views[i],
+                    0);
             }));
     }
 }
@@ -877,7 +976,7 @@ void Engine::init_imgui()
         .MSAASamples     = VK_SAMPLE_COUNT_1_BIT,
         .CheckVkResultFn = imgui_check_vk_result,
     };
-    ASSERT(ImGui_ImplVulkan_Init(&vk_init_info, render_pass));
+    ASSERT(ImGui_ImplVulkan_Init(&vk_init_info, color_pass.render_pass));
 
     immediate_submit_lambda([&](VkCommandBuffer cmd) {
         ASSERT(ImGui_ImplVulkan_CreateFontsTexture(cmd));
@@ -1404,53 +1503,9 @@ Result<AllocatedImage, VkResult> Engine::upload_image(const Asset& asset)
     return Ok(result);
 }
 
-void Engine::draw()
+void Engine::draw_color_pass(
+    VkCommandBuffer cmd, FrameData& frame, u32 frame_idx)
 {
-    FrameData& frame = get_current_frame();
-
-    // Wait for previous frame to finish
-    VK_CHECK(wait_for_fences_indefinitely(
-        device,
-        1,
-        &frame.fnc_render,
-        VK_TRUE,
-        (u64)1.6 + 7));
-
-    // Get next image
-    u32      next_image_index;
-    VkResult next_image_result = vkAcquireNextImageKHR(
-        device,
-        swap_chain,
-        1000000000,
-        frame.sem_present,
-        0,
-        &next_image_index);
-
-    // VK_SUBOPTIMAL_KHR considered non-error
-    if (!(next_image_result == VK_SUCCESS ||
-          next_image_result == VK_SUBOPTIMAL_KHR))
-    {
-        if (next_image_result == VK_ERROR_OUT_OF_DATE_KHR) {
-            recreate_swapchain();
-            init_framebuffers();
-            return;
-        }
-    }
-
-    VK_CHECK(vkResetFences(device, 1, &frame.fnc_render));
-
-    VkCommandBuffer cmd = frame.main_cmd_buffer;
-
-    // Reset primary cmd buffer
-    VK_CHECK(vkResetCommandBuffer(cmd, 0));
-
-    // Begin commands
-    VkCommandBufferBeginInfo begin_info = {
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    VK_CHECK(vkBeginCommandBuffer(cmd, &begin_info));
-
     // Flash clear color
     float        flash       = abs(sinf(float(frame_num) / 120.0f));
     VkClearValue clear_value = {
@@ -1471,8 +1526,8 @@ void Engine::draw()
 
     VkRenderPassBeginInfo rp_begin_info = {
         .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass  = graphics.color_render_pass,
-        .framebuffer = framebuffers[next_image_index],
+        .renderPass  = color_pass.render_pass,
+        .framebuffer = color_pass.framebuffer,
         .renderArea =
             {
                 .offset = {0, 0},
@@ -1514,7 +1569,7 @@ void Engine::draw()
         200.0f);
     proj[1][1] *= -1;
 
-    int frame_idx = frame_num % num_overlap_frames;
+    int frame_idx2 = frame_num % num_overlap_frames;
 
     // Write global data
     {
@@ -1533,7 +1588,7 @@ void Engine::draw()
         u8* global_instance_data_ptr = (u8*)VMA_MAP(vma, global.buffer);
 
         global_instance_data_ptr +=
-            pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) * frame_idx;
+            pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData)) * frame_idx2;
         memcpy(
             global_instance_data_ptr,
             &global_instance_data,
@@ -1567,7 +1622,7 @@ void Engine::draw()
             u32 uniform_offsets[] = {
                 // Global
                 u32(pad_uniform_buffer_size(sizeof(GPUGlobalInstanceData))) *
-                    frame_idx,
+                    frame_idx2,
             };
 
             vkCmdBindDescriptorSets(
@@ -1618,6 +1673,107 @@ void Engine::draw()
     imm.draw(cmd, view, proj);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
     vkCmdEndRenderPass(cmd);
+}
+
+void Engine::draw_present_pass(
+    VkCommandBuffer cmd, FrameData& frame, u32 frame_idx)
+{
+    VkClearValue clear_value = {
+        .color = {0, 1.0f, 0.0f, 1.0f},
+    };
+
+    VkClearValue clear_values[1] = {
+        clear_value,
+    };
+
+    VkRenderPassBeginInfo render_pass_begin_info = {
+        .sType       = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass  = present_pass.render_pass,
+        .framebuffer = present_pass.framebuffers[frame_idx],
+        .renderArea =
+            {
+                .offset = {0, 0},
+                .extent = extent,
+            },
+        .clearValueCount = ARRAY_COUNT(clear_values),
+        .pClearValues    = clear_values,
+    };
+    vkCmdBeginRenderPass(
+        cmd,
+        &render_pass_begin_info,
+        VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        present_pass.pipeline);
+
+    vkCmdBindDescriptorSets(
+        cmd,
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        present_pass.pipeline_layout,
+        0,
+        1,
+        &present_pass.texture_set,
+        0,
+        nullptr);
+
+    vkCmdDraw(cmd, 6, 1, 0, 0);
+
+    vkCmdEndRenderPass(cmd);
+}
+
+void Engine::draw()
+{
+    FrameData& frame = get_current_frame();
+
+    // Wait for previous frame to finish
+    VK_CHECK(wait_for_fences_indefinitely(
+        device,
+        1,
+        &frame.fnc_render,
+        VK_TRUE,
+        (u64)1.6 + 7));
+
+    // Get next image
+    u32      next_image_index;
+    VkResult next_image_result = vkAcquireNextImageKHR(
+        device,
+        swap_chain,
+        1000000000,
+        frame.sem_present,
+        0,
+        &next_image_index);
+
+    // VK_SUBOPTIMAL_KHR considered non-error
+    if (!(next_image_result == VK_SUCCESS ||
+          next_image_result == VK_SUBOPTIMAL_KHR))
+    {
+        if (next_image_result == VK_ERROR_OUT_OF_DATE_KHR) {
+            recreate_swapchain();
+            init_framebuffers();
+            return;
+        }
+    }
+
+    VK_CHECK(vkResetFences(device, 1, &frame.fnc_render));
+
+    VkCommandBuffer cmd = frame.main_cmd_buffer;
+
+    // Reset primary cmd buffer
+    VK_CHECK(vkResetCommandBuffer(cmd, 0));
+
+    // Begin commands
+    VkCommandBufferBeginInfo begin_info = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+
+    VK_CHECK(vkBeginCommandBuffer(cmd, &begin_info));
+
+    draw_color_pass(cmd, frame, next_image_index);
+    draw_present_pass(cmd, frame, next_image_index);
+
     vkEndCommandBuffer(cmd);
 
     imm.clear();
@@ -1709,21 +1865,21 @@ void Engine::recreate_swapchain()
             .num_images      = num_images,
         };
         swap_chain = create_swapchain(temp_alloc, device, info).unwrap();
-        swap_chain_image_format = surface_format.format;
-        swap_chain_image_views.init_range(num_images);
+        present_pass.image_format = surface_format.format;
+        present_pass.image_views.init_range(num_images);
 
         vkGetSwapchainImagesKHR(device, swap_chain, &num_images, 0);
-        swap_chain_images.init_range(num_images);
+        present_pass.images.init_range(num_images);
         vkGetSwapchainImagesKHR(
             device,
             swap_chain,
             &num_images,
-            swap_chain_images.data);
+            present_pass.images.data);
 
         for (u32 i = 0; i < num_images; ++i) {
             VkImageViewCreateInfo create_info = {
                 .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                .image    = swap_chain_images[i],
+                .image    = present_pass.images[i],
                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
                 .format   = surface_format.format,
                 .components =
@@ -1747,7 +1903,7 @@ void Engine::recreate_swapchain()
                 device,
                 &create_info,
                 0,
-                &swap_chain_image_views[i]));
+                &present_pass.image_views[i]));
         }
 
         swap_chain_deletion_queue.add(
@@ -1756,12 +1912,17 @@ void Engine::recreate_swapchain()
             }));
     }
 
+    // Create color buffer
+    {
+        // @todo
+    }
+
     // Create depth buffer
     {
         VkImageCreateInfo image_create_info = {
             .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType = VK_IMAGE_TYPE_2D,
-            .format    = depth_image_format,
+            .format    = color_pass.depth_image_format,
             .extent =
                 {
                     .width  = extent.width,
@@ -1775,7 +1936,7 @@ void Engine::recreate_swapchain()
             .usage       = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
         };
 
-        depth_image =
+        color_pass.depth_image =
             VMA_CREATE_IMAGE2(
                 vma,
                 image_create_info,
@@ -1785,9 +1946,9 @@ void Engine::recreate_swapchain()
 
         VkImageViewCreateInfo view_create_info = {
             .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image    = depth_image.image,
+            .image    = color_pass.depth_image.image,
             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = depth_image_format,
+            .format   = color_pass.depth_image_format,
             .subresourceRange =
                 {
                     .aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT,
@@ -1798,13 +1959,16 @@ void Engine::recreate_swapchain()
                 },
         };
 
-        VK_CHECK(
-            vkCreateImageView(device, &view_create_info, 0, &depth_image_view));
+        VK_CHECK(vkCreateImageView(
+            device,
+            &view_create_info,
+            0,
+            &color_pass.depth_image_view));
 
         swap_chain_deletion_queue.add(
             DeletionQueue::DeletionDelegate::create_lambda([this]() {
-                vkDestroyImageView(device, depth_image_view, 0);
-                VMA_DESTROY_IMAGE(vma, depth_image);
+                vkDestroyImageView(device, color_pass.depth_image_view, 0);
+                VMA_DESTROY_IMAGE(vma, color_pass.depth_image);
             }));
     }
 }

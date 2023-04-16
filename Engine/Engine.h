@@ -37,11 +37,19 @@ struct Engine {
     VkDevice                   device;
     VkSwapchainKHR             swap_chain;
     FrameData                  frames[num_overlap_frames];
+    VkDescriptorSetLayout      global_set_layout;
+    VkDescriptorSetLayout      object_set_layout;
+    VkDescriptorSetLayout      texture_set_layout;
 
+    /**
+     * @brief structs that relate to rendering to texture.
+     * This texture will then be used as a shader resource for
+     * the presentation pass
+     */
     struct {
         AllocatedImage color_image;
         VkImageView    color_image_view;
-        VkFormat       color_image_format = VK_FORMAT_R8G8B8_UNORM;
+        VkFormat       color_image_format = VK_FORMAT_R8G8B8A8_UNORM;
 
         AllocatedImage depth_image;
         VkImageView    depth_image_view;
@@ -57,6 +65,11 @@ struct Engine {
         VkFormat              image_format;
         TArray<VkFramebuffer> framebuffers;
         VkRenderPass          render_pass;
+        VkPipelineLayout      pipeline_layout;
+        VkPipeline            pipeline;
+        VkDescriptorSetLayout texture_set_layout;
+        VkDescriptorSet       texture_set;
+        VkSampler             texture_sampler;
     } present_pass;
 
     // Statistics
@@ -114,6 +127,9 @@ struct Engine {
     void init();
     void deinit();
     void draw();
+    void draw_color_pass(VkCommandBuffer cmd, FrameData& frame, u32 frame_idx);
+    void draw_present_pass(
+        VkCommandBuffer cmd, FrameData& frame, u32 frame_idx);
     void imgui_new_frame();
 
     /**
@@ -131,7 +147,7 @@ struct Engine {
 
 private:
     void init_imgui();
-    void init_swapchain_render_pass();
+    void init_present_render_pass();
     void init_color_render_pass();
     void init_pipelines();
     void init_framebuffers();
