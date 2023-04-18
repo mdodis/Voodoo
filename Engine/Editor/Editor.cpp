@@ -118,9 +118,6 @@ void Editor::draw()
         ImGui::PopStyleVar(style_var_count);
     }
 
-    if (ed::gizmos::box(glm::vec3(0))) {
-    }
-
     // Free windows with invalid ids
     u64 i = windows.size;
     while (i != 0) {

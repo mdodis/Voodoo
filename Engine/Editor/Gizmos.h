@@ -1,8 +1,8 @@
 #pragma once
-#include <glm/glm.hpp>
-
+#include "Core/MathTypes.h"
 namespace ed {
     namespace gizmos {
-        bool box(glm::vec3 world_position);
+        bool box(
+            Vec3 position, Quat rotation, Vec3 extents = Vec3::one() * 0.5f);
     }
 }  // namespace ed

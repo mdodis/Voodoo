@@ -1656,33 +1656,15 @@ void Engine::draw_color_pass(
 
     VkRect2D scissor = {.offset = {0, 0}, .extent = extent};
     vkCmdSetScissor(cmd, 0, 1, &scissor);
-
-    glm::quat q              = debug_camera.rotation;
-    glm::vec3 camera_forward = glm::normalize(q * glm::vec3(0, 0, -1));
-    glm::vec3 camera_right =
-        glm::normalize(glm::cross(glm::vec3(0, 1, 0), camera_forward));
-    glm::vec3 camera_up =
-        glm::normalize(glm::cross(camera_forward, camera_right));
-    glm::vec3 camera_target = debug_camera.position + camera_forward;
-
-    glm::mat4 view =
-        glm::lookAt(debug_camera.position, camera_target, camera_up);
-    glm::mat4 proj = glm::perspective(
-        glm::radians(70.f),
-        (float(color_pass.extent.width) / float(color_pass.extent.height)),
-        0.1f,
-        200.0f);
-    proj[1][1] *= -1;
-
     int frame_idx2 = frame_num % num_overlap_frames;
 
     // Write global data
     {
         GPUGlobalInstanceData global_instance_data;
         global_instance_data.camera = {
-            .view     = view,
-            .proj     = proj,
-            .viewproj = proj * view,
+            .view     = debug_camera.view,
+            .proj     = debug_camera.proj,
+            .viewproj = debug_camera.proj * debug_camera.view,
         };
 
         float framed               = (frame_num / 120.f);
@@ -1775,7 +1757,7 @@ void Engine::draw_color_pass(
         vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
-    imm.draw(cmd, view, proj);
+    imm.draw(cmd, debug_camera.view, debug_camera.proj);
 
     vkCmdEndRenderPass(cmd);
 }
@@ -1944,6 +1926,26 @@ void Engine::update()
 
     debug_camera.position += debug_camera.velocity;
     debug_camera.input_direction = glm::vec3(0, 0, 0);
+
+    glm::quat q              = debug_camera.rotation;
+    glm::vec3 camera_forward = glm::normalize(q * glm::vec3(0, 0, -1));
+    glm::vec3 camera_right =
+        glm::normalize(glm::cross(glm::vec3(0, 1, 0), camera_forward));
+    glm::vec3 camera_up =
+        glm::normalize(glm::cross(camera_forward, camera_right));
+    glm::vec3 camera_target = debug_camera.position + camera_forward;
+
+    debug_camera.view =
+        glm::lookAt(debug_camera.position, camera_target, camera_up);
+
+    glm::mat4 proj = glm::perspective(
+        glm::radians(70.f),
+        (float(color_pass.extent.width) / float(color_pass.extent.height)),
+        0.1f,
+        200.0f);
+    proj[1][1] *= -1;
+
+    debug_camera.proj = proj;
 }
 
 void Engine::recreate_swapchain()

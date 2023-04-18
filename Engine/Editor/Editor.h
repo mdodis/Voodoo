@@ -45,6 +45,18 @@ struct Editor {
     void add_window(EditorWindow* window);
     void kill_window(EditorWindow* window);
 
+    template <typename T>
+    T* find_window()
+    {
+        for (EditorWindow* window : windows) {
+            if (IS_A(window, T)) {
+                return dynamic_cast<T*>(window);
+            }
+        }
+
+        return nullptr;
+    }
+
     void apply_color_scheme(const EditorColorScheme& scheme);
 
     template <typename T>

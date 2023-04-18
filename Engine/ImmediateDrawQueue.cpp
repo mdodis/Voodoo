@@ -134,6 +134,11 @@ static ImmediateDrawQueue::Vertex Cylinder_Vertices[] = {
     {{-1.000000f, 0.707107f, -0.707107f}},
 };
 
+static ImmediateDrawQueue::Vertex Line_Vertices[] = {
+    {{0.0f, 0.0f, 0.0f}},
+    {{0.0f, 0.0f, -1.0f}},
+};
+
 /*
 
 Separate vertex buffer / object
@@ -251,6 +256,23 @@ void ImmediateDrawQueue::init(
         VMA_UNMAP(vma, cylinder_buffer);
     }
 
+    // Line vertex buffer
+    {
+        const size_t buffer_size = sizeof(Vertex) * ARRAY_COUNT(Line_Vertices);
+
+        line_buffer =
+            VMA_CREATE_BUFFER(
+                vma,
+                buffer_size,
+                VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                VMA_MEMORY_USAGE_CPU_TO_GPU)
+                .unwrap();
+
+        u8* data = (u8*)VMA_MAP(vma, line_buffer);
+        memcpy(data, Line_Vertices, buffer_size);
+        VMA_UNMAP(vma, line_buffer);
+    }
+
     auto layouts =
         arr<VkDescriptorSetLayout>(global_set_layout, object_set_layout);
 
@@ -307,6 +329,21 @@ void ImmediateDrawQueue::init(
             .build(device)
             .unwrap();
 
+    line_pipeline =
+        PipelineBuilder(temp)
+            .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, vertex_shader_mod)
+            .add_shader_stage(VK_SHADER_STAGE_FRAGMENT_BIT, frag_shader_mod)
+            .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
+            .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
+            .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+            .set_polygon_mode(VK_POLYGON_MODE_LINE)
+            .set_render_pass(render_pass)
+            .set_layout(pipeline_layout)
+            .set_vertex_input_info(vertex_input_info)
+            .set_depth_test(false, true, VK_COMPARE_OP_LESS)
+            .build(device)
+            .unwrap();
+
     vkDestroyShaderModule(device, vertex_shader_mod, 0);
     vkDestroyShaderModule(device, frag_shader_mod, 0);
 }
@@ -322,6 +359,7 @@ void ImmediateDrawQueue::deinit()
     VMA_DESTROY_BUFFER(*pvma, cylinder_buffer);
     vkDestroyPipelineLayout(device, pipeline_layout, 0);
     vkDestroyPipeline(device, pipeline, 0);
+    vkDestroyPipeline(device, line_pipeline, 0);
 }
 
 void ImmediateDrawQueue::draw(
@@ -341,8 +379,9 @@ void ImmediateDrawQueue::draw(
     for (const Box& box : boxes) {
         objects[c] = {
             .matrix = glm::translate(glm::mat4(1.0f), box.center) *
+                      glm::mat4(box.rotation.matrix()) *
                       glm::scale(glm::mat4(1.0f), box.extents),
-            .color = glm::vec4(1, 0, 0, 1),
+            .color = box.color,
         };
         c++;
     }
@@ -355,6 +394,23 @@ void ImmediateDrawQueue::draw(
             .color = glm::vec4(0, 1, 0, 1),
         };
         c++;
+    }
+
+    for (const Line& line : lines) {
+        Vec3  direction   = normalize(line.end - line.begin);
+        Vec3  axis        = cross(Vec3(0, 0, 1), direction);
+        float angle       = glm::acos(dot(Vec3(0, 0, 1), direction));
+        Mat4  rotation    = glm::rotate(glm::mat4(1.0f), angle, axis);
+        Mat4  translation = glm::translate(glm::mat4(1.0f), line.begin);
+        float distance =
+            glm::distance(glm::vec3(line.begin), glm::vec3(line.end));
+        Mat4 scale =
+            glm::scale(glm::mat4(1.0f), glm::vec3(1.f, 1.f, -distance));
+
+        objects[c] = {
+            .matrix = translation * rotation * scale,
+            .color  = line.color,
+        };
     }
     VMA_UNMAP(*pvma, object_buffer);
 
@@ -382,9 +438,12 @@ void ImmediateDrawQueue::draw(
         nullptr);
 
     // Boxes
+    u32 running_instance_offset = 0;
+
     VkDeviceSize offset = 0;
     vkCmdBindVertexBuffers(cmd, 0, 1, &cube_buffer.buffer, &offset);
     vkCmdDraw(cmd, ARRAY_COUNT(Cube_Vertices), (u32)boxes.size, 0, 0);
+    running_instance_offset += (u32)boxes.size;
 
     // Cylinders
     vkCmdBindVertexBuffers(cmd, 0, 1, &cylinder_buffer.buffer, &offset);
@@ -393,11 +452,26 @@ void ImmediateDrawQueue::draw(
         ARRAY_COUNT(Cylinder_Vertices),
         (u32)cylinders.size,
         0,
-        (u32)boxes.size);
+        running_instance_offset);
+    running_instance_offset += cylinders.size;
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, line_pipeline);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &line_buffer.buffer, &offset);
+    vkCmdDraw(
+        cmd,
+        ARRAY_COUNT(Line_Vertices),
+        (u32)lines.size,
+        0,
+        running_instance_offset);
+    running_instance_offset += cylinders.size;
 }
 
 void ImmediateDrawQueue::clear()
 {
+    if (lines.size > 100) {
+        lines.empty();
+    }
+
     boxes.empty();
     cylinders.empty();
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/MathTypes.h"
 #include "Editor.h"
 
 /**
@@ -14,8 +15,11 @@ struct WorldViewEditorWindow : public EditorWindow {
     virtual void deinit() override;
     virtual bool has_padding() override { return false; }
 
-    u32 viewport_width  = NumProps<u32>::max;
-    u32 viewport_height = NumProps<u32>::max;
+    u32  viewport_width  = NumProps<u32>::max;
+    u32  viewport_height = NumProps<u32>::max;
+    Vec2 window_pos;
+
+    Ray ray_from_mouse_pos();
 
     void* viewport_texture_ref = nullptr;
 };

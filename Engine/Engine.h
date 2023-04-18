@@ -126,6 +126,8 @@ struct Engine {
         float     acceleration    = 0.05f;
         float     yaw = 0.f, pitch = 0.f;
         bool      has_focus = false;
+        glm::mat4 view;
+        glm::mat4 proj;
     } debug_camera;
 
     void init();
