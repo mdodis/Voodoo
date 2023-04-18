@@ -58,6 +58,7 @@ struct Editor {
     }
 
     void apply_color_scheme(const EditorColorScheme& scheme);
+    void apply_style(const EditorStyle& style);
 
     template <typename T>
     _inline T* create_window()

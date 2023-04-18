@@ -51,6 +51,14 @@ static EditorColorScheme Default_Color_Scheme = {
     .text_selection_bg      = {0.53f, 0.53f, 0.53f, 0.35f},
     .drag_drop_target       = {0.05f, 0.94f, 0.72f, 1.00f},
 };
+
+static EditorStyle Default_Editor_Style = {
+    .frame_rounding  = 5.0f,
+    .grab_rounding   = 12.0f,
+    .grab_min_size   = 14.0f,
+    .window_rounding = 6.0f,
+};
+
 // clang-format on
 
 void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
@@ -83,6 +91,7 @@ void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
     add_texture_from_file(LIT("EditorAssets/DnD.png"), LIT("icons.dnd"));
 
     apply_color_scheme(Default_Color_Scheme);
+    apply_style(Default_Editor_Style);
 }
 
 void Editor::draw()
@@ -198,6 +207,15 @@ void Editor::apply_color_scheme(const EditorColorScheme& scheme)
     colors[ImGuiCol_TextSelectedBg]       = *((ImVec4*)&scheme.text_selection_bg);
     colors[ImGuiCol_DragDropTarget]       = *((ImVec4*)&scheme.drag_drop_target);
     // clang-format on
+}
+
+void Editor::apply_style(const EditorStyle& style)
+{
+    ImGuiStyle& gui_style    = ImGui::GetStyle();
+    gui_style.FrameRounding  = style.frame_rounding;
+    gui_style.GrabRounding   = style.grab_rounding;
+    gui_style.GrabMinSize    = style.grab_min_size;
+    gui_style.WindowRounding = style.window_rounding;
 }
 
 void Editor::add_texture_from_file(Str path, Str name)

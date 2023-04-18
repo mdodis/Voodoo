@@ -48,6 +48,18 @@ struct EditorColorScheme {
     Vec4 drag_drop_target;
 };
 
+struct EditorStyle {
+    float frame_rounding;
+    float grab_rounding;
+    float grab_min_size;
+    float window_rounding;
+};
+
+/**
+ * @brief The EditorColorSchemeDescriptor class
+ *
+ * @todo Update color scheme descriptor
+ */
 struct EditorColorSchemeDescriptor : IDescriptor {
     using Vec4Descriptor =
         FixedArrayDescriptor<EditorColorScheme::Vec4, float, 4>;
