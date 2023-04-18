@@ -6,7 +6,17 @@
 struct EditorColorScheme {
     using Vec4 = glm::vec4;
 
+    Vec4 window_bg;
     Vec4 border;
+    Vec4 border_shadow;
+    Vec4 menubar_bg;
+    Vec4 scrollbar_bg;
+    Vec4 scrollbar_grab;
+    Vec4 scrollbar_grab_hovered;
+    Vec4 scrollbar_grab_active;
+    Vec4 separator;
+    Vec4 separator_hovered;
+    Vec4 separator_active;
     Vec4 frame_bg;
     Vec4 frame_bg_hovered;
     Vec4 frame_bg_active;
@@ -27,8 +37,10 @@ struct EditorColorScheme {
     Vec4 tab;
     Vec4 tab_hovered;
     Vec4 tab_active;
+    Vec4 tab_unfocused;
     Vec4 tab_unfocused_active;
     Vec4 docking_preview;
+    Vec4 plot_lines;
     Vec4 plot_lines_hovered;
     Vec4 plot_histogram;
     Vec4 plot_histogram_hovered;

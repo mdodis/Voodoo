@@ -1766,7 +1766,7 @@ void Engine::draw_present_pass(
     VkCommandBuffer cmd, FrameData& frame, u32 frame_idx)
 {
     VkClearValue clear_value = {
-        .color = {0, 1.0f, 0.0f, 1.0f},
+        .color = {0.1f, 0.1f, 0.1f, 1.00f},
     };
 
     VkClearValue clear_values[1] = {

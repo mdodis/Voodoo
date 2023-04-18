@@ -10,34 +10,46 @@
 
 // clang-format off
 static EditorColorScheme Default_Color_Scheme = {
-    .border                 = {0.57f, 0.57f, 0.57f, 0.50f},
-    .frame_bg               = {0.12f, 0.12f, 0.12f, 0.39f},
-    .frame_bg_hovered       = {0.15f, 0.15f, 0.15f, 0.39f},
-    .frame_bg_active        = {0.58f, 0.58f, 0.58f, 0.39f},
-    .title_bg               = {0.44f, 0.00f, 0.07f, 1.00f},
-    .title_bg_active        = {0.94f, 0.00f, 0.16f, 1.00f},
-    .check_mark             = {0.94f, 0.00f, 0.16f, 1.00f},
-    .slider_grab            = {0.94f, 0.00f, 0.16f, 0.39f},
-    .slider_grab_active     = {0.94f, 0.26f, 0.05f, 1.00f},
-    .button                 = {0.64f, 0.64f, 0.64f, 0.39f},
-    .button_hovered         = {0.64f, 0.64f, 0.64f, 0.71f},
-    .button_active          = {0.94f, 0.26f, 0.05f, 1.00f},
-    .header                 = {0.44f, 0.00f, 0.07f, 1.00f},
-    .header_hovered         = {0.69f, 0.00f, 0.11f, 1.00f},
-    .header_active          = {0.94f, 0.26f, 0.05f, 1.00f},
-    .resize_grip            = {0.44f, 0.00f, 0.07f, 1.00f},
-    .resize_grip_hovered    = {0.69f, 0.00f, 0.11f, 1.00f},
-    .resize_grip_active     = {0.94f, 0.26f, 0.05f, 1.00f},
-    .tab                    = {0.44f, 0.00f, 0.07f, 1.00f},
-    .tab_hovered            = {0.69f, 0.00f, 0.11f, 1.00f},
-    .tab_active             = {0.99f, 0.00f, 0.16f, 1.00f},
-    .tab_unfocused_active   = {0.94f, 0.00f, 0.16f, 1.00f},
-    .docking_preview        = {0.94f, 0.00f, 0.16f, 1.00f},
-    .plot_lines_hovered     = {0.09f, 0.94f, 0.73f, 1.00f},
-    .plot_histogram         = {0.94f, 0.00f, 0.16f, 1.00f},
-    .plot_histogram_hovered = {0.09f, 0.94f, 0.73f, 1.00f},
+    .window_bg              = {0.04f, 0.04f, 0.04f, 1.00f},
+    .border                 = {0.20f, 0.20f, 0.20f, 1.00f},
+    .border_shadow          = {0.09f, 0.09f, 0.09f, 0.96f},
+    .menubar_bg             = {0.04f, 0.04f, 0.04f, 1.00f},
+    .scrollbar_bg           = {0.04f, 0.04f, 0.04f, 1.00f},
+    .scrollbar_grab         = {0.20f, 0.20f, 0.20f, 1.00f},
+    .scrollbar_grab_hovered = {0.34f, 0.34f, 0.34f, 1.00f},
+    .scrollbar_grab_active  = {0.66f, 0.00f, 0.13f, 1.00f},
+    .separator              = {0.20f, 0.20f, 0.20f, 1.00f},
+    .separator_hovered      = {0.34f, 0.34f, 0.34f, 1.00f},
+    .separator_active       = {0.66f, 0.00f, 0.13f, 1.00f},
+    .frame_bg               = {0.20f, 0.20f, 0.20f, 1.00f},
+    .frame_bg_hovered       = {0.34f, 0.34f, 0.34f, 1.00f},
+    .frame_bg_active        = {0.59f, 0.59f, 0.59f, 1.00f},
+    .title_bg               = {0.04f, 0.04f, 0.04f, 1.00f},
+    .title_bg_active        = {0.66f, 0.00f, 0.13f, 1.00f},
+    .check_mark             = {0.66f, 0.00f, 0.13f, 1.00f},
+    .slider_grab            = {0.66f, 0.00f, 0.13f, 1.00f},
+    .slider_grab_active     = {0.66f, 0.00f, 0.13f, 1.00f},
+    .button                 = {0.20f, 0.20f, 0.20f, 1.00f},
+    .button_hovered         = {0.34f, 0.34f, 0.34f, 1.00f},
+    .button_active          = {0.66f, 0.00f, 0.13f, 1.00f},
+    .header                 = {0.20f, 0.20f, 0.20f, 1.00f},
+    .header_hovered         = {0.34f, 0.34f, 0.34f, 1.00f},
+    .header_active          = {0.66f, 0.00f, 0.13f, 1.00f},
+    .resize_grip            = {0.34f, 0.34f, 0.34f, 1.00f},
+    .resize_grip_hovered    = {0.59f, 0.59f, 0.59f, 1.00f},
+    .resize_grip_active     = {0.66f, 0.00f, 0.13f, 1.00f},
+    .tab                    = {0.34f, 0.34f, 0.34f, 1.00f},
+    .tab_hovered            = {0.20f, 0.20f, 0.20f, 1.00f},
+    .tab_active             = {0.20f, 0.20f, 0.20f, 1.00f},
+    .tab_unfocused          = {0.34f, 0.34f, 0.34f, 1.00f},
+    .tab_unfocused_active   = {0.20f, 0.20f, 0.20f, 1.00f},
+    .docking_preview        = {0.66f, 0.00f, 0.13f, 1.00f},
+    .plot_lines             = {0.59f, 0.59f, 0.59f, 1.00f},
+    .plot_lines_hovered     = {0.66f, 0.00f, 0.13f, 1.00f},
+    .plot_histogram         = {0.59f, 0.59f, 0.59f, 1.00f},
+    .plot_histogram_hovered = {0.66f, 0.00f, 0.13f, 1.00f},
     .text_selection_bg      = {0.53f, 0.53f, 0.53f, 0.35f},
-    .drag_drop_target       = {0.94f, 0.26f, 0.05f, 1.00f},
+    .drag_drop_target       = {0.05f, 0.94f, 0.72f, 1.00f},
 };
 // clang-format on
 
@@ -145,7 +157,17 @@ void Editor::apply_color_scheme(const EditorColorScheme& scheme)
 {
     // clang-format off
     ImVec4* colors = ImGui::GetStyle().Colors;
+    colors[ImGuiCol_WindowBg]             = *((ImVec4*)&scheme.window_bg);
     colors[ImGuiCol_Border]               = *((ImVec4*)&scheme.border);
+    colors[ImGuiCol_BorderShadow]         = *((ImVec4*)&scheme.border_shadow);
+    colors[ImGuiCol_MenuBarBg]            = *((ImVec4*)&scheme.menubar_bg);
+    colors[ImGuiCol_ScrollbarBg]          = *((ImVec4*)&scheme.scrollbar_bg);
+    colors[ImGuiCol_ScrollbarGrab]        = *((ImVec4*)&scheme.scrollbar_grab);
+    colors[ImGuiCol_ScrollbarGrabHovered] = *((ImVec4*)&scheme.scrollbar_grab_hovered);
+    colors[ImGuiCol_ScrollbarGrabActive]  = *((ImVec4*)&scheme.scrollbar_grab_active);
+    colors[ImGuiCol_Separator]            = *((ImVec4*)&scheme.separator);
+    colors[ImGuiCol_SeparatorHovered]     = *((ImVec4*)&scheme.separator_hovered);
+    colors[ImGuiCol_SeparatorActive]      = *((ImVec4*)&scheme.separator_active);
     colors[ImGuiCol_FrameBg]              = *((ImVec4*)&scheme.frame_bg);
     colors[ImGuiCol_FrameBgHovered]       = *((ImVec4*)&scheme.frame_bg_hovered);
     colors[ImGuiCol_FrameBgActive]        = *((ImVec4*)&scheme.frame_bg_active);
@@ -166,8 +188,10 @@ void Editor::apply_color_scheme(const EditorColorScheme& scheme)
     colors[ImGuiCol_Tab]                  = *((ImVec4*)&scheme.tab);
     colors[ImGuiCol_TabHovered]           = *((ImVec4*)&scheme.tab_hovered);
     colors[ImGuiCol_TabActive]            = *((ImVec4*)&scheme.tab_active);
+    colors[ImGuiCol_TabUnfocused]         = *((ImVec4*)&scheme.tab_unfocused);
     colors[ImGuiCol_TabUnfocusedActive]   = *((ImVec4*)&scheme.tab_unfocused_active);
     colors[ImGuiCol_DockingPreview]       = *((ImVec4*)&scheme.docking_preview);
+    colors[ImGuiCol_PlotLines]            = *((ImVec4*)&scheme.plot_lines);
     colors[ImGuiCol_PlotLinesHovered]     = *((ImVec4*)&scheme.plot_lines_hovered);
     colors[ImGuiCol_PlotHistogram]        = *((ImVec4*)&scheme.plot_histogram);
     colors[ImGuiCol_PlotHistogramHovered] = *((ImVec4*)&scheme.plot_histogram_hovered);
