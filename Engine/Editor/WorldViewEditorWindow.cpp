@@ -50,10 +50,14 @@ void WorldViewEditorWindow::draw()
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     }
 
+    image_screen_pos = Vec2{
+        ImGui::GetCursorScreenPos().x,
+        ImGui::GetCursorScreenPos().y,
+    };
+
     ImGui::Image(
         (ImTextureID)viewport_texture_ref,
         ImVec2(viewport_width, viewport_height));
-
     flecs::entity entity = editor_world().get_alive(selected_entity);
     if (!entity.is_valid()) return;
 
@@ -82,11 +86,8 @@ Vec3 WorldViewEditorWindow::mouse_pos()
         ImGui::GetMousePos().y,
     };
 
-    ImGuiStyle& style     = ImGui::GetStyle();
-    float titlebar_height = ImGui::GetFontSize() + style.FramePadding.y * 2.0f;
-
-    imgui_mouse_pos.x -= window_pos.x;
-    imgui_mouse_pos.y -= (window_pos.y + titlebar_height);
+    imgui_mouse_pos.x -= (image_screen_pos.x);
+    imgui_mouse_pos.y -= (image_screen_pos.y);
 
     return Vec3(imgui_mouse_pos, 0.f);
 }
@@ -97,48 +98,25 @@ Ray WorldViewEditorWindow::ray_from_mouse_pos()
 
     Vec2 imgui_mouse_pos = mouse_pos().xy();
 
-    Vec2 mouse_pos = {
-        imgui_mouse_pos.x / (float(viewport_width) * 0.5f) - 1.0f,
-        imgui_mouse_pos.y / (float(viewport_height) * 0.5f) - 1.0f,
+    Vec2 mpos = {
+        +((2.0f * imgui_mouse_pos.x) / float(viewport_width) - 1.0f),
+        +((2.0f * imgui_mouse_pos.y) / float(viewport_height) - 1.0f),
     };
 
-    Mat4 inv = Mat4(eng.debug_camera.proj * eng.debug_camera.view).inverse();
-    Vec4 screen_pos = Vec4(mouse_pos.x, mouse_pos.y, 1.0f, 1.0f);
-    Vec4 world_pos  = Vec4(inv * screen_pos);
+    Vec3 ray_nds  = Vec3(mpos.x, mpos.y, 1.0f);
+    Vec4 ray_clip = Vec4(ray_nds.xy(), -1.0f, 1.0f);
 
-    Vec3 direction = normalize(world_pos.xyz());
+    Mat4 inv_proj = Mat4(eng.debug_camera.proj).inverse();
+    Vec4 ray_eye  = inv_proj * ray_clip;
+    ray_eye       = Vec4(ray_eye.xy(), -1.0f, 0.0f);
+
+    Mat4 inv_view  = Mat4(eng.debug_camera.view).inverse();
+    Vec3 ray_world = normalize(inv_view * ray_eye.xyz());
 
     return Ray{
         .origin    = eng.debug_camera.position,
-        .direction = direction,
+        .direction = ray_world,
     };
-
-#if 0
-
-    // convert coordinates to window coordinates
-    mouse_pos = window_pos - mouse_pos;
-
-    Vec4 viewport(0, 0, viewport_width, viewport_height);
-    Vec3 win_coords(mouse_pos, 0.0f);
-
-    Ray ray;
-    ray.origin = glm::unProject(
-        win_coords,
-        eng.debug_camera.view,
-        eng.debug_camera.proj,
-        viewport);
-    win_coords.z = 1.0f;
-
-    Vec3 end = glm::unProject(
-        win_coords,
-        eng.debug_camera.view,
-        eng.debug_camera.proj,
-        viewport);
-
-    ray.direction = normalize(end - ray.origin);
-
-    return ray;
-#endif
 }
 
 STATIC_MENU_ITEM(

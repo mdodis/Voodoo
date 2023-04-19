@@ -38,6 +38,7 @@ namespace ed {
 
             bool  hovered = false;
             Color color   = default_color;
+
             if (intersect_ray_obb(r, obb)) {
                 color   = hovered_color;
                 hovered = true;

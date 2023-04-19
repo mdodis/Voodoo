@@ -1,7 +1,7 @@
 #pragma once
 #include "Core/MathTypes.h"
-#include "Editor.h"
 #include "ECS.h"
+#include "Editor.h"
 
 /**
  * @brief The WorldViewEditorWindow class
@@ -22,6 +22,8 @@ struct WorldViewEditorWindow : public EditorWindow {
 
     Ray  ray_from_mouse_pos();
     Vec3 mouse_pos();
+
+    Vec2 image_screen_pos;
 
     void* viewport_texture_ref = nullptr;
 

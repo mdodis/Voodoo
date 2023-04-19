@@ -1,8 +1,9 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/projection.hpp>
+#include <glm/gtx/quaternion.hpp>
+
 #include "Debugging/Assertions.h"
 
 struct Vec2 : public glm::vec2 {
@@ -57,8 +58,10 @@ struct Vec4 : public glm::vec4 {
     Vec4(float x, float y, float z, float w) : glm::vec4(x, y, z, w) {}
     Vec4(float s) : Vec4(s, s, s, 2) {}
     Vec4(const Vec2& xy, const Vec2& zw) : glm::vec4(xy, zw) {}
+    Vec4(const Vec2& xy, float z, float w) : Vec4(xy, glm::vec2(z, w)) {}
     Vec4(const glm::vec4& v) : glm::vec4(v) {}
 
+    Vec2 xy() const { return Vec2(x, y); }
     Vec3 xyz() const { return Vec3(x, y, z); }
 };
 
@@ -120,8 +123,15 @@ static _inline Mat4 operator*(const Mat4& left, const Mat4& right)
 
 static _inline Vec3 operator*(const Mat4& left, const Vec3& right)
 {
-    glm::vec4 v4(right, 1.0f);
+    glm::vec4 v4(right, 0.0f);
     v4 = glm::mat4(left) * v4;
+    return Vec3(v4.x, v4.y, v4.z);
+}
+
+static _inline Vec3 operator*(const Vec3& left, const Mat4& right)
+{
+    glm::vec4 v4(left, 1.0f);
+    v4 = v4 * glm::mat4(right);
     return Vec3(v4.x, v4.y, v4.z);
 }
 
@@ -137,7 +147,8 @@ struct Quat : public glm::quat {
     inline Mat4 matrix() const { return glm::toMat4(glm::quat(*this)); }
 };
 
-static _inline Vec3 operator*(const Quat& left, const Vec3& right) {
+static _inline Vec3 operator*(const Quat& left, const Vec3& right)
+{
     return glm::quat(left) * glm::vec3(right);
 }
 
@@ -187,8 +198,7 @@ struct Plane {
             point.x * normal.x + point.y * normal.y + point.z * normal.z - d;
 
         if (absolute(distance) > FLT_EPSILON) {
-            
-            return Vec3 {
+            return Vec3{
                 point.x - distance * normal.x,
                 point.y - distance * normal.y,
                 point.z - distance * normal.z,
@@ -203,6 +213,14 @@ struct Plane {
 
     Plane(Vec3 normal, float d) : normal(normal), d(d) {}
     Plane(Vec3 normal, Vec3 point) : normal(normal) { d = -dot(normal, point); }
+};
+
+struct AABB {
+    Vec3 center;
+    Vec3 extents;
+
+    inline Vec3 min() const { return center - (extents * 0.5f); }
+    inline Vec3 max() const { return center + (extents * 0.5f); }
 };
 
 struct OBB {
@@ -226,6 +244,38 @@ static inline bool intersect_ray_plane(
     return false;
 }
 
+static inline bool intersect_ray_aabb(const Ray& ray, const AABB& aabb)
+{
+    float tmin = -INFINITY;
+    float tmax = +INFINITY;
+
+    if (ray.direction.x != 0.0f) {
+        float tx1 = (aabb.min().x - ray.origin.x) / ray.direction.x;
+        float tx2 = (aabb.max().x - ray.origin.x) / ray.direction.x;
+
+        tmin = glm::max(tmin, glm::min(tx1, tx2));
+        tmax = glm::min(tmax, glm::max(tx1, tx2));
+    }
+
+    if (ray.direction.y != 0.0f) {
+        float ty1 = (aabb.min().y - ray.origin.y) / ray.direction.y;
+        float ty2 = (aabb.max().y - ray.origin.y) / ray.direction.y;
+
+        tmin = glm::max(tmin, glm::min(ty1, ty2));
+        tmax = glm::min(tmax, glm::max(ty1, ty2));
+    }
+
+    if (ray.direction.z != 0.0f) {
+        float tz1 = (aabb.min().z - ray.origin.z) / ray.direction.z;
+        float tz2 = (aabb.max().z - ray.origin.z) / ray.direction.z;
+
+        tmin = glm::max(tmin, glm::min(tz1, tz2));
+        tmax = glm::min(tmax, glm::max(tz1, tz2));
+    }
+
+    return tmax >= tmin;
+}
+
 static inline bool intersect_ray_obb(const Ray& ray, const OBB& obb)
 {
     Mat4 world_to_obb =
@@ -235,22 +285,9 @@ static inline bool intersect_ray_obb(const Ray& ray, const OBB& obb)
         .direction = obb.rotation.inverse() * ray.direction,
     };
 
-    Vec3 half_extents = obb.extents * 0.5f;
-
-    float tmin_x = (-half_extents.x - r.origin.x) / r.direction.x;
-    float tmax_x = (+half_extents.x - r.origin.x) / r.direction.x;
-    float tmin_y = (-half_extents.y - r.origin.y) / r.direction.y;
-    float tmax_y = (+half_extents.y - r.origin.y) / r.direction.y;
-    float tmin_z = (-half_extents.z - r.origin.z) / r.direction.z;
-    float tmax_z = (+half_extents.z - r.origin.z) / r.direction.z;
-
-    float tmin = glm::max(
-        glm::max(glm::min(tmin_x, tmax_x), glm::min(tmin_y, tmax_y)),
-        glm::min(tmin_z, tmax_z));
-
-    float tmax = glm::min(
-        glm::min(glm::max(tmin_x, tmax_x), glm::max(tmin_y, tmax_y)),
-        glm::max(tmin_z, tmax_z));
-
-    return (tmax >= tmin && tmax >= 0.f);
+    AABB aabb = {
+        .center  = obb.center,
+        .extents = obb.extents,
+    };
+    return intersect_ray_aabb(r, aabb);
 }
