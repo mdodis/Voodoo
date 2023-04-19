@@ -8,9 +8,19 @@
 
 namespace ed {
     namespace gizmos {
-        bool box(Vec3 position, Quat rotation, Vec3 extents)
+        static struct {
+            Vec3 mouse_start;
+            Vec3 object_start;
+            bool dragging = false;
+        } Context;
+
+        bool box(
+            Vec3  position,
+            Quat  rotation,
+            Vec3  extents,
+            Color default_color,
+            Color hovered_color)
         {
-            // @todo: cache view & proj in scene view first
             auto& imm = The_Editor.immediate_draw_queue();
 
             WorldViewEditorWindow* window =
@@ -26,12 +36,59 @@ namespace ed {
                 .extents  = extents,
             };
 
-            Color color = Color::red();
+            bool  hovered = false;
+            Color color   = default_color;
             if (intersect_ray_obb(r, obb)) {
-                color = Color::white();
+                color   = hovered_color;
+                hovered = true;
             }
             imm.box(position, rotation, extents, color);
-            return false;
+            return hovered;
         }
+
+        void translation_axis_x(Vec3& position, Quat rotation)
+        {
+            WorldViewEditorWindow* window =
+                The_Editor.find_window<WorldViewEditorWindow>();
+
+            Vec3 box_position = position + (rotation * Vec3::right()) * 1.0f;
+            if (box(box_position,
+                    rotation,
+                    Vec3(2.0f, 0.1f, 0.1f),
+                    Color(0.66f, 0.00f, 0.13f, 1.00f),
+                    Color::white()))
+            {
+                if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                    Context.mouse_start  = window->mouse_pos();
+                    Context.object_start = position;
+                    Context.dragging     = true;
+                }
+            }
+
+            if (Context.dragging && ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+                Vec3 pn = normalize(
+                    cross((rotation * Vec3::right()), (rotation * Vec3::up())));
+
+                Plane p(pn, position);
+                Ray   r = window->ray_from_mouse_pos();
+
+                Vec3 intersection;
+                if (intersect_ray_plane(r, p, intersection)) {
+                    Vec3 new_pos =
+                        intersection - (rotation * Vec3::right()) * 1.0f;
+                    new_pos =
+                        project(new_pos, normalize(rotation * Vec3::right()));
+                    position = new_pos;
+                }
+            } else {
+                Context.dragging = false;
+            }
+        }
+
+        void translation(Vec3& position, Quat rotation)
+        {
+            translation_axis_x(position, rotation);
+        }
+
     }  // namespace gizmos
 }  // namespace ed

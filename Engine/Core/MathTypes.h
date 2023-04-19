@@ -2,6 +2,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/projection.hpp>
+#include "Debugging/Assertions.h"
 
 struct Vec2 : public glm::vec2 {
     Vec2() {}
@@ -17,8 +19,17 @@ struct Vec3 : public glm::vec3 {
     Vec3(const Vec2& v, float z) : Vec3(v.x, v.y, z) {}
     Vec3(const glm::vec3& v) : Vec3(v.x, v.y, v.z) {}
 
+    inline Vec2 xy() { return Vec2(x, y); }
+
     static inline Vec3 one() { return Vec3(1.f); }
     static inline Vec3 zero() { return Vec3(0.f); }
+
+    static inline Vec3 up() { return Vec3(0, 1, 0); }
+    static inline Vec3 down() { return Vec3(0, -1, 0); }
+    static inline Vec3 right() { return Vec3(1, 0, 0); }
+    static inline Vec3 left() { return Vec3(-1, 0, 0); }
+    static inline Vec3 forward() { return Vec3(0, 0, -1); }
+    static inline Vec3 back() { return Vec3(0, 0, 1); }
 };
 
 static _inline Vec3 operator+(const Vec3& left, const Vec3& right)
@@ -118,11 +129,17 @@ struct Quat : public glm::quat {
     Quat() {}
     Quat(float w, float x, float y, float z) : glm::quat(w, x, y, z) {}
     Quat(float w, Vec3 v) : Quat(w, v.x, v.y, v.z) {}
+    Quat(const glm::quat& q) : glm::quat(q) {}
 
     static inline Quat identity() { return Quat(1, 0, 0, 0); }
 
+    inline Quat inverse() const { return glm::inverse(*this); }
     inline Mat4 matrix() const { return glm::toMat4(glm::quat(*this)); }
 };
+
+static _inline Vec3 operator*(const Quat& left, const Vec3& right) {
+    return glm::quat(left) * glm::vec3(right);
+}
 
 static _inline Vec3 normalize(const Vec3& v)
 {
@@ -137,6 +154,11 @@ static _inline float dot(const Vec3& a, const Vec3& b)
 static _inline Vec3 cross(const Vec3& a, const Vec3& b)
 {
     return glm::cross(glm::vec3(a), glm::vec3(b));
+}
+
+static _inline Vec3 project(const Vec3& v, const Vec3& n)
+{
+    return glm::proj(glm::vec3(v), glm::vec3(n));
 }
 
 static _inline float absolute(float v) { return glm::abs(v); }
@@ -159,10 +181,23 @@ struct Plane {
 
     Vec3 point() const
     {
-        Vec3 point;
-        point.x = 0;
-        point.y = (-d - normal.x * point.x) / normal.y;
-        point.z = (-d - normal.x * point.x - normal.y * point.y) / normal.z;
+        Vec3 point(1, 2, 3);
+
+        float distance =
+            point.x * normal.x + point.y * normal.y + point.z * normal.z - d;
+
+        if (absolute(distance) > FLT_EPSILON) {
+            
+            return Vec3 {
+                point.x - distance * normal.x,
+                point.y - distance * normal.y,
+                point.z - distance * normal.z,
+            };
+
+        } else {
+            return point;
+        }
+
         return point;
     }
 
@@ -197,7 +232,7 @@ static inline bool intersect_ray_obb(const Ray& ray, const OBB& obb)
         Mat4::make_transform(obb.center, obb.rotation, Vec3::one()).inverse();
     Ray r = {
         .origin    = world_to_obb * ray.origin,
-        .direction = world_to_obb * ray.direction,
+        .direction = obb.rotation.inverse() * ray.direction,
     };
 
     Vec3 half_extents = obb.extents * 0.5f;

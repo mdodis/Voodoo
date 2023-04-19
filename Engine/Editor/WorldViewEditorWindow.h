@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/MathTypes.h"
 #include "Editor.h"
+#include "ECS.h"
 
 /**
  * @brief The WorldViewEditorWindow class
@@ -19,7 +20,10 @@ struct WorldViewEditorWindow : public EditorWindow {
     u32  viewport_height = NumProps<u32>::max;
     Vec2 window_pos;
 
-    Ray ray_from_mouse_pos();
+    Ray  ray_from_mouse_pos();
+    Vec3 mouse_pos();
 
     void* viewport_texture_ref = nullptr;
+
+    flecs::entity_t selected_entity = 0;
 };

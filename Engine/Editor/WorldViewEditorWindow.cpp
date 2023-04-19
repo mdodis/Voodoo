@@ -15,6 +15,16 @@ void WorldViewEditorWindow::init()
         eng.present_pass.texture_sampler,
         eng.color_pass.color_image_view,
         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    editor_world()
+        .observer<const EditorSelectableComponent>()
+        .event<events::OnEntitySelectionChanged>()
+        .each([this](
+                  flecs::iter&                     it,
+                  size_t                           i,
+                  const EditorSelectableComponent& sel) {
+            selected_entity = it.entity(i);
+        });
 }
 
 void WorldViewEditorWindow::draw()
@@ -44,8 +54,16 @@ void WorldViewEditorWindow::draw()
         (ImTextureID)viewport_texture_ref,
         ImVec2(viewport_width, viewport_height));
 
-    if (ed::gizmos::box(Vec3::zero(), Quat::identity())) {
-    }
+    flecs::entity entity = editor_world().get_alive(selected_entity);
+    if (!entity.is_valid()) return;
+
+    if (!entity.has<TransformComponent>()) return;
+
+    auto* transform = entity.get_mut<TransformComponent>();
+
+    Vec3 position = transform->position;
+    ed::gizmos::translation(position, Quat(transform->rotation));
+    transform->position = position;
 }
 
 void WorldViewEditorWindow::deinit()
@@ -57,10 +75,8 @@ void WorldViewEditorWindow::deinit()
     ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)viewport_texture_ref);
 }
 
-Ray WorldViewEditorWindow::ray_from_mouse_pos()
+Vec3 WorldViewEditorWindow::mouse_pos()
 {
-    Engine& eng = engine();
-
     Vec2 imgui_mouse_pos = {
         ImGui::GetMousePos().x,
         ImGui::GetMousePos().y,
@@ -71,6 +87,15 @@ Ray WorldViewEditorWindow::ray_from_mouse_pos()
 
     imgui_mouse_pos.x -= window_pos.x;
     imgui_mouse_pos.y -= (window_pos.y + titlebar_height);
+
+    return Vec3(imgui_mouse_pos, 0.f);
+}
+
+Ray WorldViewEditorWindow::ray_from_mouse_pos()
+{
+    Engine& eng = engine();
+
+    Vec2 imgui_mouse_pos = mouse_pos().xy();
 
     Vec2 mouse_pos = {
         imgui_mouse_pos.x / (float(viewport_width) * 0.5f) - 1.0f,
