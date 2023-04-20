@@ -1,6 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtx/intersect.hpp>
 #include <glm/gtx/projection.hpp>
 #include <glm/gtx/quaternion.hpp>
 
@@ -142,6 +143,10 @@ struct Quat : public glm::quat {
     Quat(const glm::quat& q) : glm::quat(q) {}
 
     static inline Quat identity() { return Quat(1, 0, 0, 0); }
+    static inline Quat angle_axis(float angle, Vec3 axis)
+    {
+        return Quat(glm::angleAxis(glm::radians(angle), axis));
+    }
 
     inline Quat inverse() const { return glm::inverse(*this); }
     inline Mat4 matrix() const { return glm::toMat4(glm::quat(*this)); }
@@ -232,19 +237,25 @@ struct OBB {
 static inline bool intersect_ray_plane(
     const Ray& ray, const Plane& plane, Vec3& intersection_point)
 {
-    float denom = dot(ray.direction, plane.normal);
+    float t      = 0.0f;
+    bool  result = glm::intersectRayPlane(
+        glm::vec3(ray.origin),
+        glm::vec3(ray.direction),
+        glm::vec3(plane.point()),
+        glm::vec3(plane.normal),
+        t);
+    intersection_point = ray.origin + ray.direction * t;
 
-    if (absolute(denom) > 0.00001) {
-        float t = dot(plane.point() - ray.origin, plane.normal) / denom;
-
-        intersection_point = ray.origin + ray.direction * t;
-        return true;
-    }
-
-    return false;
+    return result;
 }
 
-static inline bool intersect_ray_aabb(const Ray& ray, const AABB& aabb)
+static thread_local Vec3 Intersect_Ray_AABB_Dummy;
+
+static inline bool intersect_ray_aabb(
+    const Ray&  ray,
+    const AABB& aabb,
+    Vec3&       intersection0 = Intersect_Ray_AABB_Dummy,
+    Vec3&       intersection1 = Intersect_Ray_AABB_Dummy)
 {
     float tmin = -INFINITY;
     float tmax = +INFINITY;
@@ -273,13 +284,23 @@ static inline bool intersect_ray_aabb(const Ray& ray, const AABB& aabb)
         tmax = glm::min(tmax, glm::max(tz1, tz2));
     }
 
-    return tmax >= tmin;
+    intersection0 = ray.origin + ray.direction * tmin;
+    intersection1 = ray.origin + ray.direction * tmax;
+    return (tmax >= tmin);
 }
 
-static inline bool intersect_ray_obb(const Ray& ray, const OBB& obb)
+static thread_local Vec3 Intersect_Ray_OBB_Dummy;
+
+static inline bool intersect_ray_obb(
+    const Ray& ray,
+    const OBB& obb,
+    Vec3&      intersection0 = Intersect_Ray_OBB_Dummy,
+    Vec3&      intersection1 = Intersect_Ray_OBB_Dummy)
 {
-    Mat4 world_to_obb =
-        Mat4::make_transform(obb.center, obb.rotation, Vec3::one()).inverse();
+    Mat4 obb_to_world =
+        Mat4::make_transform(obb.center, obb.rotation, Vec3::one());
+    Mat4 world_to_obb = obb_to_world.inverse();
+
     Ray r = {
         .origin    = world_to_obb * ray.origin,
         .direction = obb.rotation.inverse() * ray.direction,
@@ -289,5 +310,11 @@ static inline bool intersect_ray_obb(const Ray& ray, const OBB& obb)
         .center  = obb.center,
         .extents = obb.extents,
     };
-    return intersect_ray_aabb(r, aabb);
+
+    bool success = intersect_ray_aabb(r, aabb, intersection0, intersection1);
+
+    intersection0 = obb_to_world * intersection0;
+    intersection1 = obb_to_world * intersection1;
+
+    return success;
 }
