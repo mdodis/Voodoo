@@ -127,7 +127,7 @@ void WorldSerializer::import(flecs::world& world, Str path)
                 ecs_get_type_info(world.c_ptr(), id);
 
             // @todo: need a copy_object(descriptor, dst, src) to copy fields
-            // from an object to another For now, leaking memory is fine (:
+            // from an object to another. For now, leaking memory is fine (:
             umm ptr = temp.reserve(type_info->size);
             memset(ptr, 0, type_info->size);
 

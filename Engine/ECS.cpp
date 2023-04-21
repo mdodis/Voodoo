@@ -4,12 +4,12 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "Engine.h"
+#include "StringFormat.h"
 #include "imgui.h"
 
 void ECS::init()
 {
     register_default_ecs_types(world);
-
     // Editor queries
     {
         editor.entity_view_query =
@@ -44,12 +44,33 @@ void ECS::init()
 
 flecs::entity ECS::create_entity(Str name)
 {
-    auto entity = world.entity(name.data);
-    entity.set<EditorSelectableComponent>({false});
-    entity.set<MeshMaterialComponent>({
-        .mesh_name     = LIT("monke"),
-        .material_name = LIT("default.mesh"),
-    });
+    flecs::entity entity;
+    if (name != Str::NullStr) {
+        entity = world.entity(name.data);
+    } else {
+        CREATE_SCOPED_ARENA(&System_Allocator, temp, 1024);
+
+        bool created = false;
+        u32  i       = 0;
+        while (!created) {
+            SAVE_ARENA(temp);
+
+            if (i == 0) {
+                name = format(temp, LIT("New Entity\0"));
+            } else {
+                name = format(temp, LIT("New Entity #{}\0"), i);
+            }
+
+            if (!world.lookup(name.data)) {
+                entity  = world.entity(name.data);
+                created = true;
+            } else {
+                i++;
+            }
+        }
+    }
+
+    entity.set<EditorSelectableComponent>({false, false});
     return entity;
 }
 
@@ -175,9 +196,7 @@ void ECS::draw_editor()
 
 void ECS::defer(Delegate<void>&& delegate)
 {
-    world.defer([delegate]() {
-        delegate.call();
-    });
+    world.defer([delegate]() { delegate.call(); });
 }
 
 void ECS::open_world(Str path)

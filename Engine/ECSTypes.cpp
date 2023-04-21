@@ -1,9 +1,10 @@
 #include "ECSTypes.h"
 
-#define ALL_DEFAULT_ECS_TYPES \
-    X(TransformComponent)     \
-    X(MeshMaterialComponent)  \
-    X(EditorSelectableComponent)
+#define ALL_DEFAULT_ECS_TYPES    \
+    X(TransformComponent)        \
+    X(MeshMaterialComponent)     \
+    X(EditorSelectableComponent) \
+    X(EditorBoxGizmoComponent)
 
 // Use ECS_COMPONENT_DECLARE to declare the actual ecs_id of components
 #define X(name) ECS_COMPONENT_DECLARE(name);

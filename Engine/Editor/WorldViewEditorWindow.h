@@ -14,7 +14,8 @@ struct WorldViewEditorWindow : public EditorWindow {
     virtual void init() override;
     virtual void draw() override;
     virtual void deinit() override;
-    virtual bool has_padding() override { return false; }
+    virtual void begin_style() override;
+    virtual void end_style() override;
 
     u32  viewport_width  = NumProps<u32>::max;
     u32  viewport_height = NumProps<u32>::max;

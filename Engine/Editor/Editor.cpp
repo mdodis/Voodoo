@@ -26,7 +26,7 @@ static EditorColorScheme Default_Color_Scheme = {
     .frame_bg_active        = {0.59f, 0.59f, 0.59f, 1.00f},
     .title_bg               = {0.04f, 0.04f, 0.04f, 1.00f},
     .title_bg_active        = {0.66f, 0.00f, 0.13f, 1.00f},
-    .check_mark             = {0.66f, 0.00f, 0.13f, 1.00f},
+    .check_mark             = {0.05f, 0.94f, 0.72f, 1.00f},
     .slider_grab            = {0.66f, 0.00f, 0.13f, 1.00f},
     .slider_grab_active     = {0.66f, 0.00f, 0.13f, 1.00f},
     .button                 = {0.20f, 0.20f, 0.20f, 1.00f},
@@ -75,8 +75,10 @@ void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
     {
         queries.entity_view_query =
             ecs->world.query_builder<const EditorSelectableComponent>()
-                .read<EditorSelectableComponent>()
+                .oper(flecs::Or)
+                .with(flecs::Disabled)
                 .build();
+
         queries.component_view_query =
             ecs->world.query_builder<flecs::Component>()
                 .term(flecs::ChildOf, flecs::Flecs)
@@ -121,11 +123,7 @@ void Editor::draw()
 
         bool is_window_open = true;
 
-        int style_var_count = 0;
-        if (!window->has_padding()) {
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-            style_var_count++;
-        }
+        window->begin_style();
 
         ImGui::Begin(window->name().data, &is_window_open);
 
@@ -136,7 +134,7 @@ void Editor::draw()
         }
 
         ImGui::End();
-        ImGui::PopStyleVar(style_var_count);
+        window->end_style();
     }
 
     // Free windows with invalid ids

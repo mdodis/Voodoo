@@ -1,7 +1,6 @@
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-
+#include "Core/Color.h"
+#include "Core/MathTypes.h"
 #include "Delegates.h"
 #include "Reflection.h"
 #include "RenderObject.h"
@@ -70,8 +69,16 @@ DEFINE_DESCRIPTOR_OF_INL(MeshMaterialComponent);
 
 struct EditorSelectableComponent {
     bool selected;
+    bool show_children;
+    int  view_priority;
 };
 extern ECS_COMPONENT_DECLARE(EditorSelectableComponent);
+
+struct EditorBoxGizmoComponent {
+    Vec3  extents;
+    Color color;
+};
+extern ECS_COMPONENT_DECLARE(EditorBoxGizmoComponent);
 
 void register_default_ecs_types(flecs::world& world);
 void register_default_ecs_descriptors(

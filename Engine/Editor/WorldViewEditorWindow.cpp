@@ -6,6 +6,13 @@
 #include "backends/imgui_impl_vulkan.h"
 #include "imgui.h"
 
+void WorldViewEditorWindow::begin_style()
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+}
+
+void WorldViewEditorWindow::end_style() { ImGui::PopStyleVar(); }
+
 void WorldViewEditorWindow::init()
 {
     Engine& eng      = engine();
