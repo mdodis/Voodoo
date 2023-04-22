@@ -29,4 +29,6 @@ struct WorldViewEditorWindow : public EditorWindow {
     void* viewport_texture_ref = nullptr;
 
     flecs::entity_t selected_entity = 0;
+    flecs::entity   gizmo_entity;
+    void on_change_selection(flecs::entity new_entity);
 };

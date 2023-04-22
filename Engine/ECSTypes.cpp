@@ -4,7 +4,7 @@
     X(TransformComponent)        \
     X(MeshMaterialComponent)     \
     X(EditorSelectableComponent) \
-    X(EditorBoxGizmoComponent)
+    X(EditorGizmoShapeComponent)
 
 // Use ECS_COMPONENT_DECLARE to declare the actual ecs_id of components
 #define X(name) ECS_COMPONENT_DECLARE(name);

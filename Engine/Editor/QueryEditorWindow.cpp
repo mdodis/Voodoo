@@ -38,12 +38,40 @@ void QueryEditorWindow::draw()
         }
     }
 
-    for (flecs::entity_t eid : query_results) {
-        if (eid == 0) continue;
+    ImGui::Text("%u Results", query_results.size);
+    static ImGuiTableFlags flags =
+        ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
+        ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable |
+        ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 
-        flecs::entity entity(ecs().world, eid);
-        ImGui::Text(entity.name().c_str());
+    if (ImGui::BeginTable("##QueryResultsTable", 3, 0)) {
+        
+        ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableHeadersRow();
+
+        for (flecs::entity_t eid : query_results) {
+            if (eid == 0) continue;
+            flecs::entity entity(ecs().world, eid);
+            if (!entity.is_valid()) continue;
+
+            ImGui::TableNextRow();
+
+
+            ImGui::TableSetColumnIndex(0);
+            ImGui::Text("%u", eid);
+            
+            ImGui::TableSetColumnIndex(1);
+            ImGui::Text("%s", entity.name().c_str());
+
+            ImGui::TableSetColumnIndex(2);
+            ImGui::Text("%s", entity.type().str().c_str());
+
+        }
+        ImGui::EndTable();
     }
+
 }
 
 void QueryEditorWindow::deinit() { query_results.release(); }

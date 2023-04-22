@@ -39,6 +39,12 @@ struct EditorWindow {
     _inline bool is_valid() const { return id != 0; }
 };
 
+struct EditorGizmoSelectionData {
+    Ray             ray;
+    flecs::entity_t hit_id;
+    float           t;
+};
+
 struct Editor {
     void init(win::Window* host_window, struct Engine* engine, struct ECS* ecs);
     void draw();

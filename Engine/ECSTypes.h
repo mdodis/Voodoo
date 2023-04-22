@@ -23,6 +23,29 @@ struct TransformComponent {
     Vec3 world_position;
     Quat world_rotation;
     Vec3 world_scale;
+
+    static _inline TransformComponent zero()
+    {
+        return TransformComponent{
+            .position = glm::vec3(0, 0, 0),
+            .rotation = glm::quat(1, 0, 0, 0),
+            .scale    = glm::vec3(1, 1, 1),
+        };
+    }
+
+    static _inline TransformComponent pos(float x, float y, float z)
+    {
+        return TransformComponent{
+            .position = glm::vec3(x, y, z),
+            .rotation = glm::quat(1, 0, 0, 0),
+            .scale    = glm::vec3(1, 1, 1),
+        };
+    }
+
+    _inline Mat4 local_matrix() const
+    {
+        return Mat4::make_transform(position, rotation, scale);
+    }
 };
 extern ECS_COMPONENT_DECLARE(TransformComponent);
 
@@ -78,11 +101,35 @@ struct EditorSelectableComponent {
 };
 extern ECS_COMPONENT_DECLARE(EditorSelectableComponent);
 
-struct EditorBoxGizmoComponent {
-    Vec3  extents;
-    Color color;
+struct EditorGizmoShapeComponent {
+    enum class ShapeKind
+    {
+        Box,
+    };
+
+    ShapeKind kind;
+    Color     color;
+    bool      hovered;
+    union {
+        struct {
+            Vec3 extents;
+        } obb;
+    };
+
+    static _inline EditorGizmoShapeComponent make_obb(float x, float y, float z)
+    {
+        return EditorGizmoShapeComponent{
+            .kind    = ShapeKind::Box,
+            .color   = Color{x, y, z, 1.0f},
+            .hovered = false,
+            .obb =
+                {
+                    .extents = Vec3(x, y, z),
+                },
+        };
+    }
 };
-extern ECS_COMPONENT_DECLARE(EditorBoxGizmoComponent);
+extern ECS_COMPONENT_DECLARE(EditorGizmoShapeComponent);
 
 void register_default_ecs_types(flecs::world& world);
 void register_default_ecs_descriptors(

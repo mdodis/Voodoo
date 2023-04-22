@@ -92,6 +92,7 @@ target_link_libraries(vkx
     ${Vulkan_LIBRARY}
     VulkanMemoryAllocator
     imgui
+    imguizmo
     flecs
     assetlib
     portable_file_dialogs

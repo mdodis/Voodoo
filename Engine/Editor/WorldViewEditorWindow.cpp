@@ -1,17 +1,34 @@
+// clang-format off
 #include "WorldViewEditorWindow.h"
-
 #include "Engine.h"
-#include "Gizmos.h"
 #include "MenuRegistrar.h"
+#include <imgui.h>
+#include "Gizmos.h"
 #include "backends/imgui_impl_vulkan.h"
-#include "imgui.h"
 
-void WorldViewEditorWindow::begin_style()
+// clang-format on
+
+static void update_gizmo_selection(
+    flecs::entity                    entity,
+    EditorGizmoSelectionData*        data,
+    const TransformComponent&        transform,
+    const EditorGizmoShapeComponent& shape)
 {
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-}
+    OBB obb = {
+        .center   = transform.world_position,
+        .rotation = transform.world_rotation,
+        .extents  = shape.obb.extents,
+    };
 
-void WorldViewEditorWindow::end_style() { ImGui::PopStyleVar(); }
+    float t1, t2;
+    if (intersect_ray_obb(data->ray, obb, t1, t2)) {
+        float t = glm::min(t1, t2);
+        if (t < data->t) {
+            data->t      = t;
+            data->hit_id = entity;
+        }
+    }
+}
 
 void WorldViewEditorWindow::init()
 {
@@ -30,7 +47,61 @@ void WorldViewEditorWindow::init()
                   flecs::iter&                     it,
                   size_t                           i,
                   const EditorSelectableComponent& sel) {
-            selected_entity = it.entity(i);
+            on_change_selection(it.entity(i));
+        });
+
+    gizmo_entity = ecs().world.entity("Gizmo");
+    gizmo_entity.set(TransformComponent::zero());
+
+    {
+        auto gizmo_axis = ecs().world.entity("X").child_of(gizmo_entity);
+        gizmo_axis.set(TransformComponent::pos(0.5f, 0, 0));
+        gizmo_axis.set(
+            EditorGizmoShapeComponent::make_obb(1.0f, 0.1f, 0.1f));
+    }
+    {
+        auto gizmo_axis = ecs().world.entity("Y").child_of(gizmo_entity);
+        gizmo_axis.set(TransformComponent::pos(0, 0.5f, 0));
+        gizmo_axis.set(
+            EditorGizmoShapeComponent::make_obb(0.1f, 1.0f, 0.1f));
+    }
+    {
+        auto gizmo_axis = ecs().world.entity("Z").child_of(gizmo_entity);
+        gizmo_axis.set(TransformComponent::pos(0, 0, -0.5f));
+        gizmo_axis.set(
+            EditorGizmoShapeComponent::make_obb(0.1f, 0.1f, 1.0f));
+    }
+
+    ecs().world.set<EditorGizmoSelectionData>({});
+
+    ecs()
+        .world.system<EditorGizmoSelectionData>("Gizmo Ray")
+        .each([this](EditorGizmoSelectionData& data) {
+            data.ray    = ray_from_mouse_pos();
+            data.hit_id = 0;
+            data.t      = INFINITY;
+        });
+
+    ecs()
+        .world
+        .system<
+            EditorGizmoSelectionData,
+            const TransformComponent,
+            const EditorGizmoShapeComponent>("Gizmo Ray Select")
+        .term_at(1)
+        .singleton()
+        .iter([this](
+                  flecs::iter&                     it,
+                  EditorGizmoSelectionData*        data,
+                  const TransformComponent*        transforms,
+                  const EditorGizmoShapeComponent* shapes) {
+            for (int i : it) {
+                update_gizmo_selection(
+                    it.entity(i),
+                    data,
+                    transforms[i],
+                    shapes[i]);
+            }
         });
 }
 
@@ -65,16 +136,31 @@ void WorldViewEditorWindow::draw()
     ImGui::Image(
         (ImTextureID)viewport_texture_ref,
         ImVec2(viewport_width, viewport_height));
+
+    const EditorGizmoSelectionData* selection =
+        ecs().world.get<EditorGizmoSelectionData>();
+
+    ImGui::Begin("Debug");
+    ImGui::Text(
+        "Ray Origin: %f %f %f",
+        selection->ray.origin.x,
+        selection->ray.origin.y,
+        selection->ray.origin.z);
+    ImGui::Text(
+        "Ray Direction: %f %f %f",
+        selection->ray.direction.x,
+        selection->ray.direction.y,
+        selection->ray.direction.z);
+    ImGui::Text("Hit ID: %u (%f)", selection->hit_id, selection->t);
+
+    ImGui::End();
+
     flecs::entity entity = editor_world().get_alive(selected_entity);
     if (!entity.is_valid()) return;
 
     if (!entity.has<TransformComponent>()) return;
 
     auto* transform = entity.get_mut<TransformComponent>();
-
-    Vec3 position = transform->position;
-    ed::gizmos::translation(position, Quat(transform->rotation));
-    transform->position = position;
 }
 
 void WorldViewEditorWindow::deinit()
@@ -97,6 +183,11 @@ Vec3 WorldViewEditorWindow::mouse_pos()
     imgui_mouse_pos.y -= (image_screen_pos.y);
 
     return Vec3(imgui_mouse_pos, 0.f);
+}
+
+void WorldViewEditorWindow::on_change_selection(flecs::entity new_entity)
+{
+    selected_entity = new_entity;
 }
 
 Ray WorldViewEditorWindow::ray_from_mouse_pos()
@@ -125,6 +216,13 @@ Ray WorldViewEditorWindow::ray_from_mouse_pos()
         .direction = ray_world,
     };
 }
+
+void WorldViewEditorWindow::begin_style()
+{
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+}
+
+void WorldViewEditorWindow::end_style() { ImGui::PopStyleVar(); }
 
 STATIC_MENU_ITEM(
     "Window/World", { The_Editor.create_window<WorldViewEditorWindow>(); }, 0);

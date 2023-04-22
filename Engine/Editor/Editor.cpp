@@ -1,11 +1,15 @@
 #include "Editor.h"
 
+// clang-format off
+#include <imgui.h>
+#include <ImGuizmo.h>
+// clang-format on
+
 #include "Engine.h"
 #include "Gizmos.h"
 #include "MenuRegistrar.h"
 #include "Window/Window.h"
 #include "backends/imgui_impl_vulkan.h"
-#include "imgui.h"
 #include "portable-file-dialogs.h"
 
 // clang-format off
@@ -59,6 +63,7 @@ static EditorStyle Default_Editor_Style = {
     .window_rounding = 6.0f,
 };
 
+
 // clang-format on
 
 void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
@@ -94,6 +99,20 @@ void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
 
     apply_color_scheme(Default_Color_Scheme);
     apply_style(Default_Editor_Style);
+
+    // Gizmo system
+    ecs->world
+        .system<const TransformComponent, const EditorGizmoShapeComponent>(
+            "Gizmo")
+        .each([this](
+                  const TransformComponent&        transform,
+                  const EditorGizmoShapeComponent& shape) {
+            host.engine->imm.box(
+                transform.world_position,
+                transform.world_rotation,
+                shape.obb.extents,
+                shape.color);
+        });
 }
 
 void Editor::draw()

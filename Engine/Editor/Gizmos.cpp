@@ -91,11 +91,12 @@ namespace ed {
             }
 
             Vec3 box_position = position + (rotation * axis_direction) * 1.0f;
+            Vec3 intersection_point;
             if (box(box_position,
                     rotation,
                     axis_extents,
                     color,
-                    Color::white()))
+                    Color::white(), intersection_point))
             {
                 if (ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
                     !Context.dragging)
