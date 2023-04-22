@@ -85,12 +85,6 @@ void InspectorEditorWindow::draw()
                 glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1)) *
                 glm::angleAxis(glm::radians(euler.y), glm::vec3(0, 1, 0)) *
                 glm::angleAxis(glm::radians(euler.x), glm::vec3(1, 0, 0));
-
-            ImGui::Text(
-                "World %f %f %f",
-                t->world_position.x,
-                t->world_position.y,
-                t->world_position.z);
         }
     });
     ImGui::PopID();
