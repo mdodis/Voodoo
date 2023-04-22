@@ -19,6 +19,10 @@ struct TransformComponent {
     glm::vec3 position;
     glm::quat rotation;
     glm::vec3 scale;
+
+    Vec3 world_position;
+    Quat world_rotation;
+    Vec3 world_scale;
 };
 extern ECS_COMPONENT_DECLARE(TransformComponent);
 

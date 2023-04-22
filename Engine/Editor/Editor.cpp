@@ -325,7 +325,7 @@ STATIC_MENU_ITEM(
     0);
 
 STATIC_MENU_ITEM(
-    "Help/ImGui", { The_Editor.imgui_demo = !The_Editor.imgui_demo; }, -200);
+    "Help/ImGui", { The_Editor.imgui_demo = !The_Editor.imgui_demo; }, 0);
 
 Engine& EditorWindow::engine() const { return *The_Editor.host.engine; }
 

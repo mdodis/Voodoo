@@ -1,6 +1,7 @@
 #include "ECS.h"
 
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 
 #include "Engine.h"
@@ -40,6 +41,53 @@ void ECS::init()
             });
         register_default_ecs_descriptors(register_func);
     }
+
+    world.system<const TransformComponent, TransformComponent>()
+        .term_at(1)
+        .parent()
+        .cascade()
+        .optional()
+        .iter([this](
+                  flecs::iter&              it,
+                  const TransformComponent* parent_transform,
+                  TransformComponent*       transform) {
+            for (auto i : it) {
+                if (parent_transform) {
+                    Mat4 parent_matrix = Mat4::make_transform(
+                        parent_transform->world_position,
+                        parent_transform->world_rotation,
+                        parent_transform->world_scale);
+
+                    Mat4 child_matrix = Mat4::make_transform(
+                        transform[i].position,
+                        transform[i].rotation,
+                        transform[i].scale);
+
+                    Mat4      result = parent_matrix * child_matrix;
+                    glm::vec3 world_position;
+                    glm::quat world_rotation;
+                    glm::vec3 world_scale;
+                    glm::vec3 world_skew;
+                    glm::vec4 world_perspective;
+                    glm::decompose(
+                        glm::mat4(result),
+                        world_scale,
+                        world_rotation,
+                        world_position,
+                        world_skew,
+                        world_perspective);
+
+                    transform[i].world_position = Vec3(world_position);
+                    transform[i].world_rotation = Quat(world_rotation);
+                    transform[i].world_scale    = Vec3(world_scale);
+
+                } else {
+                    transform[i].world_position = Vec3(transform->position);
+                    transform[i].world_rotation = Quat(transform->rotation);
+                    transform[i].world_scale    = Vec3(transform->scale);
+                }
+            }
+        });
 }
 
 flecs::entity ECS::create_entity(Str name)
@@ -95,9 +143,9 @@ void ECS::run()
                 MeshMaterialComponent& meshmat) {
                 // Compute transform
                 glm::mat4 object_transform =
-                    glm::translate(glm::mat4(1.0f), transform.position) *
-                    glm::toMat4(transform.rotation) *
-                    glm::scale(glm::mat4(1.0f), transform.scale);
+                    glm::translate(glm::mat4(1.0f), transform.world_position) *
+                    glm::toMat4(transform.world_rotation) *
+                    glm::scale(glm::mat4(1.0f), transform.world_scale);
 
                 if (meshmat.mesh == 0) {
                     meshmat.mesh = engine->get_mesh(meshmat.mesh_name);

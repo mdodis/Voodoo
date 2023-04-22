@@ -1,9 +1,9 @@
 #pragma once
 #include "Containers/Array.h"
+#include "Delegates.h"
 #include "ECSTypes.h"
 #include "WorldSerializer.h"
 #include "flecs.h"
-#include "Delegates.h"
 
 struct EntityReference {
     ecs_entity_t id;

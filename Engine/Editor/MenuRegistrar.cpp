@@ -40,11 +40,12 @@ void MenuRegistrar::init()
     precedence.init(System_Allocator);
 
     precedence.add(LIT("File"), 200);
-    precedence.add(LIT("Help"), -200);
+    precedence.add(LIT("Help"), -500);
 }
 
-int MenuRegistrar::rank(const MenuItem& item) {
-    Str first_part = item.name.part(0, item.name.first_of('/'));
+int MenuRegistrar::rank(const MenuItem& item)
+{
+    Str first_part          = item.name.part(0, item.name.first_of('/'));
     int category_precedence = 0;
 
     if (precedence.contains(first_part)) {
@@ -70,8 +71,8 @@ void MenuRegistrar::register_item(
         sort::CompareFunc<MenuRegistrar::MenuItem>::create_lambda(
             [this](
                 const MenuRegistrar::MenuItem& left,
-                const MenuRegistrar::MenuItem& right) { 
-                    return rank(left) > rank(right);
+                const MenuRegistrar::MenuItem& right) {
+                return rank(left) > rank(right);
             });
 
     auto s = slice(menu_items);
