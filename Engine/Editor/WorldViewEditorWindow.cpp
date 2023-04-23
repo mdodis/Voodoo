@@ -56,20 +56,20 @@ void WorldViewEditorWindow::init()
     {
         auto gizmo_axis = ecs().world.entity("X").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0.5f, 0, 0));
-        gizmo_axis.set(
-            EditorGizmoShapeComponent::make_obb(1.0f, 0.1f, 0.1f));
+        gizmo_axis.set(EditorGizmoShapeComponent::make_obb(1.0f, 0.1f, 0.1f));
+        gizmo_axis.set(EditorGizmoDraggableComponent{});
     }
     {
         auto gizmo_axis = ecs().world.entity("Y").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0, 0.5f, 0));
-        gizmo_axis.set(
-            EditorGizmoShapeComponent::make_obb(0.1f, 1.0f, 0.1f));
+        gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 1.0f, 0.1f));
+        gizmo_axis.set(EditorGizmoDraggableComponent{});
     }
     {
         auto gizmo_axis = ecs().world.entity("Z").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0, 0, -0.5f));
-        gizmo_axis.set(
-            EditorGizmoShapeComponent::make_obb(0.1f, 0.1f, 1.0f));
+        gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 0.1f, 1.0f));
+        gizmo_axis.set(EditorGizmoDraggableComponent{});
     }
 
     ecs().world.set<EditorGizmoSelectionData>({});
@@ -77,9 +77,11 @@ void WorldViewEditorWindow::init()
     ecs()
         .world.system<EditorGizmoSelectionData>("Gizmo Ray")
         .each([this](EditorGizmoSelectionData& data) {
-            data.ray    = ray_from_mouse_pos();
-            data.hit_id = 0;
-            data.t      = INFINITY;
+            data.ray             = ray_from_mouse_pos();
+            data.hit_id          = 0;
+            data.t               = INFINITY;
+            data.mouse           = mouse_pos().xy();
+            data.left_mouse_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
         });
 
     ecs()
@@ -87,7 +89,7 @@ void WorldViewEditorWindow::init()
         .system<
             EditorGizmoSelectionData,
             const TransformComponent,
-            const EditorGizmoShapeComponent>("Gizmo Ray Select")
+            const EditorGizmoShapeComponent>("Gizmo Ray Hover")
         .term_at(1)
         .singleton()
         .iter([this](
@@ -101,6 +103,27 @@ void WorldViewEditorWindow::init()
                     data,
                     transforms[i],
                     shapes[i]);
+            }
+        });
+
+    ecs()
+        .world
+        .system<const EditorGizmoSelectionData, EditorGizmoDraggableComponent>(
+            "Gizmo Ray Select")
+        .term_at(1)
+        .singleton()
+        .each([this](
+                  flecs::entity                   e,
+                  const EditorGizmoSelectionData& data,
+                  EditorGizmoDraggableComponent&  draggable) {
+            if ((data.hit_id == e.id()) && (data.left_mouse_down)) {
+                if (!draggable.dragging) {
+                    draggable.mouse_start = data.mouse;
+                    draggable.dragging    = true;
+                    print(LIT("Begin Drag! {}\n"), Str(e.name().c_str()));
+                }
+            } else {
+                draggable.dragging = false;
             }
         });
 }

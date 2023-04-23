@@ -2,7 +2,7 @@
 
 // clang-format off
 #include <imgui.h>
-#include <ImGuizmo.h>
+#include <imgui_internal.h>
 // clang-format on
 
 #include "Engine.h"
@@ -62,7 +62,6 @@ static EditorStyle Default_Editor_Style = {
     .grab_min_size   = 14.0f,
     .window_rounding = 6.0f,
 };
-
 
 // clang-format on
 
@@ -128,9 +127,7 @@ void Editor::draw()
     get_menu_registrar()->draw();
 
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::DockSpaceOverViewport(
-        viewport,
-        ImGuiDockNodeFlags_PassthruCentralNode);
+    ImGui::DockSpaceOverViewport(viewport, 0);
 
     if (imgui_demo) {
         ImGui::ShowDemoWindow(&imgui_demo);

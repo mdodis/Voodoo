@@ -43,6 +43,9 @@ struct EditorGizmoSelectionData {
     Ray             ray;
     flecs::entity_t hit_id;
     float           t;
+    Vec2            mouse;
+    bool            dragging        = false;
+    bool            left_mouse_down = false;
 };
 
 struct Editor {

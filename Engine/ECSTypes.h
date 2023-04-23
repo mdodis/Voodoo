@@ -131,6 +131,12 @@ struct EditorGizmoShapeComponent {
 };
 extern ECS_COMPONENT_DECLARE(EditorGizmoShapeComponent);
 
+struct EditorGizmoDraggableComponent {
+    bool dragging = false;
+    Vec2 mouse_start;
+};
+extern ECS_COMPONENT_DECLARE(EditorGizmoDraggableComponent);
+
 void register_default_ecs_types(flecs::world& world);
 void register_default_ecs_descriptors(
     Delegate<void, u64, IDescriptor*> callback);
