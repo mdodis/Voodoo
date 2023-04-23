@@ -100,6 +100,7 @@ struct Editor {
     TMap<Str, EditorTexture> textures;
     u64                      next_window_id;
     bool                     imgui_demo = false;
+    bool                     drew_once  = false;
 };
 
 extern Editor The_Editor;

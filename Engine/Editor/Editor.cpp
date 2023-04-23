@@ -13,6 +13,13 @@
 #include "portable-file-dialogs.h"
 
 // clang-format off
+// @todo: layout system to create these automatically and be able to save layouts
+#include "HierarchyEditorWindow.h"
+#include "WorldViewEditorWindow.h"
+#include "InspectorEditorWindow.h"
+// clang-format on
+
+// clang-format off
 static EditorColorScheme Default_Color_Scheme = {
     .window_bg              = {0.04f, 0.04f, 0.04f, 1.00f},
     .border                 = {0.20f, 0.20f, 0.20f, 1.00f},
@@ -112,6 +119,10 @@ void Editor::init(win::Window* host_window, Engine* engine, ECS* ecs)
                 shape.obb.extents,
                 shape.color);
         });
+
+    create_window<HierarchyEditorWindow>();
+    create_window<WorldViewEditorWindow>();
+    create_window<InspectorEditorWindow>();
 }
 
 void Editor::draw()
@@ -124,10 +135,60 @@ void Editor::draw()
 
     host.window->imgui_process();
 
-    get_menu_registrar()->draw();
-
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::DockSpaceOverViewport(viewport, 0);
+    ImGuiWindowFlags     window_flags =
+        ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+        ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+    ImGui::SetNextWindowPos(viewport->Pos);
+    ImGui::SetNextWindowSize(viewport->Size);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+    ImGui::Begin("Dockspace", nullptr, window_flags);
+    ImGui::PopStyleVar(3);
+
+    ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
+    ImGui::DockSpace(dockspace_id, ImVec2(0, 0));
+
+    if (!drew_once) {
+        drew_once = true;
+        ImGui::DockBuilderRemoveNode(dockspace_id);
+        ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+
+        ImGuiID dock_id_hierarchy;
+        ImGuiID dock_id_hierarchy_right;
+        ImGuiID dock_id_inspector;
+        ImGuiID dock_id_world;
+
+        ImGui::DockBuilderSplitNode(
+            dockspace_id,
+            ImGuiDir_Left,
+            0.2f,
+            &dock_id_hierarchy,
+            &dock_id_hierarchy_right);
+
+        ImGui::DockBuilderSplitNode(
+            dock_id_hierarchy_right,
+            ImGuiDir_Left,
+            0.8f,
+            &dock_id_world,
+            &dock_id_inspector);
+
+        ImGui::DockBuilderDockWindow("Hierarchy", dock_id_hierarchy);
+        ImGui::DockBuilderDockWindow("World", dock_id_world);
+        ImGui::DockBuilderDockWindow("Inspector", dock_id_inspector);
+        ImGui::DockBuilderFinish(dockspace_id);
+    }
+
+    ImGui::End();
+
+    get_menu_registrar()->draw();
 
     if (imgui_demo) {
         ImGui::ShowDemoWindow(&imgui_demo);
