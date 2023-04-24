@@ -209,12 +209,17 @@ _inline void Mat4::decompose(Vec3& position, Quat& rotation, Vec3& scale) const
 struct Ray {
     Vec3 origin;
     Vec3 direction;
+
+    Vec3 at(float t) const { return origin + direction * t; }
 };
 
 struct Plane {
-    Vec3  normal;
-    float d;
+    Vec3 normal;
+    Vec3 center;
 
+    Plane() {}
+    Plane(Vec3 normal, Vec3 point) : normal(normal), center(point) {}
+#if 0
     Vec3 point() const
     {
         Vec3 point(1, 2, 3);
@@ -235,9 +240,20 @@ struct Plane {
 
         return point;
     }
+#endif
+    Quat orientation() const
+    {
+        Vec3  up = Vec3::up();
+        float d  = dot(up, normal);
+        if (d > 0.99f || d < -0.99f) {
+            up = Vec3::right();
+        }
 
-    Plane(Vec3 normal, float d) : normal(normal), d(d) {}
-    Plane(Vec3 normal, Vec3 point) : normal(normal) { d = -dot(normal, point); }
+        Vec3 right = normalize(cross(up, normal));
+        up         = normalize(cross(normal, right));
+
+        return Quat(glm::quatLookAt(normal, up));
+    }
 };
 
 struct AABB {
@@ -255,18 +271,22 @@ struct OBB {
 };
 
 static inline bool intersect_ray_plane(
-    const Ray& ray, const Plane& plane, Vec3& intersection_point)
+    const Ray& ray, const Plane& plane, float& t)
 {
-    float t      = 0.0f;
-    bool  result = glm::intersectRayPlane(
+#if 1
+    bool result = glm::intersectRayPlane(
         glm::vec3(ray.origin),
         glm::vec3(ray.direction),
-        glm::vec3(plane.point()),
+        glm::vec3(plane.center),
         glm::vec3(plane.normal),
         t);
-    intersection_point = ray.origin + ray.direction * t;
-
     return result;
+#else
+    float denom = dot(plane.normal, ray.direction);
+    if (absolute(denom) > 0.0001f) {
+        float t =
+    }
+#endif
 }
 
 static thread_local float Intersect_Ray_AABB_Dummy;
@@ -274,7 +294,7 @@ static thread_local float Intersect_Ray_AABB_Dummy;
 static inline bool intersect_ray_aabb(
     const Ray&  ray,
     const AABB& aabb,
-    float&       intersection0 = Intersect_Ray_AABB_Dummy,
+    float&      intersection0 = Intersect_Ray_AABB_Dummy,
     float&      intersection1 = Intersect_Ray_AABB_Dummy)
 {
     float tmin = -INFINITY;
@@ -314,8 +334,8 @@ static thread_local float Intersect_Ray_OBB_Dummy;
 static inline bool intersect_ray_obb(
     const Ray& ray,
     const OBB& obb,
-    float&      intersection0 = Intersect_Ray_OBB_Dummy,
-    float&      intersection1 = Intersect_Ray_OBB_Dummy)
+    float&     intersection0 = Intersect_Ray_OBB_Dummy,
+    float&     intersection1 = Intersect_Ray_OBB_Dummy)
 {
     Mat4 obb_to_world =
         Mat4::make_transform(obb.center, obb.rotation, Vec3::one());

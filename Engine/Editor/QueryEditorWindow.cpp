@@ -14,7 +14,7 @@ void QueryEditorWindow::draw()
 {
     static char buffer[1024];
 
-    ImGui::InputText("Query", buffer, sizeof(buffer));
+    ImGui::InputText("##query", buffer, sizeof(buffer));
 
     ImGui::SameLine();
     if (ImGui::Button("Run")) {
@@ -45,10 +45,11 @@ void QueryEditorWindow::draw()
         ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 
     if (ImGui::BeginTable("##QueryResultsTable", 3, 0)) {
-        
         ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_WidthStretch);
+        ImGui::TableSetupColumn(
+            "Description",
+            ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
         for (flecs::entity_t eid : query_results) {
@@ -58,20 +59,17 @@ void QueryEditorWindow::draw()
 
             ImGui::TableNextRow();
 
-
             ImGui::TableSetColumnIndex(0);
             ImGui::Text("%u", eid);
-            
+
             ImGui::TableSetColumnIndex(1);
             ImGui::Text("%s", entity.name().c_str());
 
             ImGui::TableSetColumnIndex(2);
             ImGui::Text("%s", entity.type().str().c_str());
-
         }
         ImGui::EndTable();
     }
-
 }
 
 void QueryEditorWindow::deinit() { query_results.release(); }

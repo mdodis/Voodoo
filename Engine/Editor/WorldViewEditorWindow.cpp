@@ -52,24 +52,27 @@ void WorldViewEditorWindow::init()
 
     gizmo_entity = ecs().world.entity("Gizmo");
     gizmo_entity.set(TransformComponent::zero());
+    gizmo_entity.set(EditorSyncTransformPositionComponent{});
 
     {
         auto gizmo_axis = ecs().world.entity("X").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0.5f, 0, 0));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(1.0f, 0.1f, 0.1f));
-        gizmo_axis.set(EditorGizmoDraggableComponent{});
+        gizmo_axis.set(
+            EditorGizmoDraggableComponent{.drag_axis = Vec3::right()});
     }
     {
         auto gizmo_axis = ecs().world.entity("Y").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0, 0.5f, 0));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 1.0f, 0.1f));
-        gizmo_axis.set(EditorGizmoDraggableComponent{});
+        gizmo_axis.set(EditorGizmoDraggableComponent{.drag_axis = Vec3::up()});
     }
     {
         auto gizmo_axis = ecs().world.entity("Z").child_of(gizmo_entity);
         gizmo_axis.set(TransformComponent::pos(0, 0, -0.5f));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 0.1f, 1.0f));
-        gizmo_axis.set(EditorGizmoDraggableComponent{});
+        gizmo_axis.set(
+            EditorGizmoDraggableComponent{.drag_axis = Vec3::forward()});
     }
 
     ecs().world.set<EditorGizmoSelectionData>({});
@@ -77,11 +80,17 @@ void WorldViewEditorWindow::init()
     ecs()
         .world.system<EditorGizmoSelectionData>("Gizmo Ray")
         .each([this](EditorGizmoSelectionData& data) {
-            data.ray             = ray_from_mouse_pos();
-            data.hit_id          = 0;
-            data.t               = INFINITY;
-            data.mouse           = mouse_pos().xy();
             data.left_mouse_down = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+            data.left_mouse_clicked =
+                ImGui::IsMouseClicked(ImGuiMouseButton_Left);
+
+            if (!data.dragging || (!data.left_mouse_down)) {
+                data.hit_id   = 0;
+                data.t        = INFINITY;
+                data.dragging = false;
+            }
+            data.ray   = ray_from_mouse_pos();
+            data.mouse = mouse_pos().xy();
         });
 
     ecs()
@@ -97,6 +106,7 @@ void WorldViewEditorWindow::init()
                   EditorGizmoSelectionData*        data,
                   const TransformComponent*        transforms,
                   const EditorGizmoShapeComponent* shapes) {
+            if (data->dragging) return false;
             for (int i : it) {
                 update_gizmo_selection(
                     it.entity(i),
@@ -108,23 +118,121 @@ void WorldViewEditorWindow::init()
 
     ecs()
         .world
-        .system<const EditorGizmoSelectionData, EditorGizmoDraggableComponent>(
-            "Gizmo Ray Select")
+        .system<
+            EditorGizmoSelectionData,
+            const TransformComponent,
+            EditorGizmoDraggableComponent>("Gizmo Ray Select")
         .term_at(1)
         .singleton()
+        .term_at(2)
+        .parent()
         .each([this](
-                  flecs::entity                   e,
-                  const EditorGizmoSelectionData& data,
-                  EditorGizmoDraggableComponent&  draggable) {
-            if ((data.hit_id == e.id()) && (data.left_mouse_down)) {
-                if (!draggable.dragging) {
+                  flecs::entity                  e,
+                  EditorGizmoSelectionData&      data,
+                  const TransformComponent&      transform,
+                  EditorGizmoDraggableComponent& draggable) {
+            if ((data.hit_id == e.id()) && (data.left_mouse_clicked)) {
+                if (!data.dragging) {
                     draggable.mouse_start = data.mouse;
-                    draggable.dragging    = true;
-                    print(LIT("Begin Drag! {}\n"), Str(e.name().c_str()));
+                    data.dragging         = true;
+
+                    Vec3 axis = normalize(
+                        transform.world_rotation * draggable.drag_axis);
+                    Vec3 click = data.ray.at(data.t);
+                    click =
+                        click + project(click - Vec3(transform.position), axis);
+
+                    draggable.click_position = click;
+                    draggable.initial_position =
+                        Vec3(transform.position) + axis * 0.5f;
                 }
-            } else {
-                draggable.dragging = false;
             }
+        });
+
+    ecs()
+        .world
+        .system<
+            const EditorGizmoSelectionData,
+            TransformComponent,
+            const EditorGizmoDraggableComponent>("Gizmo Ray Drag")
+        .term_at(1)
+        .singleton()
+        .term_at(2)
+        .parent()
+        .each([this](
+                  flecs::entity                        entity,
+                  const EditorGizmoSelectionData&      selection,
+                  TransformComponent&                  transform,
+                  const EditorGizmoDraggableComponent& draggable) {
+            if (!selection.dragging) return;
+            if (selection.hit_id != entity.id()) return;
+
+            Vec3 axis_direction =
+                normalize(transform.world_rotation * draggable.drag_axis);
+
+            Vec3 click_offset =
+                draggable.click_position - draggable.initial_position;
+
+            Vec3 position = Vec3(transform.position) + click_offset;
+
+            Vec3 plane_tangent = normalize(cross(
+                axis_direction,
+                Vec3(engine().debug_camera.position) - position));
+            Vec3 plane_normal = normalize(cross(axis_direction, plane_tangent));
+
+            Plane plane(plane_normal, position);
+
+            float t;
+            if (intersect_ray_plane(selection.ray, plane, t)) {
+                if (t < 0) return;
+                Vec3 initial      = draggable.initial_position + click_offset;
+                Vec3 intersection = selection.ray.at(t);
+
+                // engine().imm.box(intersection, Quat::identity(), Vec3(0.1f));
+
+                Vec3 new_pos = intersection;
+                new_pos = initial + project(new_pos - initial, axis_direction);
+
+                //  @todo: This assumes that the gizmo is in world space, and
+                //  not under some other entity. Update once we can change the
+                //  world transform components
+                transform.position = new_pos - click_offset;
+            }
+        });
+
+    editor_world()
+        .observer<const EditorSelectableComponent>()
+        .event<events::OnEntitySelectionChanged>()
+        .oper(flecs::Or)
+        .with(flecs::Disabled)
+        .each([this](
+                  flecs::iter&                     it,
+                  size_t                           i,
+                  const EditorSelectableComponent& sel) {
+            gizmo_entity.set(
+                EditorSyncTransformPositionComponent{it.entity(i)});
+            const TransformComponent* transform =
+                it.entity(i).get<TransformComponent>();
+            TransformComponent* sync =
+                gizmo_entity.get_mut<TransformComponent>();
+
+            sync->position = transform->world_position;
+            sync->rotation = transform->world_rotation;
+        });
+
+    editor_world()
+        .system<
+            const EditorSyncTransformPositionComponent,
+            const TransformComponent>()
+        .each([this](
+                  const EditorSyncTransformPositionComponent& sync,
+                  const TransformComponent&                   transform) {
+            if (sync.target == 0) {
+                return;
+            }
+            flecs::entity       e(editor_world().m_world, sync.target);
+            TransformComponent* et = e.get_mut<TransformComponent>();
+            et->position           = transform.position;
         });
 }
 
@@ -175,7 +283,48 @@ void WorldViewEditorWindow::draw()
         selection->ray.direction.y,
         selection->ray.direction.z);
     ImGui::Text("Hit ID: %u (%f)", selection->hit_id, selection->t);
+    ImGui::Text(
+        "Dragging: %d (%d)",
+        selection->dragging,
+        selection->left_mouse_down);
 
+    auto filter =
+        ecs()
+            .world
+            .filter_builder<
+                const EditorGizmoShapeComponent,
+                const EditorGizmoDraggableComponent,
+                const TransformComponent>()
+            .term_at(3)
+            .parent()
+            .build();
+
+    filter.iter([this](
+                    flecs::iter&                         it,
+                    const EditorGizmoShapeComponent*     shape,
+                    const EditorGizmoDraggableComponent* draggable,
+                    const TransformComponent*            parent) {
+        ImGui::Text(
+            "Parent %f %f %f",
+            parent->position.x,
+            parent->position.y,
+            parent->position.z);
+        for (auto i : it) {
+            ImGui::Text(
+                "%s: Original: %f %f %f",
+                it.entity(i).name().c_str(),
+                draggable[i].initial_position.x,
+                draggable[i].initial_position.y,
+                draggable[i].initial_position.z);
+
+            ImGui::Text(
+                "%s: Start: %f %f %f",
+                it.entity(i).name().c_str(),
+                draggable[i].click_position.x,
+                draggable[i].click_position.y,
+                draggable[i].click_position.z);
+        }
+    });
     ImGui::End();
 
     flecs::entity entity = editor_world().get_alive(selected_entity);

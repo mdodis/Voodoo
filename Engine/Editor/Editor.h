@@ -44,8 +44,13 @@ struct EditorGizmoSelectionData {
     flecs::entity_t hit_id;
     float           t;
     Vec2            mouse;
-    bool            dragging        = false;
-    bool            left_mouse_down = false;
+    bool            dragging           = false;
+    bool            left_mouse_down    = false;
+    bool            left_mouse_clicked = false;
+};
+
+struct EditorSyncTransformPositionComponent {
+    flecs::entity_t target = 0;
 };
 
 struct Editor {

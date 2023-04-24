@@ -132,8 +132,10 @@ struct EditorGizmoShapeComponent {
 extern ECS_COMPONENT_DECLARE(EditorGizmoShapeComponent);
 
 struct EditorGizmoDraggableComponent {
-    bool dragging = false;
+    Vec3 drag_axis;
     Vec2 mouse_start;
+    Vec3 click_position;
+    Vec3 initial_position;
 };
 extern ECS_COMPONENT_DECLARE(EditorGizmoDraggableComponent);
 

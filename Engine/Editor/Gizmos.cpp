@@ -96,9 +96,10 @@ namespace ed {
                     rotation,
                     axis_extents,
                     color,
-                    Color::white(), intersection_point))
+                    Color::white(),
+                    intersection_point))
             {
-                if (ImGui::IsMouseDown(ImGuiMouseButton_Left) &&
+                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) &&
                     !Context.dragging)
                 {
                     Context.mouse_start  = window->mouse_pos();
@@ -128,21 +129,22 @@ namespace ed {
                 Plane p(pn, position);
                 Ray   r = window->ray_from_mouse_pos();
 
-                Vec3 intersection;
-                if (intersect_ray_plane(r, p, intersection)) {
-                    Vec3 new_pos = intersection;
-                    new_pos      = project(
-                                  new_pos - position,
-                                  normalize(rotation * axis_direction)) +
-                              position;
-                    position = new_pos - normalize(rotation * axis_direction);
+                // Vec3 intersection;
+                // if (intersect_ray_plane(r, p, intersection)) {
+                //     Vec3 new_pos = intersection;
+                //     new_pos      = project(
+                //                   new_pos - position,
+                //                   normalize(rotation * axis_direction)) +
+                //               position;
+                //     position = new_pos - normalize(rotation *
+                //     axis_direction);
 
-                    imm.box(
-                        intersection,
-                        Quat::identity(),
-                        Vec3(0.1f, 0.1f, 0.1f),
-                        color);
-                }
+                //    imm.box(
+                //        intersection,
+                //        Quat::identity(),
+                //        Vec3(0.1f, 0.1f, 0.1f),
+                //        color);
+                //}
             } else {
                 Context.dragging = false;
             }
@@ -175,13 +177,13 @@ namespace ed {
                 Ray   r = window->ray_from_mouse_pos();
 
                 Vec3 intersection;
-                if (intersect_ray_plane(r, p, intersection)) {
+                /*if (intersect_ray_plane(r, p, intersection)) {
                     Vec3 new_pos =
                         intersection - (rotation * Vec3::right()) * 1.0f;
                     new_pos =
                         project(new_pos, normalize(rotation * Vec3::right()));
                     position = new_pos;
-                }
+                }*/
             } else {
                 Context.dragging = false;
             }
