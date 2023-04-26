@@ -5,6 +5,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include "Engine.h"
+#include "Module.h"
 #include "StringFormat.h"
 #include "imgui.h"
 
@@ -45,6 +46,13 @@ void ECS::init()
         register_default_ecs_descriptors(register_func);
     }
 
+    // System registrar
+    {
+        system_registrar = SystemDescriptorRegistrar{
+            .world = world.m_world,
+        };
+    }
+
     world.system<const TransformComponent, TransformComponent>()
         .term_at(1)
         .parent()
@@ -58,6 +66,10 @@ void ECS::init()
                 transform_system(parent_transform, transform + i);
             }
         });
+
+    // ecs_log_set_level(2);
+
+    import_module_Engine(&system_registrar);
 }
 
 flecs::entity ECS::create_entity(Str name)

@@ -118,6 +118,14 @@ struct MetaSystemDescriptorTerm {
     EMetaTermAccess   access = MetaTermAccess::Default;
     EMetaTermOperator op     = MetaTermOperator::And;
     MetaTermID        source;
+
+    bool is_pointer() const { return op == MetaTermOperator::Optional; }
+
+    bool is_const() const
+    {
+        return (access == MetaTermAccess::In) ||
+               (access == MetaTermAccess::None);
+    }
 };
 
 struct MetaSystemDescriptor {

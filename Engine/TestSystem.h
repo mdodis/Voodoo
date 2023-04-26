@@ -6,19 +6,19 @@
 
 @system(OnUpdate) move_1_unit_x:
 {
-    @access(in) transform : TransformComponent;
-    @parent() another : AnotherComponent;
+    transform : TransformComponent;
 }
 
-@system(OnUpdate) apply_transform:
-{
-    @access(in)
-    @source(id: this, trav: ChildOf, flags: (up, cascade))
-    parent : TransformComponent;
+// @system(OnUpdate) apply_transform:
+// {
+//     @access(in)
+//     @source(id: this, trav: ChildOf, flags: (up, cascade))
+//     @op(optional)
+//     parent : TransformComponent;
 
-    @access(inout)
-    transform: TransformComponent;
-}
+//     @access(inout)
+//     transform: TransformComponent;
+// }
 
 // clang-format on
 #endif

@@ -270,8 +270,6 @@ static void parse_system(WriteTape& out, MD_Node* node)
             mds8_to_str(tag->first_child->string).clone(System_Allocator);
     }
 
-    // print(LIT("System: {} ({})\n"), result.name, result.phase);
-
     for (MD_EachNode(it, node->first_child)) {
         MetaSystemDescriptorTerm term;
         term.component_id = mds8_to_str(it->string).clone(System_Allocator);
@@ -296,13 +294,6 @@ static void parse_system(WriteTape& out, MD_Node* node)
             parse_term_source(tag, term.source);
         }
 
-        // print(LIT("Operation {}\n"), term.access);
-        // print(
-        //     LIT("Component {} -> {} ({})\n"),
-        //     term.component_id,
-        //     term.component_type,
-        //     term.parent ? LIT("Parent") : LIT("This"));
-
         result.terms.add(term);
     }
 
@@ -311,10 +302,16 @@ static void parse_system(WriteTape& out, MD_Node* node)
         format(&out, LIT("extern void {}"), result.name);
         format(&out, LIT("("));
 
+        format(&out, LIT("flecs::entity entity, "));
         for (u64 i = 0; i < result.terms.size; ++i) {
             const MetaSystemDescriptorTerm& term = result.terms[i];
-
-            format(&out, LIT("{}& {}"), term.component_type, term.component_id);
+            format(
+                &out,
+                LIT("{}{}{} {}"),
+                term.is_const() ? LIT("const ") : Str::NullStr,
+                term.component_type,
+                term.is_pointer() ? LIT("*") : LIT("&"),
+                term.component_id);
 
             if (i != (result.terms.size - 1)) {
                 format(&out, LIT(", "));
@@ -400,6 +397,7 @@ static void write_module_header(Str path)
     format(&out, LIT("// clang-format off\n"));
 
     format(&out, LIT("#pragma once\n"));
+    format(&out, LIT("#include \"SystemDescriptor.h\"\n"));
     format(
         &out,
         LIT("extern void import_module_{}(SystemDescriptorRegistrar* reg);\n"),
@@ -414,6 +412,7 @@ static void write_module_implementation(Str path)
     format(&out, LIT("// Metacompiler code-gen\n"));
     format(&out, LIT("// clang-format off\n"));
     format(&out, LIT("\n"));
+    format(&out, LIT("#include \"Module.h\"\n"));
 
     for (const Str& include : G.module_includes) {
         format(&out, LIT("#include \"{}\"\n"), include);
@@ -425,7 +424,55 @@ static void write_module_implementation(Str path)
         Str invoke_id = format(G.allocator, LIT("{}_invoke"), system_id);
 
         format(&out, LIT("// System {}\n"), system.name);
-        format(&out, LIT("static void {}(ecs_iter_t* it);\n"), invoke_id);
+        format(&out, LIT("static void {}(ecs_iter_t* it)\n"), invoke_id);
+        format(&out, LIT("{\n"), invoke_id);
+
+        // Get Fields
+        for (int term_index = 0; term_index < system.terms.size; ++term_index) {
+            const MetaSystemDescriptorTerm& term = system.terms[term_index];
+
+            format(
+                &out,
+                LIT("\t{}* c{} = ecs_field(it, {}, {});\n"),
+                term.component_type,
+                term_index,
+                term.component_type,
+                term_index + 1);
+        }
+
+        // Invoke actual function
+        {
+            format(&out, LIT("\tfor (int i = 0; i < it->count; ++i)\n"));
+            format(&out, LIT("\t{\n"));
+            format(
+                &out,
+                LIT("\tflecs::entity entity(it->world, it->entities[i]);\n"));
+
+            format(&out, LIT("\t\t{}(\n"), system.name);
+            format(&out, LIT("\t\t\tentity,\n"));
+
+            for (int term_index = 0; term_index < system.terms.size;
+                 ++term_index)
+
+            {
+                const MetaSystemDescriptorTerm& term = system.terms[term_index];
+
+                if (term.is_pointer()) {
+                    format(&out, LIT("\t\t\t&c{}[i]"), term_index);
+                } else {
+                    format(&out, LIT("\t\t\tc{}[i]"), term_index);
+                }
+
+                if (term_index != (system.terms.size - 1)) {
+                    format(&out, LIT(",\n"));
+                }
+            }
+            format(&out, LIT(");\n"), system.name);
+
+            format(&out, LIT("\t}\n"));
+        }
+
+        format(&out, LIT("}\n"), invoke_id);
 
         format(&out, LIT("static SystemDescriptor {}_desc = {\n"), system_id);
 
@@ -445,16 +492,10 @@ static void write_module_implementation(Str path)
                 format(&out, LIT("\t\t\t{\n"));
 
                 // Component ID
-                format(
-                    &out,
-                    LIT("\t\t\t\t.id = ecs_id({}),\n"),
-                    term.component_type);
-
-                // Inout
-                format(&out, LIT("\t\t\t\t.inout = {},\n"), term.access);
-
-                // Operator
-                format(&out, LIT("\t\t\t\t.oper = {},\n"), term.op);
+                // format(
+                //     &out,
+                //     LIT("\t\t\t\t.id = ecs_id({}),\n"),
+                //     term.component_type);
 
                 // Source
                 format(&out, LIT("\t\t\t\t.src = {\n"));
@@ -466,10 +507,7 @@ static void write_module_implementation(Str path)
                         term.source.entity);
 
                     // Name
-                    format(
-                        &out,
-                        LIT("\t\t\t\t\t.name = {},\n"),
-                        LIT("nullptr"));
+                    format(&out, LIT("\t\t\t\t\t.name = nullptr,\n"));
 
                     // Relationship
                     if (term.source.relationship.is_default()) {
@@ -495,6 +533,23 @@ static void write_module_implementation(Str path)
                 }
                 format(&out, LIT("\t\t\t\t},\n"));
 
+                // First
+                format(&out, LIT("\t\t\t\t.first = {\n"));
+                {
+                    // @todo: need to move this to .first property of term!
+                    format(
+                        &out,
+                        LIT("\t\t\t\t\t.name = (char*)\"{}\",\n"),
+                        term.component_type);
+                }
+                format(&out, LIT("\t\t\t\t},\n"));
+
+                // Inout
+                format(&out, LIT("\t\t\t\t.inout = {},\n"), term.access);
+
+                // Operator
+                format(&out, LIT("\t\t\t\t.oper = {},\n"), term.op);
+
                 format(&out, LIT("\t\t\t},\n"));
             }
 
@@ -502,6 +557,7 @@ static void write_module_implementation(Str path)
         }
 
         format(&out, LIT("\t},\n"));
+        format(&out, LIT("\t.phase = Ecs{},\n"), system.phase);
 
         format(&out, LIT("};\n"));
 
@@ -516,6 +572,12 @@ static void write_module_implementation(Str path)
         LIT("Engine"));
 
     format(&out, LIT("{\n"));
+    i = 0;
+    for (const MetaSystemDescriptor& system : G.systems) {
+        format(&out, LIT("\treg->add(&_system_{}_desc);\n"), i);
+
+        ++i;
+    }
     format(&out, LIT("}\n"));
 
     format(&out, LIT("// clang-format on\n"));

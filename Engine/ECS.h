@@ -1,9 +1,11 @@
 #pragma once
+#include <flecs.h>
+
 #include "Containers/Array.h"
 #include "Delegates.h"
 #include "ECSTypes.h"
+#include "SystemDescriptor.h"
 #include "WorldSerializer.h"
-#include "flecs.h"
 
 struct EntityReference {
     ecs_entity_t id;
@@ -24,6 +26,8 @@ struct ECS {
     WorldSerializer world_serializer;
     flecs::world    world;
     struct Engine*  engine;
+
+    SystemDescriptorRegistrar system_registrar;
 
     struct {
         flecs::query<EditorSelectableComponent> entity_view_query;

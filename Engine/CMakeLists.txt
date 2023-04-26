@@ -11,11 +11,11 @@ set(HEADERS
     "./Engine.h"
     "./VulkanCommon.h"
     "./DescriptorAllocator.h"
-    "./TestSystem.h"
     "./DescriptorLayoutCache.h"
     "./DescriptorBuilder.h"
     "./Mesh.h"
     "./Input.h"
+    "./ECS.h"
     "./ECS.h"
     "./ECSTypes.h"
     "./WorldSerializer.h"
@@ -36,6 +36,8 @@ set(HEADERS
     "./Window/Win32DnD.h"
     "./Window/Win32ImGUI.h"
     "./Window/Win32Vulkan.h"
+    "./TestSystem.h"
+    "./SystemDescriptor.h"
     )
 
 add_executable(vkx
@@ -63,6 +65,9 @@ add_executable(vkx
     "./Editor/ModelToVertexArrayEditorWindow.cpp"
     "./Editor/QueryEditorWindow.cpp"
     "./ImmediateDrawQueue.cpp"
+    "./SystemDescriptor.cpp"
+    "${PROJECT_SOURCE_DIR}/Intermediate/Engine/Module.cpp"
+    "./TestSystem.cpp"
     )
 
 if (UNIX)
@@ -93,6 +98,7 @@ target_include_directories(vkx
     PUBLIC
     ${Vulkan_INCLUDE_DIRS}
     ${PROJECT_SOURCE_DIR}/ThirdParty/VMA/
+    ${PROJECT_SOURCE_DIR}/Intermediate/Engine
     "./"
     )
     
