@@ -4,54 +4,64 @@ add_subdirectory(AssetLibrary)
 
 find_package(Vulkan REQUIRED)
 
-add_executable(vkx
+set(HEADERS
     "./Window/Window.h"
-    "./Window/Window.cpp"
-    "./Main.cpp"
     "./PipelineBuilder.h"
-    "./PipelineBuilder.cpp"
     "./EngineTypes.h"
     "./Engine.h"
-    "./Engine.cpp"
     "./VulkanCommon.h"
-    "./VulkanCommon.cpp"
     "./DescriptorAllocator.h"
-    "./DescriptorAllocator.cpp"
+    "./TestSystem.h"
     "./DescriptorLayoutCache.h"
-    "./DescriptorLayoutCache.cpp"
     "./DescriptorBuilder.h"
-    "./DescriptorBuilder.cpp"
     "./Mesh.h"
-    "./Mesh.cpp"
     "./Input.h"
-    "./Input.cpp"
     "./ECS.h"
-    "./ECS.cpp"
     "./ECSTypes.h"
-    "./ECSTypes.cpp"
     "./WorldSerializer.h"
-    "./WorldSerializer.cpp"
     "./RenderObject.h"
     "./VMA.h"
-    "./VMA.cpp"
     "./Editor/Editor.h"
-    "./Editor/Editor.cpp"
     "./Editor/Gizmos.h"
-    "./Editor/Gizmos.cpp"
     "./Editor/MenuRegistrar.h"
-    "./Editor/MenuRegistrar.cpp"
     "./Editor/HierarchyEditorWindow.h"
-    "./Editor/HierarchyEditorWindow.cpp"
     "./Editor/InspectorEditorWindow.h"
-    "./Editor/InspectorEditorWindow.cpp"
     "./Editor/WorldViewEditorWindow.h"
-    "./Editor/WorldViewEditorWindow.cpp"
     "./Editor/ModelToVertexArrayEditorWindow.h"
-    "./Editor/ModelToVertexArrayEditorWindow.cpp"
     "./Editor/QueryEditorWindow.h"
-    "./Editor/QueryEditorWindow.cpp"
     "./Editor/ColorScheme.h"
     "./ImmediateDrawQueue.h"
+    "./Window/GLFWWindow.h"
+    "./Window/Win32Window.h"
+    "./Window/Win32DnD.h"
+    "./Window/Win32ImGUI.h"
+    "./Window/Win32Vulkan.h"
+    )
+
+add_executable(vkx
+    ${HEADERS}
+    "./Window/Window.cpp"
+    "./Main.cpp"
+    "./PipelineBuilder.cpp"
+    "./Engine.cpp"
+    "./VulkanCommon.cpp"
+    "./DescriptorAllocator.cpp"
+    "./DescriptorLayoutCache.cpp"
+    "./DescriptorBuilder.cpp"
+    "./Mesh.cpp"
+    "./Input.cpp"
+    "./ECS.cpp"
+    "./ECSTypes.cpp"
+    "./WorldSerializer.cpp"
+    "./VMA.cpp"
+    "./Editor/Editor.cpp"
+    "./Editor/Gizmos.cpp"
+    "./Editor/MenuRegistrar.cpp"
+    "./Editor/HierarchyEditorWindow.cpp"
+    "./Editor/InspectorEditorWindow.cpp"
+    "./Editor/WorldViewEditorWindow.cpp"
+    "./Editor/ModelToVertexArrayEditorWindow.cpp"
+    "./Editor/QueryEditorWindow.cpp"
     "./ImmediateDrawQueue.cpp"
     )
 
@@ -59,7 +69,7 @@ if (UNIX)
     find_package(X11 REQUIRED)
 
     target_sources(vkx PRIVATE
-        "./Window/GLFWWindow.h"
+
         "./Window/GLFWWindow.cpp"
         )
     target_link_libraries(vkx PRIVATE glfw ${X11_LIBRARIES})
@@ -67,13 +77,13 @@ if (UNIX)
 elseif(WIN32)
     set_property(TARGET vkx PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
     target_sources(vkx PUBLIC
-        "./Window/Win32Window.h"
+
         "./Window/Win32Window.cpp"
-        "./Window/Win32DnD.h"
+
         "./Window/Win32DnD.cpp"
-        "./Window/Win32ImGUI.h"
+
         "./Window/Win32ImGUI.cpp"
-        "./Window/Win32Vulkan.h"
+
         "./Window/Win32Vulkan.cpp"
         )
     target_link_libraries(vkx PRIVATE "user32")
@@ -97,3 +107,14 @@ target_link_libraries(vkx
     assetlib
     portable_file_dialogs
     )
+
+
+# Metacompiler
+
+add_custom_target(vkx_metacompiler_run
+    COMMAND metacompiler
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    COMMENT "Run pre-compile step"
+    SOURCES ${HEADERS})
+
+add_dependencies(vkx vkx_metacompiler_run)

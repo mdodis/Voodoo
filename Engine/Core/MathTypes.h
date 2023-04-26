@@ -121,6 +121,22 @@ struct Mat4 : public glm::mat4 {
     void decompose(Vec3& position, struct Quat& rotation, Vec3& scale) const;
 
     const float* ptr() const { return glm::value_ptr(glm::mat4(*this)); }
+
+    static _inline Mat4 identity() { return Mat4(1.0f); }
+
+    _inline Vec3 transform_point(Vec3 point)
+    {
+        Vec4 v(point.x, point.y, point.z, 1.0f);
+        v = glm::mat4(*this) * v;
+        return Vec3(v.xyz());
+    }
+
+    _inline Vec3 transform_direction(Vec3 direction)
+    {
+        Vec4 v(direction.x, direction.y, direction.z, 0.0f);
+        v = glm::mat4(*this) * v;
+        return Vec3(v.xyz());
+    }
 };
 
 static _inline Mat4 operator*(const Mat4& left, const Mat4& right)

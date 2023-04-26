@@ -239,7 +239,8 @@ static void transform_system(
             transform->rotation,
             transform->scale);
 
-        Mat4      result = parent_matrix * child_matrix;
+        Mat4 result               = parent_matrix * child_matrix;
+        transform->world_to_local = parent_matrix.inverse();
         glm::vec3 world_position;
         glm::quat world_rotation;
         glm::vec3 world_scale;
@@ -261,5 +262,6 @@ static void transform_system(
         transform->world_position = Vec3(transform->position);
         transform->world_rotation = Quat(transform->rotation);
         transform->world_scale    = Vec3(transform->scale);
+        transform->world_to_local = Mat4::identity();
     }
 }

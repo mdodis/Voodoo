@@ -6,6 +6,7 @@ include(CTest)
 add_compile_definitions(
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_FORCE_RIGHT_HANDED
+    METADESK=0
     )
 
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "glfw")
@@ -24,6 +25,8 @@ add_subdirectory("ThirdParty/PortableFileDialogs")
 add_subdirectory("ThirdParty/STB")
 add_subdirectory("ThirdParty/TinyOBJLoader")
 add_subdirectory("ThirdParty/VMA")
+add_subdirectory("ThirdParty/Metadesk")
+add_subdirectory("Metacompiler")
 add_subdirectory("MokLib")
 add_subdirectory("Shaders")
 add_subdirectory("Engine")

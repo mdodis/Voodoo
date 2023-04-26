@@ -106,7 +106,7 @@ void WorldViewEditorWindow::init()
                   EditorGizmoSelectionData*        data,
                   const TransformComponent*        transforms,
                   const EditorGizmoShapeComponent* shapes) {
-            if (data->dragging) return false;
+            if (data->dragging) return;
             for (int i : it) {
                 update_gizmo_selection(
                     it.entity(i),
@@ -216,23 +216,33 @@ void WorldViewEditorWindow::init()
             TransformComponent* sync =
                 gizmo_entity.get_mut<TransformComponent>();
 
-            sync->position = transform->world_position;
-            sync->rotation = transform->world_rotation;
+            sync->position = transform->get_world_position();
+            sync->rotation = transform->get_world_rotation();
         });
 
     editor_world()
         .system<
+            const EditorGizmoSelectionData,
             const EditorSyncTransformPositionComponent,
-            const TransformComponent>()
+            TransformComponent>()
+        .term_at(1)
+        .singleton()
         .each([this](
+                  const EditorGizmoSelectionData&             data,
                   const EditorSyncTransformPositionComponent& sync,
-                  const TransformComponent&                   transform) {
+                  TransformComponent&                         transform) {
             if (sync.target == 0) {
                 return;
             }
-            flecs::entity       e(editor_world().m_world, sync.target);
-            TransformComponent* et = e.get_mut<TransformComponent>();
-            et->position           = transform.position;
+
+            flecs::entity e(editor_world().m_world, sync.target);
+            if (data.dragging) {
+                TransformComponent* et = e.get_mut<TransformComponent>();
+                et->set_world_position(Vec3(transform.world_position));
+            } else {
+                const TransformComponent* et = e.get<TransformComponent>();
+                transform.set_world_position(et->world_position);
+            }
         });
 }
 
@@ -271,6 +281,7 @@ void WorldViewEditorWindow::draw()
     const EditorGizmoSelectionData* selection =
         ecs().world.get<EditorGizmoSelectionData>();
 
+#if 0
     ImGui::Begin("Debug");
     ImGui::Text(
         "Ray Origin: %f %f %f",
@@ -288,44 +299,14 @@ void WorldViewEditorWindow::draw()
         selection->dragging,
         selection->left_mouse_down);
 
-    auto filter =
-        ecs()
-            .world
-            .filter_builder<
-                const EditorGizmoShapeComponent,
-                const EditorGizmoDraggableComponent,
-                const TransformComponent>()
-            .term_at(3)
-            .parent()
-            .build();
-
-    filter.iter([this](
-                    flecs::iter&                         it,
-                    const EditorGizmoShapeComponent*     shape,
-                    const EditorGizmoDraggableComponent* draggable,
-                    const TransformComponent*            parent) {
-        ImGui::Text(
-            "Parent %f %f %f",
-            parent->position.x,
-            parent->position.y,
-            parent->position.z);
-        for (auto i : it) {
-            ImGui::Text(
-                "%s: Original: %f %f %f",
-                it.entity(i).name().c_str(),
-                draggable[i].initial_position.x,
-                draggable[i].initial_position.y,
-                draggable[i].initial_position.z);
-
-            ImGui::Text(
-                "%s: Start: %f %f %f",
-                it.entity(i).name().c_str(),
-                draggable[i].click_position.x,
-                draggable[i].click_position.y,
-                draggable[i].click_position.z);
-        }
-    });
+    const TransformComponent* gt = gizmo_entity.get<TransformComponent>();
+    ImGui::Text(
+        "Gizmo %f %f %f",
+        gt->world_position.x,
+        gt->world_position.y,
+        gt->world_position.z);
     ImGui::End();
+#endif
 
     flecs::entity entity = editor_world().get_alive(selected_entity);
     if (!entity.is_valid()) return;
