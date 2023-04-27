@@ -38,7 +38,9 @@ set(HEADERS
     "./Window/Win32Vulkan.h"
     "./TestSystem.h"
     "./SystemDescriptor.h"
+    "./TransformSystem.h"
     )
+
 
 add_executable(vkx
     ${HEADERS}
@@ -68,6 +70,7 @@ add_executable(vkx
     "./SystemDescriptor.cpp"
     "${PROJECT_SOURCE_DIR}/Intermediate/Engine/Module.cpp"
     "./TestSystem.cpp"
+    "./TransformSystem.cpp"
     )
 
 if (UNIX)
