@@ -17,6 +17,7 @@ void ModelToVertexArrayEditorWindow::draw()
 
     ImVec2 image_size = ImVec2(64, 64);
     ImGui::SetCursorPosX((ImGui::GetWindowSize().x - image_size.x) * 0.5f);
+    // @todo: add Editor::color_scheme to get current color scheme style
     ImGui::Image((ImTextureID)t->descriptor, image_size);
 
     if (ImGui::BeginDragDropTarget()) {
