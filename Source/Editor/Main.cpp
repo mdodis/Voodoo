@@ -11,6 +11,7 @@
 
 #include "Compat/Win32Base.h"
 #include "Win32ImGUI.h"
+#include "Window/Win32Window.h"
 #else
 #error "This platform is not supported!"
 #endif
@@ -131,23 +132,27 @@ static void on_engine_pre_draw(Engine* engine)
 
     ImGui::NewFrame();
 
-    // if (is_dragging_files || just_dropped_files) {
-    //     if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
-    //         ImGui::SetDragDropPayload(
-    //             "FILES",
-    //             &dnd.dropped_files,
-    //             sizeof(TArray<Str>));
-    //         ImGui::BeginTooltip();
-    //         ImGui::Text("Files");
-    //         ImGui::EndTooltip();
-    //         ImGui::EndDragDropSource();
-    //     }
-    // }
+#if OS_MSWINDOWS
+    auto* window = (win::Win32Window*)engine->window;
 
-    // if (just_dropped_files) {
-    //     just_dropped_files = false;
-    //     is_dragging_files  = false;
-    // }
+    if (window->is_dragging_files || window->just_dropped_files) {
+        if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
+            ImGui::SetDragDropPayload(
+                "FILES",
+                &window->dnd.dropped_files,
+                sizeof(TArray<Str>));
+            ImGui::BeginTooltip();
+            ImGui::Text("Files");
+            ImGui::EndTooltip();
+            ImGui::EndDragDropSource();
+        }
+    }
+
+    if (window->just_dropped_files) {
+        window->just_dropped_files = false;
+        window->is_dragging_files  = false;
+    }
+#endif
 
     The_Editor.draw();
 
