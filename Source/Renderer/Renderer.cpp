@@ -5,9 +5,9 @@
 #include <glm/gtx/compatibility.hpp>
 #include <glm/gtx/norm.hpp>
 
-#include "EngineConfig.h"
 #include "Memory/Extras.h"
 #include "PipelineBuilder.h"
+#include "RendererConfig.h"
 
 static auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
 static auto Device_Extensions =

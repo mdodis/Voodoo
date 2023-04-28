@@ -1,5 +1,6 @@
 #include "Engine.h"
 
+#include "ECS/ECS.h"
 #include "Memory/Extras.h"
 #include "Renderer/Renderer.h"
 #include "Window/Window.h"
@@ -21,6 +22,10 @@ void Engine::init()
     renderer->validation_layers = true;
     renderer->allocator         = allocator;
     renderer->init();
+
+    // Initialize ECS
+    ecs = alloc<ECS>(allocator);
+    ecs->init(renderer);
 }
 
 void Engine::loop()
@@ -31,6 +36,8 @@ void Engine::loop()
         input->update();
 
         renderer->update();
+
+        ecs->run();
 
         renderer->draw();
         window->poll();

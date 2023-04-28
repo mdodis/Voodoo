@@ -1,4 +1,8 @@
 add_subdirectory("Core")
 add_subdirectory("AssetLibrary")
+add_subdirectory("VulkanCommon")
+add_subdirectory("Window")
+add_subdirectory("Renderer")
+add_subdirectory("ECS")
 add_subdirectory("Engine")
 add_subdirectory("Standalone")

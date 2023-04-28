@@ -1,7 +1,7 @@
 #pragma once
 #include "Containers/Map.h"
 #include "Hashing.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 struct DescriptorLayoutCache {
     DescriptorLayoutCache(IAllocator& allocator = System_Allocator)

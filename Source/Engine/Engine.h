@@ -1,4 +1,6 @@
 #pragma once
+#include <flecs.h>
+
 #include "Base.h"
 #include "Memory/Base.h"
 

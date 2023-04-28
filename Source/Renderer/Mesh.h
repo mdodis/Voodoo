@@ -4,7 +4,7 @@
 #include "AssetLibrary/AssetLibrary.h"
 #include "Result.h"
 #include "VMA.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 #include "vk_mem_alloc.h"
 
 struct Vertex {

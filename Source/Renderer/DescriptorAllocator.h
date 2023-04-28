@@ -1,6 +1,6 @@
 #pragma once
 #include "Containers/Array.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 struct DescriptorAllocator {
     struct PoolSize {

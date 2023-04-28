@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 
 #include "VMA.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 struct MeshPushConstants {
     glm::vec4 data;

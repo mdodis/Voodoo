@@ -3,7 +3,7 @@
 #include "Delegates.h"
 #include "Input.h"
 #include "Types.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 namespace win {
     namespace WindowError {

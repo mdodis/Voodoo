@@ -5,7 +5,7 @@
 #include "Containers/Array.h"
 #include "Containers/Slice.h"
 #include "Core/Utility.h"
-#include "EngineConfig.h"
+#include "RendererConfig.h"
 #include "Result.h"
 #include "Types.h"
 #include "vk_mem_alloc.h"

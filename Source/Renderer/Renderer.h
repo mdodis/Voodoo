@@ -11,7 +11,7 @@
 #include "Mesh.h"
 #include "RenderObject.h"
 #include "RendererTypes.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 #include "Window/Window.h"
 #include "vk_mem_alloc.h"
 using namespace win;

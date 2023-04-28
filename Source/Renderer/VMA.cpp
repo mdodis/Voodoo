@@ -1,6 +1,6 @@
 #include "VMA.h"
 
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 void VMA::init(
     VkPhysicalDevice physical_device,

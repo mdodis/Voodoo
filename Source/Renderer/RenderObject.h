@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 
 #include "Mesh.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 struct Material {
     VkPipeline       pipeline        = VK_NULL_HANDLE;

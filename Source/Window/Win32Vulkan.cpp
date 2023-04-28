@@ -1,8 +1,10 @@
 #include "Win32Vulkan.h"
+
 #include <Windows.h>
 #include <vulkan/vulkan_win32.h>
+
 #include "Containers/Array.h"
-#include "VulkanCommon.h"
+#include "VulkanCommon/VulkanCommon.h"
 
 namespace win {
 
@@ -31,4 +33,4 @@ namespace win {
         return Ok(result);
     }
 
-}
+}  // namespace win
