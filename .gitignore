@@ -17,3 +17,5 @@ Build*/
 **/CMakeSettings.json
 **.ini
 **/docs/*
+
+**/Intermediate

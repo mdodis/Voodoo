@@ -139,7 +139,15 @@ static void parse_and_generate(Str from, Str to, const Slice<Str>& filter)
             continue;
         }
 
-        if (it_data.filename != LIT("Engine")) continue;
+        bool passed = false;
+        for (const auto& s : filter) {
+            if (it_data.filename == s) {
+                passed = true;
+                break;
+            }
+        }
+
+        if (!passed) continue;
 
         SAVE_ARENA(G.allocator);
 
@@ -169,7 +177,7 @@ int main(int argc, char* argv[])
     print(LIT("Creating intermediate directory: {}\n"), intermediate_directory);
     create_dir(intermediate_directory);
 
-    auto filter = arr<Str>(LIT("Engine"));
+    auto filter = arr<Str>(LIT("Source"));
 
     parse_and_generate(parse_directory, intermediate_directory, slice(filter));
 
