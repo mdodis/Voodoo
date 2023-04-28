@@ -29,7 +29,7 @@ void Engine::init()
     // Initialize ECS
     ecs->init(renderer);
 
-    hooks.pre_init.broadcast(this);
+    hooks.post_init.broadcast(this);
 }
 
 void Engine::loop()
