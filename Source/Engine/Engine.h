@@ -20,4 +20,5 @@ struct Engine {
 
     void init();
     void loop();
+    void deinit();
 };

@@ -1,6 +1,7 @@
 #include "Engine.h"
 
 #include "Memory/Extras.h"
+#include "Renderer/Renderer.h"
 #include "Window/Window.h"
 
 void Engine::init()
@@ -12,6 +13,14 @@ void Engine::init()
     window        = win::create_window(allocator);
     window->input = input;
     window->init(1600, 900).unwrap();
+
+    // Initialize renderer
+    renderer                    = alloc<Renderer>(allocator);
+    renderer->window            = window;
+    renderer->input             = input;
+    renderer->validation_layers = true;
+    renderer->allocator         = allocator;
+    renderer->init();
 }
 
 void Engine::loop()
@@ -21,6 +30,11 @@ void Engine::loop()
         // Update input
         input->update();
 
+        renderer->update();
+
+        renderer->draw();
         window->poll();
     }
 }
+
+void Engine::deinit() { renderer->deinit(); }

@@ -9,5 +9,6 @@ int main(int argc, char* argv[])
 {
     G.engine.init();
     G.engine.loop();
+    G.engine.deinit();
     return 0;
 }
