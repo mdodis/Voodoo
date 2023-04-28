@@ -73,6 +73,8 @@ namespace win {
         dnd_handle        = Win32::register_dnd(hwnd, &dnd);
         is_dragging_files = false;
 
+        hooks.post_init.broadcast((void*)&hwnd);
+
         return Ok<void>();
     }
 
@@ -131,6 +133,19 @@ namespace win {
 
     WIN32_DECLARE_WNDPROC(Win32Window::wnd_proc)
     {
+        if (!cursor_locked) {
+            bool                     handled = false;
+            Win32::WndProcParameters params  = {
+                 .hwnd   = hwnd,
+                 .msg    = msg,
+                 .wparam = wparam,
+                 .lparam = lparam,
+            };
+            hooks.pre_poll.broadcast((void*)&hwnd, (void*)&params, &handled);
+
+            if (handled) return 0;
+        }
+
         Win32::LRESULT result = 0;
         switch (msg) {
             case Win32::Message::Destroy: {
@@ -206,7 +221,7 @@ namespace win {
         Win32::DataObject& data_object, Win32::DWORD key_state)
     {
         parent->is_dragging_files = true;
-
+        parent->hooks.drag_enter.broadcast((void*)&parent->hwnd);
         return Win32::HResult::Ok;
     }
 
@@ -215,6 +230,8 @@ namespace win {
     Win32::HRESULT DnDHandler::drag_over(
         Win32::DWORD key_state, Win32::POINT point)
     {
+        parent->hooks.drag_over
+            .broadcast((void*)&parent->hwnd, point.x, point.y);
         return Win32::HResult::Ok;
     }
 
@@ -226,7 +243,11 @@ namespace win {
         return Win32::HResult::Ok;
     }
 
-    void DnDHandler::drag_drop_finish() { parent->just_dropped_files = true; }
+    void DnDHandler::drag_drop_finish()
+    {
+        parent->hooks.drag_drop_finish.broadcast((void*)&parent->hwnd);
+        parent->just_dropped_files = true;
+    }
 
     void DnDHandler::clear()
     {

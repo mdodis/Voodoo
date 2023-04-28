@@ -7,39 +7,47 @@
 
 void Engine::init()
 {
-    // Initialize input
-    input = alloc<Input>(allocator);
-
-    // Initialize window
-    window        = win::create_window(allocator);
-    window->input = input;
-    window->init(1600, 900).unwrap();
-
-    // Initialize renderer
+    // Allocate subsystems
+    input                       = alloc<Input>(allocator);
+    window                      = win::create_window(allocator);
+    window->input               = input;
     renderer                    = alloc<Renderer>(allocator);
     renderer->window            = window;
     renderer->input             = input;
     renderer->validation_layers = true;
     renderer->allocator         = allocator;
+    ecs                         = alloc<ECS>(allocator);
+
+    hooks.pre_init.broadcast(this);
+
+    // Initialize window
+    window->init(1600, 900).unwrap();
+
+    // Initialize renderer
     renderer->init();
 
     // Initialize ECS
-    ecs = alloc<ECS>(allocator);
     ecs->init(renderer);
+
+    hooks.pre_init.broadcast(this);
 }
 
 void Engine::loop()
 {
     window->poll();
     while (window->is_open) {
-        // Update input
+        // Update
         input->update();
-
         renderer->update();
-
         ecs->run();
 
+        hooks.post_update.broadcast(this);
+
+        // Draw
+        hooks.pre_draw.broadcast(this);
         renderer->draw();
+
+        // Poll
         window->poll();
     }
 }

@@ -166,6 +166,8 @@ void Renderer::init()
 
     imm.init(device, color_pass.render_pass, vma, &desc.cache, &desc.allocator);
 
+    hooks.post_init.broadcast(this);
+
     is_initialized = true;
 }
 
@@ -1746,6 +1748,7 @@ void Renderer::draw_present_pass(
         vkCmdDraw(cmd, 6, 1, 0, 0);
     }
 
+    hooks.post_present_pass.broadcast(this, cmd);
     vkCmdEndRenderPass(cmd);
 }
 

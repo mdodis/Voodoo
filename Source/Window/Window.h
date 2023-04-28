@@ -2,6 +2,7 @@
 #include "Base.h"
 #include "Delegates.h"
 #include "Input.h"
+#include "MulticastDelegate.h"
 #include "Types.h"
 #include "VulkanCommon/VulkanCommon.h"
 
@@ -30,6 +31,45 @@ namespace win {
         bool           is_dragging_files  = false;
         bool           just_dropped_files = false;
         Delegate<void> on_resized;
+
+        struct {
+            /**
+             * Called right after the window has been initialized
+             * @param 1 An opaque pointer to the window handle
+             */
+            MulticastDelegate<void*> post_init;
+
+            /**
+             * Called before polling happens
+             *
+             * @param 1 An opaque pointer to the window handle
+             * @param 2 An opaque pointer to the window poll message struct
+             * @param 3 Pointer to bool that should be true if no polling should
+             * be done
+             */
+            MulticastDelegate<void*, void*, bool*> pre_poll;
+
+            /**
+             * Called when a drag operation begins
+             * @param 1 An opaque pointer to the window handle
+             */
+            MulticastDelegate<void*> drag_enter;
+
+            /**
+             * Called each frame to update the position of the cursor
+             * @param 1 An opaque pointer to the window handle
+             * @param 2 X Screen position of the mouse
+             * @param 3 Y Screen position of the mouse
+             */
+            MulticastDelegate<void*, i32, i32> drag_over;
+
+            /**
+             * Called when the mouse is let go on top of the window
+             * @param 1 An opaque pointer to the window handle
+             */
+            MulticastDelegate<void*> drag_drop_finish;
+
+        } hooks;
 
         virtual Result<void, EWindowError>     init(i32 width, i32 height) = 0;
         virtual void                           get_extents(i32& x, i32& y) = 0;

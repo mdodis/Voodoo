@@ -9,6 +9,7 @@
 #include "ImmediateDrawQueue.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
+#include "MulticastDelegate.h"
 #include "RenderObject.h"
 #include "RendererTypes.h"
 #include "VulkanCommon/VulkanCommon.h"
@@ -42,6 +43,13 @@ struct Renderer {
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
     VkDescriptorSetLayout      texture_set_layout;
+
+    using Hook = MulticastDelegate<Renderer*>;
+    struct {
+        Hook                                          post_init;
+        /** Called right before the presentation render pass is ended */
+        MulticastDelegate<Renderer*, VkCommandBuffer> post_present_pass;
+    } hooks;
 
     /**
      * @brief structs that relate to rendering to texture.
@@ -153,6 +161,19 @@ struct Renderer {
     Result<AllocatedImage, VkResult> upload_image_from_file(Str path);
     Result<AllocatedImage, VkResult> upload_image(const Asset& asset);
 
+    using ImmediateSubmitDelegate = Delegate<void, VkCommandBuffer>;
+
+    FORWARD_DELEGATE_LAMBDA_TEMPLATE()
+    void immediate_submit_lambda(
+        FORWARD_DELEGATE_LAMBDA_SIG(ImmediateSubmitDelegate))
+    {
+        ImmediateSubmitDelegate delegate =
+            FORWARD_DELEGATE_LAMBDA_CREATE(ImmediateSubmitDelegate);
+        immediate_submit(std::move(delegate));
+    }
+
+    void immediate_submit(ImmediateSubmitDelegate&& submit_delegate);
+
 private:
     void init_present_render_pass();
     void init_color_render_pass();
@@ -171,19 +192,6 @@ private:
     FrameData& get_current_frame();
 
     size_t pad_uniform_buffer_size(size_t original_size);
-
-    using ImmediateSubmitDelegate = Delegate<void, VkCommandBuffer>;
-
-    FORWARD_DELEGATE_LAMBDA_TEMPLATE()
-    void immediate_submit_lambda(
-        FORWARD_DELEGATE_LAMBDA_SIG(ImmediateSubmitDelegate))
-    {
-        ImmediateSubmitDelegate delegate =
-            FORWARD_DELEGATE_LAMBDA_CREATE(ImmediateSubmitDelegate);
-        immediate_submit(std::move(delegate));
-    }
-
-    void immediate_submit(ImmediateSubmitDelegate&& submit_delegate);
 
     // Debug Camera
     void on_debug_camera_forward();
