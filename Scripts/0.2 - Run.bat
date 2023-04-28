@@ -5,5 +5,5 @@ set cwd="%cd%"
 popd
 
 pushd %cwd%\..
-.\Build\Engine\Debug\vkx.exe
+.\Build\Source\Editor\Debug\Editor.exe
 popd
