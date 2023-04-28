@@ -3,7 +3,6 @@
 #include "Compat/Win32VirtualKeycodes.h"
 #include "Win32ImGUI.h"
 #include "Win32Vulkan.h"
-#include "imgui.h"
 
 namespace win {
     static WIN32_DECLARE_WNDPROC(wnd_proc_handler);

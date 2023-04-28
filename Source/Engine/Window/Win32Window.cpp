@@ -1,9 +1,7 @@
 #include "Win32Window.h"
 
 #include "Compat/Win32VirtualKeycodes.h"
-#include "Win32ImGUI.h"
 #include "Win32Vulkan.h"
-#include "imgui.h"
 
 namespace win {
     static WIN32_DECLARE_WNDPROC(wnd_proc_handler);
@@ -70,8 +68,6 @@ namespace win {
         rid[0].hwndTarget  = hwnd;
         Win32::RegisterRawInputDevices(rid, 1, sizeof(rid));
 
-        win32_imgui_init(hwnd);
-
         // Initialize drag and drop
         dnd.parent        = this;
         dnd_handle        = Win32::register_dnd(hwnd, &dnd);
@@ -111,29 +107,6 @@ namespace win {
 
     void Win32Window::destroy() { Win32::DestroyWindow(hwnd); }
 
-    void Win32Window::imgui_new_frame() { win32_imgui_new_frame(); }
-
-    void Win32Window::imgui_process()
-    {
-        if (is_dragging_files || just_dropped_files) {
-            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceExtern)) {
-                ImGui::SetDragDropPayload(
-                    "FILES",
-                    &dnd.dropped_files,
-                    sizeof(TArray<Str>));
-                ImGui::BeginTooltip();
-                ImGui::Text("Files");
-                ImGui::EndTooltip();
-                ImGui::EndDragDropSource();
-            }
-        }
-
-        if (just_dropped_files) {
-            just_dropped_files = false;
-            is_dragging_files  = false;
-        }
-    }
-
     Result<VkSurfaceKHR, VkResult> Win32Window::create_surface(
         VkInstance instance)
     {
@@ -158,12 +131,6 @@ namespace win {
 
     WIN32_DECLARE_WNDPROC(Win32Window::wnd_proc)
     {
-        if (!cursor_locked) {
-            if (win32_imgui_wndproc(hwnd, msg, wparam, lparam)) {
-                return 0;
-            }
-        }
-
         Win32::LRESULT result = 0;
         switch (msg) {
             case Win32::Message::Destroy: {
@@ -239,8 +206,6 @@ namespace win {
         Win32::DataObject& data_object, Win32::DWORD key_state)
     {
         parent->is_dragging_files = true;
-        ImGuiIO& io               = ImGui::GetIO();
-        io.AddMouseButtonEvent(0, true);
 
         return Win32::HResult::Ok;
     }
@@ -250,11 +215,6 @@ namespace win {
     Win32::HRESULT DnDHandler::drag_over(
         Win32::DWORD key_state, Win32::POINT point)
     {
-        ImGuiIO& io = ImGui::GetIO();
-
-        Win32::ScreenToClient(parent->hwnd, &point);
-        io.AddMousePosEvent((f32)point.x, (f32)point.y);
-
         return Win32::HResult::Ok;
     }
 
@@ -266,12 +226,7 @@ namespace win {
         return Win32::HResult::Ok;
     }
 
-    void DnDHandler::drag_drop_finish()
-    {
-        ImGuiIO& io = ImGui::GetIO();
-        io.AddMouseButtonEvent(0, false);
-        parent->just_dropped_files = true;
-    }
+    void DnDHandler::drag_drop_finish() { parent->just_dropped_files = true; }
 
     void DnDHandler::clear()
     {

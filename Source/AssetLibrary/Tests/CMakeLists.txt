@@ -4,14 +4,14 @@ set(SOURCES
     "./Tests.cpp"
     )
 
-add_executable(assetlib_tests ${SOURCES})
+add_executable(AssetLibraryTests ${SOURCES})
 
-target_link_libraries(assetlib_tests PRIVATE
-    assetlib)
+target_link_libraries(AssetLibraryTests PRIVATE
+    AssetLibrary)
 
-target_include_directories(assetlib_tests PRIVATE
+target_include_directories(AssetLibraryTests PRIVATE
     "../")
 
-add_test(NAME AssetLibraryTests COMMAND assetlib_tests)
-set_property(TEST AssetLibraryTests PROPERTY PASS_REGULAR_EXPRESSION "Passed")
-set_property(TEST AssetLibraryTests PROPERTY FAIL_REGULAR_EXPRESSION "Failed")
+add_test(NAME AssetLibraryTestsTest COMMAND AssetLibraryTests)
+set_property(TEST AssetLibraryTestsTest PROPERTY PASS_REGULAR_EXPRESSION "Passed")
+set_property(TEST AssetLibraryTestsTest PROPERTY FAIL_REGULAR_EXPRESSION "Failed")

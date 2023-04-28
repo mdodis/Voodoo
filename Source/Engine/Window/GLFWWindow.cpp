@@ -1,7 +1,5 @@
 #define GLFW_INCLUDE_VULKAN
 #include "GLFWWindow.h"
-
-#include "backends/imgui_impl_glfw.h"
 #define MOK_GLFW_VIRTUAL_KEYCODES_AUTO_INCLUDE 0
 #include "Compat/GLFWVirtualKeycodes.h"
 
@@ -32,7 +30,6 @@ namespace win {
         }
 
         ASSERT(glfwVulkanSupported() == GLFW_TRUE);
-        ImGui_ImplGlfw_InitForVulkan(window, true);
 
         is_open = true;
         return Ok<void>();
@@ -51,13 +48,7 @@ namespace win {
         }
     }
 
-    void GLFWWindow::destroy()
-    {
-        ImGui_ImplGlfw_Shutdown();
-        glfwDestroyWindow(window);
-    }
-
-    void GLFWWindow::imgui_new_frame() { ImGui_ImplGlfw_NewFrame(); }
+    void GLFWWindow::destroy() { glfwDestroyWindow(window); }
 
     Result<VkSurfaceKHR, VkResult> GLFWWindow::create_surface(
         VkInstance instance)
