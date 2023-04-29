@@ -5,6 +5,7 @@
 #include "Containers/Map.h"
 #include "ECS.h"
 #include "Memory/Extras.h"
+#include "Project.h"
 
 namespace win {
     struct Window;
@@ -34,6 +35,7 @@ struct EditorWindow {
     struct Renderer& renderer() const;
     flecs::world&    editor_world() const;
     ECS&             ecs() const;
+    struct Editor&   editor() const;
 
     _inline void kill() { id = 0; }
     _inline bool is_valid() const { return id != 0; }
@@ -95,6 +97,10 @@ struct Editor {
         struct Renderer* renderer;
         struct ECS*      ecs;
     } host;
+
+    struct {
+        ProjectManager manager;
+    } project;
 
     void           add_texture_from_file(Str path, Str name);
     EditorTexture* get_texture(Str name);

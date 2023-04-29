@@ -402,4 +402,5 @@ flecs::world& EditorWindow::editor_world() const
     return The_Editor.host.ecs->world;
 }
 
-ECS& EditorWindow::ecs() const { return *The_Editor.host.ecs; }
+ECS&    EditorWindow::ecs() const { return *The_Editor.host.ecs; }
+Editor& EditorWindow::editor() const { return The_Editor; }
