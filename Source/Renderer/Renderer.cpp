@@ -33,6 +33,9 @@ void Renderer::init()
     meshes.init(allocator);
     materials.init(allocator);
     textures.init(allocator);
+
+    frame_arena = Arena(&allocator, KILOBYTES(8));
+
     CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
 
     Slice<const char*> required_window_ext = window->get_required_extensions();
@@ -1158,6 +1161,40 @@ void Renderer::on_debug_camera_toggle_control()
     window->set_lock_cursor(debug_camera.has_focus);
 }
 
+bool Renderer::compact_render_objects(
+    const Slice<RenderObject>& objects, TArray<IndirectBatch>& result)
+{
+    if (objects.count < 1) return false;
+
+    IndirectBatch first_draw = {
+        .mesh     = objects[0].mesh,
+        .material = objects[0].material,
+        .first    = 0,
+        .count    = 1,
+    };
+
+    result.add(first_draw);
+
+    for (u64 i = 1; i < objects.count; ++i) {
+        bool same_mesh     = objects[i].mesh == result.last()->mesh;
+        bool same_material = objects[i].material == result.last()->material;
+
+        if (same_mesh && same_material) {
+            result.last()->count++;
+        } else {
+            IndirectBatch new_draw = {
+                .mesh     = objects[i].mesh,
+                .material = objects[i].material,
+                .first    = (u32)i,
+                .count    = 1,
+            };
+            result.add(new_draw);
+        }
+    }
+
+    return true;
+}
+
 void Renderer::on_resize_presentation()
 {
     VK_CHECK(vkDeviceWaitIdle(device));
@@ -1637,13 +1674,15 @@ void Renderer::draw_color_pass(
 
     Material* last_material = 0;
 
-    for (u64 i = 0; i < render_objects.count; ++i) {
-        RenderObject& ro = render_objects[i];
-        if ((last_material == 0) || (*last_material != *ro.material)) {
+    TArray<IndirectBatch> batches(&frame_arena);
+
+    if (compact_render_objects(render_objects, batches)) {
+        for (const IndirectBatch& batch : batches) {
+            // Bind material
             vkCmdBindPipeline(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                ro.material->pipeline);
+                batch.material->pipeline);
 
             u32 uniform_offsets[] = {
                 // Global
@@ -1654,7 +1693,7 @@ void Renderer::draw_color_pass(
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                ro.material->pipeline_layout,
+                batch.material->pipeline_layout,
                 0,
                 1,
                 &frame.global_descriptor,
@@ -1664,36 +1703,49 @@ void Renderer::draw_color_pass(
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                ro.material->pipeline_layout,
+                batch.material->pipeline_layout,
                 1,
                 1,
                 &frame.object_descriptor,
                 0,
                 nullptr);
 
-            if (ro.material->texture_set != VK_NULL_HANDLE) {
+            if (batch.material->texture_set != VK_NULL_HANDLE) {
                 vkCmdBindDescriptorSets(
                     cmd,
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    ro.material->pipeline_layout,
+                    batch.material->pipeline_layout,
                     2,
                     1,
-                    &ro.material->texture_set,
+                    &batch.material->texture_set,
                     0,
                     nullptr);
             }
+
+            // Bind mesh
+            VkDeviceSize offset = 0;
+            vkCmdBindIndexBuffer(
+                cmd,
+                batch.mesh->gpu_index_buffer.buffer,
+                offset,
+                VK_INDEX_TYPE_UINT32);
+            vkCmdBindVertexBuffers(
+                cmd,
+                0,
+                1,
+                &batch.mesh->gpu_buffer.buffer,
+                &offset);
+
+            for (u32 i = batch.first; i < batch.count; ++i) {
+                vkCmdDrawIndexed(
+                    cmd,
+                    (u32)batch.mesh->indices.count,
+                    1,
+                    0,
+                    0,
+                    u32(i));
+            }
         }
-
-        last_material = ro.material;
-
-        VkDeviceSize offset = 0;
-        vkCmdBindIndexBuffer(
-            cmd,
-            ro.mesh->gpu_index_buffer.buffer,
-            offset,
-            VK_INDEX_TYPE_UINT32);
-        vkCmdBindVertexBuffers(cmd, 0, 1, &ro.mesh->gpu_buffer.buffer, &offset);
-        vkCmdDrawIndexed(cmd, (u32)ro.mesh->indices.count, 1, 0, 0, u32(i));
     }
 
     imm.draw(cmd, debug_camera.view, debug_camera.proj);
@@ -1754,6 +1806,7 @@ void Renderer::draw_present_pass(
 
 void Renderer::draw()
 {
+    SAVE_ARENA(frame_arena);
     FrameData& frame = get_current_frame();
 
     // Wait for previous frame to finish
@@ -1969,6 +2022,7 @@ void Renderer::recreate_swapchain()
 
 void Renderer::deinit()
 {
+    frame_arena.release_base();
     if (!is_initialized) return;
     for (int i = 0; i < num_overlap_frames; ++i) {
         VK_CHECK(

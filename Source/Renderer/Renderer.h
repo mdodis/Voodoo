@@ -29,8 +29,8 @@ struct Renderer {
     bool                 is_initialized     = false;
     VkExtent2D           extent             = {0, 0};
     bool                 do_blit_pass       = true;
-
-    VMA vma;
+    Arena                frame_arena;
+    VMA                  vma;
 
     // Rendering Objects
     VkInstance                 instance;
@@ -204,4 +204,7 @@ private:
     void on_debug_camera_mousex(float value);
     void on_debug_camera_mousey(float value);
     void debug_camera_update_rotation();
+
+    bool compact_render_objects(
+        const Slice<RenderObject>& objects, TArray<IndirectBatch>& result);
 };

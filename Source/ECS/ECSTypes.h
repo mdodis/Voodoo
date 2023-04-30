@@ -90,6 +90,7 @@ DEFINE_DESCRIPTOR_OF_INL(TransformComponent);
 struct MeshMaterialComponent {
     Str mesh_name;
     Str material_name;
+    Str asset_path;
 
     // Not Serialized
     Mesh*     mesh     = 0;

@@ -49,3 +49,10 @@ struct UploadContext {
     VkCommandPool   pool;
     VkCommandBuffer buffer;
 };
+
+struct IndirectBatch {
+    struct Mesh*     mesh;
+    struct Material* material;
+    u32              first;
+    u32              count;
+};
