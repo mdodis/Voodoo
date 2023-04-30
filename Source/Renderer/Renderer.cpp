@@ -207,6 +207,20 @@ void Renderer::init_commands()
                 vkAllocateCommandBuffers(device, &create_info, &cmd_buffer));
         }
 
+        // Create indirect cmd buffer
+        {
+            frames[i].indirect_buffer =
+                VMA_CREATE_BUFFER(
+                    vma,
+                    sizeof(VkDrawIndexedIndirectCommand) *
+                        num_indirect_commands,
+                    VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                        VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT,
+                    VMA_MEMORY_USAGE_CPU_TO_GPU)
+                    .unwrap();
+        }
+
         frames[i].pool            = pool;
         frames[i].main_cmd_buffer = cmd_buffer;
     }
@@ -1672,11 +1686,22 @@ void Renderer::draw_color_pass(
         VMA_UNMAP(vma, frame.object_buffer);
     }
 
-    Material* last_material = 0;
-
     TArray<IndirectBatch> batches(&frame_arena);
-
     if (compact_render_objects(render_objects, batches)) {
+        VkDrawIndexedIndirectCommand* icmd =
+            (VkDrawIndexedIndirectCommand*)VMA_MAP(vma, frame.indirect_buffer);
+
+        for (int i = 0; i < render_objects.count; ++i) {
+            RenderObject& obj     = render_objects[i];
+            icmd[i].indexCount    = obj.mesh->indices.count;
+            icmd[i].instanceCount = 1;
+            icmd[i].firstIndex    = 0;
+            icmd[i].vertexOffset  = 0;
+            icmd[i].firstInstance = i;
+        }
+
+        VMA_UNMAP(vma, frame.indirect_buffer);
+
         for (const IndirectBatch& batch : batches) {
             // Bind material
             vkCmdBindPipeline(
@@ -1736,15 +1761,15 @@ void Renderer::draw_color_pass(
                 &batch.mesh->gpu_buffer.buffer,
                 &offset);
 
-            for (u32 i = batch.first; i < batch.count; ++i) {
-                vkCmdDrawIndexed(
-                    cmd,
-                    (u32)batch.mesh->indices.count,
-                    1,
-                    0,
-                    0,
-                    u32(i));
-            }
+            VkDeviceSize indirect_offset =
+                batch.first * sizeof(VkDrawIndexedIndirectCommand);
+            u32 draw_stride = sizeof(VkDrawIndexedIndirectCommand);
+            vkCmdDrawIndexedIndirect(
+                cmd,
+                frame.indirect_buffer.buffer,
+                indirect_offset,
+                batch.count,
+                draw_stride);
         }
     }
 

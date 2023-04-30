@@ -42,6 +42,7 @@ struct FrameData {
     VkDescriptorSet global_descriptor;
     AllocatedBuffer object_buffer;
     VkDescriptorSet object_descriptor;
+    AllocatedBuffer indirect_buffer;
 };
 
 struct UploadContext {

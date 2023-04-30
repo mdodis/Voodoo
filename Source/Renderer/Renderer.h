@@ -25,10 +25,11 @@ struct Renderer {
     bool        validation_layers = false;
     IAllocator& allocator         = System_Allocator;
 
-    static constexpr int num_overlap_frames = 2;
-    bool                 is_initialized     = false;
-    VkExtent2D           extent             = {0, 0};
-    bool                 do_blit_pass       = true;
+    static constexpr int num_overlap_frames    = 2;
+    static constexpr int num_indirect_commands = 100;
+    bool                 is_initialized        = false;
+    VkExtent2D           extent                = {0, 0};
+    bool                 do_blit_pass          = true;
     Arena                frame_arena;
     VMA                  vma;
 
