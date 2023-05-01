@@ -1,7 +1,7 @@
 #include "Shader.h"
 
-#include <string>
 #include <sstream>
+#include <string>
 
 Result<ShaderModule, VkResult> ShaderModule::load(VkDevice device, Str path)
 {
