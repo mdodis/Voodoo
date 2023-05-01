@@ -37,7 +37,7 @@ DEFINE_DESCRIPTOR_OF_INL(SerializedComponent)
 
 struct SerializedEntity {
     SerializedEntity() {}
-    SerializedEntity(Str name, IAllocator& allocator)
+    SerializedEntity(Str name, Allocator& allocator)
         : name(name), components(&allocator)
     {}
     Str                         name;
@@ -60,7 +60,7 @@ DEFINE_DESCRIPTOR_OF_INL(SerializedEntity);
 
 struct SerializedWorld {
     SerializedWorld() {}
-    SerializedWorld(IAllocator& allocator) : entities(&allocator) {}
+    SerializedWorld(Allocator& allocator) : entities(&allocator) {}
 
     TArray<SerializedEntity> entities;
 };
@@ -78,7 +78,7 @@ struct SerializedWorldDescriptor : IDescriptor {
 DEFINE_DESCRIPTOR_OF_INL(SerializedWorld);
 
 struct WorldSerializer {
-    void init(IAllocator& allocator);
+    void init(Allocator& allocator);
     void register_descriptor(u64 id, IDescriptor* descriptor);
     void import(flecs::world& world, Str path);
     void save(const flecs::world& world, Str path);

@@ -82,7 +82,7 @@ namespace win {
         virtual EWindowSupportFlags get_support_flags()         = 0;
     };
 
-    Window* create_window(IAllocator& allocator);
+    Window* create_window(Allocator& allocator);
 }  // namespace win
 
 PROC_FMT_ENUM(win::WindowError, {

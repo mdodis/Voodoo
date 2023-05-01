@@ -1,6 +1,6 @@
 #include "AssetManager.h"
 
-void AssetManager::init(IAllocator& allocator)
+void AssetManager::init(Allocator& allocator)
 {
     this->allocator = allocator;
     loaded_assets.init(allocator);

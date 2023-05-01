@@ -5,7 +5,7 @@
 
 struct DescriptorBuilder {
     static DescriptorBuilder create(
-        IAllocator&            allocator,
+        Allocator&             allocator,
         DescriptorLayoutCache* cache,
         DescriptorAllocator*   descriptor_allocator);
 

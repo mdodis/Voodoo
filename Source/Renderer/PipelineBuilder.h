@@ -2,7 +2,7 @@
 #include "VulkanCommon/VulkanCommon.h"
 
 struct PipelineBuilder {
-    PipelineBuilder(IAllocator& allocator)
+    PipelineBuilder(Allocator& allocator)
         : shader_stages(&allocator), dynamic_states(&allocator)
     {
         init_defaults();

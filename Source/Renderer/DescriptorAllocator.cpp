@@ -1,13 +1,13 @@
 #include "DescriptorAllocator.h"
 
 Result<VkDescriptorPool, VkResult> create_pool(
-    IAllocator&                          allocator,
+    Allocator&                           allocator,
     VkDevice                             device,
     Slice<DescriptorAllocator::PoolSize> pool_sizes,
     int                                  count,
     VkDescriptorPoolCreateFlags          flags)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp, KILOBYTES(1));
+    CREATE_SCOPED_ARENA(allocator, temp, KILOBYTES(1));
 
     TArray<VkDescriptorPoolSize> sizes(&temp);
 
@@ -34,7 +34,7 @@ Result<VkDescriptorPool, VkResult> create_pool(
     return Ok(result);
 }
 
-void DescriptorAllocator::init(IAllocator& allocator, VkDevice device)
+void DescriptorAllocator::init(Allocator& allocator, VkDevice device)
 {
     used_pools.alloc = &allocator;
     free_pools.alloc = &allocator;

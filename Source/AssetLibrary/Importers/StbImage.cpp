@@ -4,13 +4,13 @@
 #include "Memory/Extras.h"
 #include "stb_image.h"
 
-static thread_local IAllocator* Local_Allocator;
+static thread_local Allocator* Local_Allocator;
 static Str File_Extensions[] = {".png", ".jpeg", ".bmp", ".jpg"};
 
 PROC_IMPORTER_IMPORT(stb_image_import)
 {
     Local_Allocator = &allocator;
-    CREATE_SCOPED_ARENA(Local_Allocator, temp, 1024);
+    CREATE_SCOPED_ARENA(*Local_Allocator, temp, 1024);
 
     Str   path_cstr = format(temp, LIT("{}\0"), path);
     int   width, height, channels;

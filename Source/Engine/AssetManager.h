@@ -3,7 +3,7 @@
 #include "Containers/Map.h"
 
 struct AssetManager {
-    void   init(IAllocator& allocator);
+    void   init(Allocator& allocator);
     Asset* get_asset(Str path);
     void   deinit();
 
@@ -13,5 +13,5 @@ struct AssetManager {
     bool is_on_plain_fs = true;
 
     TMap<Str, Asset> loaded_assets;
-    IAllocator&      allocator = System_Allocator;
+    Allocator&       allocator = System_Allocator;
 };

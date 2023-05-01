@@ -3,13 +3,13 @@
 #include "Memory/Extras.h"
 #include "tiny_obj_loader.h"
 
-static thread_local IAllocator* Local_Allocator;
-static Str                      File_Extensions[] = {".obj"};
+static thread_local Allocator* Local_Allocator;
+static Str                     File_Extensions[] = {".obj"};
 
 PROC_IMPORTER_IMPORT(tinyobjloader_import)
 {
     Local_Allocator = &allocator;
-    CREATE_SCOPED_ARENA(Local_Allocator, temp, 1024);
+    CREATE_SCOPED_ARENA(*Local_Allocator, temp, 1024);
 
     Str path_cstr = format(temp, LIT("{}\0"), path);
 

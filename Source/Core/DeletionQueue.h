@@ -7,7 +7,7 @@ struct DeletionQueue {
     TArray<DeletionDelegate> deletors;
 
     DeletionQueue() {}
-    DeletionQueue(IAllocator& allocator) : deletors(&allocator) {}
+    DeletionQueue(Allocator& allocator) : deletors(&allocator) {}
 
     void add(DeletionDelegate&& delegate) { deletors.add(std::move(delegate)); }
 

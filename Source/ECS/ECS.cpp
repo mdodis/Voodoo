@@ -61,7 +61,7 @@ flecs::entity ECS::create_entity(Str name)
     if (name != Str::NullStr) {
         entity = world.entity(name.data);
     } else {
-        CREATE_SCOPED_ARENA(&System_Allocator, temp, 1024);
+        CREATE_SCOPED_ARENA(System_Allocator, temp, 1024);
 
         bool created = false;
         u32  i       = 0;

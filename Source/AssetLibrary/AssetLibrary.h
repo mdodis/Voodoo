@@ -150,21 +150,21 @@ struct Asset {
     AssetInfo info;
     Slice<u8> blob;
 
-    bool write(IAllocator& allocator, WriteTape* output, bool comrpess = true);
+    bool write(Allocator& allocator, WriteTape* output, bool comrpess = true);
 
     static Result<Asset, EAssetLoadError> load(
-        IAllocator& allocator, ReadTape* input);
-    static Result<Asset, EAssetLoadError> load(IAllocator& allocator, Str path)
+        Allocator& allocator, ReadTape* input);
+    static Result<Asset, EAssetLoadError> load(Allocator& allocator, Str path)
     {
         auto t = open_read_tape(path);
         return load(allocator, &t);
     }
 
     static Result<AssetInfo, EAssetLoadError> probe(
-        IAllocator& allocator, ReadTape* input);
+        Allocator& allocator, ReadTape* input);
 
     static Result<void, EAssetLoadError> unpack(
-        IAllocator&      allocator,
+        Allocator&       allocator,
         const AssetInfo& info,
         ReadTape*        input,
         Slice<u8>&       buffer);
@@ -321,7 +321,7 @@ DEFINE_DESCRIPTOR_OF_INL(TextureAsset)
 DEFINE_DESCRIPTOR_OF_INL(AssetInfo)
 
 #define PROC_IMPORTER_IMPORT(name) \
-    Result<Asset, Str> name(Str path, IAllocator& allocator)
+    Result<Asset, Str> name(Str path, Allocator& allocator)
 typedef PROC_IMPORTER_IMPORT(ProcImporterImport);
 
 struct Importer {
@@ -333,11 +333,11 @@ struct Importer {
 
 struct ImporterRegistry {
     TArray<Importer> importers;
-    ImporterRegistry(IAllocator& allocator) : importers(&allocator) {}
+    ImporterRegistry(Allocator& allocator) : importers(&allocator) {}
 
     void               init_default_importers();
     void               register_importer(const Importer& importer);
-    Result<Asset, Str> import_asset_from_file(Str path, IAllocator& allocator);
+    Result<Asset, Str> import_asset_from_file(Str path, Allocator& allocator);
 };
 
 _inline Asset make_archive_asset(Slice<u8> blob)

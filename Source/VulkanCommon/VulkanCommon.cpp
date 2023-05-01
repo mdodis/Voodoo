@@ -5,7 +5,7 @@
 
 #include "Containers/Extras.h"
 
-bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers)
+bool validation_layers_exist(Allocator& allocator, Slice<const char*> layers)
 {
     TArray<VkLayerProperties> props(&allocator);
     DEFER(props.release());
@@ -35,7 +35,7 @@ bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers)
 }
 
 Result<VkPhysicalDevice, VkResult> pick_physical_device(
-    IAllocator& allocator, VkInstance instance, PickPhysicalDeviceInfo& info)
+    Allocator& allocator, VkInstance instance, PickPhysicalDeviceInfo& info)
 {
     u32 device_count;
     VK_RETURN_IF_ERR(vkEnumeratePhysicalDevices(instance, &device_count, 0));
@@ -140,7 +140,7 @@ Result<VkPhysicalDevice, VkResult> pick_physical_device(
 }
 
 Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
-    IAllocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface)
+    Allocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface)
 {
     SwapChainSupportInfo result(allocator);
 
@@ -207,7 +207,7 @@ Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
 }
 
 Result<VkDevice, VkResult> create_device_with_queues(
-    IAllocator&                 allocator,
+    Allocator&                  allocator,
     VkPhysicalDevice            device,
     CreateDeviceWithQueuesInfo& info)
 {
@@ -296,7 +296,7 @@ Result<VkDevice, VkResult> create_device_with_queues(
 }
 
 Result<VkSwapchainKHR, VkResult> create_swapchain(
-    IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info)
+    Allocator& allocator, VkDevice device, CreateSwapchainInfo& info)
 {
     auto swap_chain_support_result = query_physical_device_swap_chain_support(
         allocator,
@@ -410,7 +410,7 @@ void print_physical_device_queue_families(VkPhysicalDevice device)
 }
 
 Result<VkShaderModule, VkResult> load_shader_binary(
-    IAllocator& allocator, VkDevice device, Str path)
+    Allocator& allocator, VkDevice device, Str path)
 {
     Raw data = dump_file(path, allocator);
     DEFER(allocator.release(data.buffer));
@@ -494,7 +494,7 @@ VkSamplerCreateInfo make_sampler_create_info(
 }
 
 TArray<VkQueueFamilyProperties> get_physical_device_queue_families(
-    VkPhysicalDevice physical_device, IAllocator& allocator)
+    VkPhysicalDevice physical_device, Allocator& allocator)
 {
     u32 count;
     vkGetPhysicalDeviceQueueFamilyProperties(physical_device, &count, 0);

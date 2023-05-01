@@ -48,7 +48,7 @@ void ModelToVertexArrayEditorWindow::deinit() {}
 
 bool ModelToVertexArrayEditorWindow::convert_file(Str path)
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, MEGABYTES(2));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, MEGABYTES(2));
 
     // @todo: dont just assert here
     Asset asset =

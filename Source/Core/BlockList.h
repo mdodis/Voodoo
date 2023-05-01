@@ -11,7 +11,7 @@ template <typename SizeType, u32 BlockSize = 64>
 struct BlockList {
     static constexpr u32 ItemsPerBlock = BlockSize;
 
-    BlockList(IAllocator& allocator, SizeType item_size)
+    BlockList(Allocator& allocator, SizeType item_size)
         : allocator(allocator)
         , item_size(item_size)
         , block_total_size(BlockSize * item_size)
@@ -205,7 +205,7 @@ struct BlockList {
     SizeType             num_blocks;
     SizeType             item_size;
     SizeType             block_total_size;
-    IAllocator&          allocator;
+    Allocator&           allocator;
 };
 
 template <typename StorageType, typename SizeType, u32 BlockSize = 64>
@@ -213,7 +213,7 @@ struct TBlockList : public BlockList<SizeType, BlockSize> {
     using Base = BlockList<SizeType, BlockSize>;
 
     TBlockList() = delete;
-    TBlockList(IAllocator& allocator)
+    TBlockList(Allocator& allocator)
         : Base(allocator, (SizeType)sizeof(StorageType))
     {}
 };

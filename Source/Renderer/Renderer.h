@@ -20,18 +20,18 @@ using namespace win;
 struct Renderer {
     Renderer() = default;
 
-    Window*     window;
-    Input*      input;
-    bool        validation_layers = false;
-    IAllocator& allocator         = System_Allocator;
+    Window*    window;
+    Input*     input;
+    bool       validation_layers = false;
+    Allocator& allocator         = System_Allocator;
 
-    static constexpr int num_overlap_frames    = 2;
-    static constexpr int num_indirect_commands = 100;
-    bool                 is_initialized        = false;
-    VkExtent2D           extent                = {0, 0};
-    bool                 do_blit_pass          = true;
-    Arena                frame_arena;
-    VMA                  vma;
+    static constexpr int      num_overlap_frames    = 2;
+    static constexpr int      num_indirect_commands = 100;
+    bool                      is_initialized        = false;
+    VkExtent2D                extent                = {0, 0};
+    bool                      do_blit_pass          = true;
+    Arena<ArenaMode::Dynamic> frame_arena;
+    VMA                       vma;
 
     // Rendering Objects
     VkInstance                 instance;

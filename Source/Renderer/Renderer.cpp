@@ -34,9 +34,10 @@ void Renderer::init()
     materials.init(allocator);
     textures.init(allocator);
 
-    frame_arena = Arena(&allocator, KILOBYTES(8));
+    frame_arena = Arena<ArenaMode::Dynamic>(allocator, KILOBYTES(8));
+    frame_arena.init();
 
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(4));
+    CREATE_SCOPED_ARENA(allocator, temp_alloc, MEGABYTES(5));
 
     Slice<const char*> required_window_ext = window->get_required_extensions();
     window->on_resized.bind_raw(this, &Renderer::on_resize_presentation);
@@ -251,7 +252,7 @@ void Renderer::init_commands()
 
 void Renderer::init_descriptors()
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(5));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(5));
 
     // Global data buffer
     // [Camera, Scene, PAD]
@@ -329,7 +330,7 @@ void Renderer::init_descriptors()
 
 void Renderer::init_pipelines()
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(5));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(5));
 
     // Untextured
     {
@@ -361,7 +362,7 @@ void Renderer::init_pipelines()
         basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
         basic_shader_frag = load_shader(LIT("Shaders/Basic.frag.spv"));
 
-        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+        CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(1));
 
         VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
 
@@ -395,7 +396,7 @@ void Renderer::init_pipelines()
     }
     // Textured
     {
-        CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(5));
+        CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(5));
 
         VkDescriptorSet texture_set;
         {
@@ -563,7 +564,7 @@ void Renderer::init_present_render_pass()
     VkShaderModule frag_mod = load_shader(LIT("Shaders/Present.frag.spv"));
     DEFER(vkDestroyShaderModule(device, frag_mod, 0));
 
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
 
     VkPipelineLayoutCreateInfo pipeline_layout_create_info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1218,7 +1219,7 @@ void Renderer::on_resize_presentation()
 
 VkShaderModule Renderer::load_shader(Str path)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(8));
+    CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(8));
     auto load_result = load_shader_binary(temp_alloc, device, path);
 
     if (!load_result.ok()) {
@@ -1314,7 +1315,7 @@ void Renderer::upload_mesh(Mesh& mesh)
 
 Result<AllocatedImage, VkResult> Renderer::upload_image_from_file(Str path)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp, MEGABYTES(5));
+    CREATE_SCOPED_ARENA(allocator, temp, MEGABYTES(5));
 
     auto      read_tape = open_read_tape(path);
     AssetInfo info      = Asset::probe(temp, &read_tape).unwrap();
@@ -1458,7 +1459,7 @@ Result<AllocatedImage, VkResult> Renderer::upload_image_from_file(Str path)
 
 Result<AllocatedImage, VkResult> Renderer::upload_image(const Asset& asset)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp, MEGABYTES(5));
+    CREATE_SCOPED_ARENA(allocator, temp, MEGABYTES(5));
 
     AssetInfo info = asset.info;
     ASSERT(info.kind == AssetKind::Texture);
@@ -1973,7 +1974,7 @@ void Renderer::recreate_swapchain()
     glm::ivec2 new_size;
     window->get_extents(new_size.x, new_size.y);
     extent = {.width = (u32)new_size.x, .height = (u32)new_size.y};
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(1));
+    CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(1));
 
     // Create swap chain & views
     {
@@ -2047,7 +2048,7 @@ void Renderer::recreate_swapchain()
 
 void Renderer::deinit()
 {
-    frame_arena.release_base();
+    frame_arena.deinit();
     if (!is_initialized) return;
     for (int i = 0; i < num_overlap_frames; ++i) {
         VK_CHECK(

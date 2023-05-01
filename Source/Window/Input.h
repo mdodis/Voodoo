@@ -50,7 +50,7 @@ static _inline bool operator==(InputAction& left, InputAction& right)
  * type, while the mapping has the actual key and scale, for example.
  */
 struct Input {
-    Input(IAllocator& allocator = System_Allocator)
+    Input(Allocator& allocator = System_Allocator)
         : digital_continuous_actions(&allocator)
         , axis_motion_actions(&allocator)
         , digital_stroke_actions(&allocator)

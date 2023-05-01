@@ -87,7 +87,7 @@ struct Win32DropTargetProxy : IDropTarget {
 
         if (SUCCEEDED(pDataObj->GetData(&fmc, &stgm))) {
             iface->drag_drop_begin();
-            CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(2));
+            CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(2));
             HDROP hdrop = (HDROP)stgm.hGlobal;
 
             UINT file_count = DragQueryFileW(hdrop, 0xFFFFFFFF, NULL, 0);

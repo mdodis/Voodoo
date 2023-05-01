@@ -3,7 +3,7 @@
 #include "Core/Archive.h"
 #include "Memory/AllocTape.h"
 
-void WorldSerializer::init(IAllocator& allocator)
+void WorldSerializer::init(Allocator& allocator)
 {
     id_to_desc.init(allocator);
     type_name_to_id.init(allocator);
@@ -19,9 +19,8 @@ void WorldSerializer::register_descriptor(u64 id, IDescriptor* descriptor)
 
 void WorldSerializer::save(const flecs::world& world, Str path)
 {
-    // @todo: sth is completely borked here; it just writes zeroes!
-    CREATE_SCOPED_ARENA(&System_Allocator, component_allocator, KILOBYTES(10));
-    CREATE_SCOPED_ARENA(&System_Allocator, all_allocator, KILOBYTES(10));
+    CREATE_SCOPED_ARENA(System_Allocator, component_allocator, KILOBYTES(10));
+    CREATE_SCOPED_ARENA(System_Allocator, all_allocator, KILOBYTES(10));
 
     AllocWriteTape output(System_Allocator);
     DEFER(output.release());
@@ -92,7 +91,7 @@ void WorldSerializer::save(const flecs::world& world, Str path)
 
 void WorldSerializer::import(flecs::world& world, Str path)
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(10));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(10));
 
     Asset asset = Asset::load(temp, path).unwrap();
 
@@ -128,7 +127,7 @@ void WorldSerializer::import(flecs::world& world, Str path)
 
             // @todo: need a copy_object(descriptor, dst, src) to copy fields
             // from an object to another. For now, leaking memory is fine (:
-            umm ptr = temp.reserve(type_info->size);
+            umm ptr = (umm)temp.reserve(type_info->size);
             memset(ptr, 0, type_info->size);
 
             ASSERT(archive_deserialize(&t, System_Allocator, desc, ptr));

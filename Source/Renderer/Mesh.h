@@ -12,7 +12,7 @@ struct Vertex {
     glm::vec3              normal;
     glm::vec3              color;
     glm::vec2              uv;
-    static VertexInputInfo get_input_info(IAllocator& allocator);
+    static VertexInputInfo get_input_info(Allocator& allocator);
 };
 
 struct Mesh {
@@ -22,7 +22,7 @@ struct Mesh {
     AllocatedBuffer gpu_index_buffer;
 
     static Result<Mesh, EAssetLoadError> load_from_asset(
-        IAllocator& allocator, Str path);
+        Allocator& allocator, Str path);
 };
 
 static _inline bool operator==(Mesh& left, Mesh& right)

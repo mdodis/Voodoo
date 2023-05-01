@@ -22,7 +22,7 @@ int main(int argc, char* argv[])
         const int monke_count = 10;
 
         flecs::entity last_monke;
-        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+        CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
         for (int i = 0; i < monke_count; ++i) {
             SAVE_ARENA(temp);
 

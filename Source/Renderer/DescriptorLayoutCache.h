@@ -4,12 +4,12 @@
 #include "VulkanCommon/VulkanCommon.h"
 
 struct DescriptorLayoutCache {
-    DescriptorLayoutCache(IAllocator& allocator = System_Allocator)
+    DescriptorLayoutCache(Allocator& allocator = System_Allocator)
         : layout_cache(allocator), allocator(allocator)
     {}
 
     struct DescriptorLayoutInfo {
-        DescriptorLayoutInfo(IAllocator& allocator) : bindings(&allocator) {}
+        DescriptorLayoutInfo(Allocator& allocator) : bindings(&allocator) {}
 
         TArray<VkDescriptorSetLayoutBinding> bindings;
         void                                 release() { bindings.release(); }
@@ -19,7 +19,7 @@ struct DescriptorLayoutCache {
     VkDescriptorSetLayout create_layout(VkDescriptorSetLayoutCreateInfo* info);
     void                  deinit();
 
-    IAllocator&                                       allocator;
+    Allocator&                                        allocator;
     TMap<DescriptorLayoutInfo, VkDescriptorSetLayout> layout_cache;
     VkDevice                                          device;
 };

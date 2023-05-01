@@ -15,7 +15,7 @@ struct Engine {
      * The main allocator that's used to allocate all engine systems. Change at
      * your own risk!
      */
-    IAllocator& allocator = System_Allocator;
+    Allocator& allocator = System_Allocator;
 
     struct win::Window*  window;
     struct Renderer*     renderer;

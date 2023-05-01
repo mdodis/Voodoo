@@ -48,7 +48,7 @@ TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
     }
 
     {
-        CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+        CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
 
         auto ft = open_read_tape(LIT("./asset.test.asset"));
 

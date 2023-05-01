@@ -148,9 +148,9 @@ Separate vertex buffer / object
 */
 
 static VkShaderModule load_shader(
-    IAllocator& allocator, Str path, VkDevice device)
+    Allocator& allocator, Str path, VkDevice device)
 {
-    CREATE_SCOPED_ARENA(&allocator, temp_alloc, KILOBYTES(8));
+    CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(8));
     auto load_result = load_shader_binary(temp_alloc, device, path);
 
     if (!load_result.ok()) {
@@ -169,7 +169,7 @@ void ImmediateDrawQueue::init(
     DescriptorLayoutCache* cache,
     DescriptorAllocator*   allocator)
 {
-    CREATE_SCOPED_ARENA(&System_Allocator, temp, KILOBYTES(1));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
 
     pvma         = &vma;
     this->device = device;

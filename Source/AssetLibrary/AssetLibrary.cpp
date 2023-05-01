@@ -6,7 +6,7 @@
 #include "Serialization/JSON.h"
 #include "lz4.h"
 
-bool Asset::write(IAllocator& allocator, WriteTape* output, bool compress)
+bool Asset::write(Allocator& allocator, WriteTape* output, bool compress)
 {
     AssetHeader    header;
     AllocWriteTape info_tape(allocator);
@@ -20,7 +20,7 @@ bool Asset::write(IAllocator& allocator, WriteTape* output, bool compress)
         ASSERT(blob.size() < NumProps<int>::max);
 
         int max_size = LZ4_compressBound((int)blob.size());
-        umm ptr      = allocator.reserve(max_size);
+        umm ptr      = (umm)allocator.reserve(max_size);
 
         int compressed_size = LZ4_compress_default(
             (const char*)blob.ptr,
@@ -53,7 +53,7 @@ bool Asset::write(IAllocator& allocator, WriteTape* output, bool compress)
 }
 
 Result<AssetInfo, EAssetLoadError> Asset::probe(
-    IAllocator& allocator, ReadTape* input)
+    Allocator& allocator, ReadTape* input)
 {
     AssetHeader   header;
     AssetInfo     asset_info;
@@ -71,7 +71,7 @@ Result<AssetInfo, EAssetLoadError> Asset::probe(
 }
 
 Result<void, EAssetLoadError> Asset::unpack(
-    IAllocator&      allocator,
+    Allocator&       allocator,
     const AssetInfo& info,
     ReadTape*        input,
     Slice<u8>&       buffer)
@@ -116,7 +116,7 @@ Result<void, EAssetLoadError> Asset::unpack(
 }
 
 Result<Asset, EAssetLoadError> Asset::load(
-    IAllocator& allocator, ReadTape* input)
+    Allocator& allocator, ReadTape* input)
 {
     AssetInfo asset_info;
 
@@ -161,7 +161,7 @@ void ImporterRegistry::register_importer(const Importer& importer)
 }
 
 Result<Asset, Str> ImporterRegistry::import_asset_from_file(
-    Str path, IAllocator& allocator)
+    Str path, Allocator& allocator)
 {
     Str       extension       = path.chop_left_last_of('.');
     Importer* chosen_importer = 0;

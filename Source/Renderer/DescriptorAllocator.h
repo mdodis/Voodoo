@@ -8,7 +8,7 @@ struct DescriptorAllocator {
         float            t;
     };
 
-    void             init(IAllocator& allocator, VkDevice device);
+    void             init(Allocator& allocator, VkDevice device);
     void             reset_pools();
     VkDescriptorPool grab_pool();
     bool allocate(VkDescriptorSet* set, VkDescriptorSetLayout layout);

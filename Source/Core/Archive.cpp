@@ -183,17 +183,17 @@ static bool serialize_object(WriteTape* out, DescPair pair, u64& size)
 }
 
 static bool deserialize_entry(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 static bool deserialize_value(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 static bool deserialize_primitive(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 static bool deserialize_string(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 static bool deserialize_array(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 static bool deserialize_object(
-    IAllocator& allocator, ReadTape* in, DescPair pair);
+    Allocator& allocator, ReadTape* in, DescPair pair);
 
 PROC_DESERIALIZE(archive_deserialize)
 {
@@ -207,8 +207,7 @@ PROC_DESERIALIZE(archive_deserialize)
     return deserialize_entry(alloc, in, DescPair{desc, ptr});
 }
 
-static bool deserialize_entry(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+static bool deserialize_entry(Allocator& allocator, ReadTape* in, DescPair pair)
 {
     ArchiveEntry entry;
     if (!in->read_struct(entry)) return false;
@@ -231,8 +230,7 @@ static bool deserialize_entry(
     return deserialize_value(allocator, in, pair);
 }
 
-static bool deserialize_value(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+static bool deserialize_value(Allocator& allocator, ReadTape* in, DescPair pair)
 {
     bool success = false;
     switch (pair.desc->type_class) {
@@ -256,7 +254,7 @@ static bool deserialize_value(
 }
 
 static bool deserialize_primitive(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+    Allocator& allocator, ReadTape* in, DescPair pair)
 {
     if (!IS_A(pair.desc, IPrimitiveDescriptor)) return false;
 
@@ -270,7 +268,7 @@ static bool deserialize_primitive(
 }
 
 static bool deserialize_string(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+    Allocator& allocator, ReadTape* in, DescPair pair)
 {
     if (!IS_A(pair.desc, StrDescriptor)) return false;
 
@@ -294,8 +292,7 @@ static bool deserialize_string(
     return true;
 }
 
-static bool deserialize_array(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+static bool deserialize_array(Allocator& allocator, ReadTape* in, DescPair pair)
 {
     if (!IS_A(pair.desc, IArrayDescriptor)) return false;
 
@@ -321,7 +318,7 @@ static bool deserialize_array(
 }
 
 static bool deserialize_object(
-    IAllocator& allocator, ReadTape* in, DescPair pair)
+    Allocator& allocator, ReadTape* in, DescPair pair)
 {
     // Read in number of subdescriptors
     u64 num_parts = 0;

@@ -4,7 +4,7 @@
 #include "Sort.h"
 #include "imgui.h"
 
-static TArray<Str> tokenize_string(IAllocator& allocator, Str s, char separator)
+static TArray<Str> tokenize_string(Allocator& allocator, Str s, char separator)
 {
     u64 count = s.count_of(separator);
 
@@ -35,9 +35,10 @@ static TArray<Str> tokenize_string(IAllocator& allocator, Str s, char separator)
 
 void MenuRegistrar::init()
 {
-    menu_items.alloc = &System_Allocator;
-    temp_arena       = Arena(&System_Allocator);
-    precedence.init(System_Allocator);
+    menu_items.alloc = &system_allocator;
+    temp_arena       = Arena<ArenaMode::Fixed>(system_allocator, KILOBYTES(1));
+    temp_arena.init();
+    precedence.init(system_allocator);
 
     precedence.add(LIT("File"), 200);
     precedence.add(LIT("Help"), -500);
@@ -116,7 +117,7 @@ static MenuRegistrar* Menu_Registrar = 0;
 MenuRegistrar* get_menu_registrar()
 {
     if (!Menu_Registrar) {
-        Menu_Registrar = alloc<MenuRegistrar>(System_Allocator);
+        Menu_Registrar = new MenuRegistrar();
         Menu_Registrar->init();
     }
 

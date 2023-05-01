@@ -2,7 +2,7 @@
 
 #include "Containers/Extras.h"
 
-VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
+VertexInputInfo Vertex::get_input_info(Allocator& allocator)
 {
     VertexInputInfo result = {
         .bindings = alloc_slice<VkVertexInputBindingDescription>(allocator, 1),
@@ -48,7 +48,7 @@ VertexInputInfo Vertex::get_input_info(IAllocator& allocator)
 }
 
 Result<Mesh, EAssetLoadError> Mesh::load_from_asset(
-    IAllocator& allocator, Str path)
+    Allocator& allocator, Str path)
 {
     static_assert(sizeof(Vertex_P3fN3fC3fU2f) == sizeof(Vertex));
     auto load_result = Asset::load(allocator, path);

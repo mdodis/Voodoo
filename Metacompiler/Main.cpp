@@ -30,7 +30,7 @@ move_and_update: {
 */
 
 struct {
-    Arena                        allocator;
+    Arena<ArenaMode::Dynamic>    allocator;
     TArray<MetaSystemDescriptor> systems{&System_Allocator};
 
     TArray<Str> folder_context{&System_Allocator};
@@ -51,7 +51,7 @@ static void pop_folder_context()
     G.folder_context.pop();
 }
 
-static Str get_folder_context(IAllocator& allocator)
+static Str get_folder_context(Allocator& allocator)
 {
     if (G.folder_context.size == 0) return Str::NullStr;
 
@@ -166,7 +166,8 @@ static void parse_and_generate(Str from, Str to, const Slice<Str>& filter)
 
 int main(int argc, char* argv[])
 {
-    G.allocator = Arena(&System_Allocator, MEGABYTES(1));
+    G.allocator = Arena<ArenaMode::Dynamic>(System_Allocator, MEGABYTES(1));
+    G.allocator.init();
 
     Str current_directory = get_cwd(G.allocator);
     Str parse_directory   = format(G.allocator, LIT("{}/"), current_directory);

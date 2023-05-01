@@ -41,7 +41,7 @@ struct VertexInputInfo {
 
 PROC_FMT_INL(VkResult) { tape->write_str(Str(string_VkResult(type))); }
 
-bool validation_layers_exist(IAllocator& allocator, Slice<const char*> layers);
+bool validation_layers_exist(Allocator& allocator, Slice<const char*> layers);
 
 struct PickPhysicalDeviceInfo {
     Slice<const char*>   device_extentions;
@@ -50,14 +50,14 @@ struct PickPhysicalDeviceInfo {
 };
 
 Result<VkPhysicalDevice, VkResult> pick_physical_device(
-    IAllocator& allocator, VkInstance instance, PickPhysicalDeviceInfo& info);
+    Allocator& allocator, VkInstance instance, PickPhysicalDeviceInfo& info);
 
 struct SwapChainSupportInfo {
     VkSurfaceCapabilitiesKHR   capabilities;
     TArray<VkSurfaceFormatKHR> formats;
     TArray<VkPresentModeKHR>   present_modes;
 
-    SwapChainSupportInfo(IAllocator& allocator)
+    SwapChainSupportInfo(Allocator& allocator)
         : formats(&allocator), present_modes(&allocator)
     {}
 
@@ -69,7 +69,7 @@ struct SwapChainSupportInfo {
 };
 
 Result<SwapChainSupportInfo, VkResult> query_physical_device_swap_chain_support(
-    IAllocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface);
+    Allocator& allocator, VkPhysicalDevice device, VkSurfaceKHR surface);
 
 struct CreateDeviceFamilyRequirement {
     /** Any valid flag bit for requirement, 0 for don't care */
@@ -89,7 +89,7 @@ struct CreateDeviceWithQueuesInfo {
 };
 
 Result<VkDevice, VkResult> create_device_with_queues(
-    IAllocator&                 allocator,
+    Allocator&                  allocator,
     VkPhysicalDevice            device,
     CreateDeviceWithQueuesInfo& info);
 
@@ -107,15 +107,15 @@ struct CreateSwapchainInfo {
 };
 
 Result<VkSwapchainKHR, VkResult> create_swapchain(
-    IAllocator& allocator, VkDevice device, CreateSwapchainInfo& info);
+    Allocator& allocator, VkDevice device, CreateSwapchainInfo& info);
 
 TArray<VkQueueFamilyProperties> get_physical_device_queue_families(
-    VkPhysicalDevice physical_device, IAllocator& allocator);
+    VkPhysicalDevice physical_device, Allocator& allocator);
 
 void print_physical_device_queue_families(VkPhysicalDevice device);
 
 Result<VkShaderModule, VkResult> load_shader_binary(
-    IAllocator& allocator, VkDevice device, Str path);
+    Allocator& allocator, VkDevice device, Str path);
 
 VkDescriptorSetLayoutBinding descriptor_set_layout_binding(
     VkDescriptorType type, VkShaderStageFlags stage, u32 binding);
