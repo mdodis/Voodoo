@@ -11,23 +11,6 @@
 #include "Parsing.h"
 #include "Str.h"
 #include "Traits.h"
-/*
-EXAMPLE
-
-#if METADESK
-
-@system(OnUpdate)
-move_and_update: {
-    @op(in)
-    transform: TransformComponent,
-
-    @op(out)
-    rotation: RotationComponent,
-}
-
-#endif
-
-*/
 
 struct {
     Arena<ArenaMode::Dynamic>    allocator;
@@ -35,6 +18,8 @@ struct {
 
     TArray<Str> folder_context{&System_Allocator};
     TArray<Str> module_includes{&System_Allocator};
+
+    TArray<Str> files_generated{&System_Allocator};
 } G;
 
 static void push_folder_context(Str folder)
@@ -109,6 +94,7 @@ static void parse_and_generate(Str from, Str to)
 
             if (parse_file(from_path, to_path)) {
                 add_module_include(it_data.filename);
+                G.files_generated.add(to_path.clone(System_Allocator));
             }
         } else {
             SAVE_ARENA(G.allocator);
@@ -385,17 +371,60 @@ static MD_Node* find_tag(MD_Node* node, Str name)
 
 static void write_module_header(Str path);
 static void write_module_implementation(Str path);
+static void write_generated_files_list(Str path);
 
 static void write_module(Str target)
 {
     SAVE_ARENA(G.allocator);
     Str header         = format(G.allocator, LIT("{}/Module.h"), target);
     Str implementation = format(G.allocator, LIT("{}/Module.cpp"), target);
+    Str genlist        = format(G.allocator, LIT("{}/ModuleFiles.txt"), target);
 
     print(LIT("Writing module {}, {}\n"), header, implementation);
 
+    G.files_generated.add(header);
+    G.files_generated.add(implementation);
+
     write_module_header(header);
     write_module_implementation(implementation);
+    write_generated_files_list(genlist);
+}
+
+struct FmtPath {
+    Str in;
+    FmtPath(Str in) : in(in) {}
+};
+
+PROC_FMT_IMPL(FmtPath)
+{
+    u64 i = 0;
+
+    auto is_sep = [](char c) { return (c == '\\') || (c == '/'); };
+
+    while (i < type.in.len) {
+        if (is_sep(type.in[i])) {
+            tape->write_char('/');
+
+            while ((i < type.in.len) && is_sep(type.in[i])) {
+                i++;
+            }
+        } else {
+            tape->write_char(type.in[i]);
+            i++;
+        }
+    }
+}
+
+static void write_generated_files_list(Str path)
+{
+    CREATE_SCOPED_ARENA(G.allocator, temp, KILOBYTES(1));
+
+    BufferedWriteTape<true> out(open_file_write(path));
+    for (Str file_path : G.files_generated) {
+        SAVE_ARENA(temp);
+
+        format(&out, LIT("{}\n"), FmtPath(file_path));
+    }
 }
 
 static void write_module_header(Str path)

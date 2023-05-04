@@ -43,3 +43,4 @@ All third party libraries are included in source, so you only have to:
 - [Tinyobjloader](https://github.com/tinyobjloader/tinyobjloader)
 - [GLFW](https://www.glfw.org/)
 - [portable-file-dialogs](https://github.com/samhocevar/portable-file-dialogs)
+- [Metadesk](https://dion.systems/metadesk)
