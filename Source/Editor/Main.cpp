@@ -1,11 +1,13 @@
 #pragma once
 
+#include "Arg.h"
 #include "ECS.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
 #include "Renderer/Renderer.h"
 #include "VulkanCommon/VulkanCommon.h"
 #include "backends/imgui_impl_vulkan.h"
+
 #if OS_MSWINDOWS
 #include <imgui.h>
 
@@ -36,7 +38,30 @@ static void on_renderer_post_present_pass(
 
 static void populate_demo_scene();
 
+static int run(void);
+static int convert(Slice<Str> args);
+
 int main(int argc, char* argv[])
+{
+    TArray<Str> args(&System_Allocator);
+    for (int i = 0; i < argc; ++i) {
+        args.add(Str(argv[i]));
+    }
+
+    if (args.size <= 1) {
+        return run();
+    }
+
+    Str operation = args[1];
+
+    if (operation == LIT("convert")) {
+        return convert(slice(args, 2));
+    }
+
+    return 0;
+}
+
+static int run(void)
 {
     // Create imgui context
     ImGui::CreateContext();
@@ -60,6 +85,36 @@ int main(int argc, char* argv[])
     // Cleanup
     The_Editor.deinit();
     G.engine.deinit();
+
+    return 0;
+}
+
+static int convert(Slice<Str> args)
+{
+    CREATE_SCOPED_ARENA(System_Allocator, temp, MEGABYTES(5));
+
+    ArgCollection arguments;
+    arguments.register_arg<Str>(LIT("i"), LIT(""), LIT("Input file "));
+    arguments.register_arg<Str>(LIT("o"), LIT(""), LIT("Output asset path"));
+
+    if (!arguments.parse_args(args)) {
+        print(LIT("Invalid arguments, exiting.\n"));
+        arguments.summary();
+        return -1;
+    }
+
+    Str  in_path  = *arguments.get_arg<Str>(LIT("i"));
+    Str  out_path = *arguments.get_arg<Str>(LIT("o"));
+    auto out_tape = BufferedWriteTape<true>(open_file_write(out_path));
+
+    ImporterRegistry registry(temp);
+    registry.init_default_importers();
+    Asset asset = registry.import_asset_from_file(in_path, temp).unwrap();
+    if (!asset.write(temp, &out_tape)) {
+        print(LIT("Failed to convert import {}\n"), in_path);
+        return -1;
+    }
+
     return 0;
 }
 

@@ -37,7 +37,7 @@ void Renderer::init()
     frame_arena = Arena<ArenaMode::Dynamic>(allocator, KILOBYTES(8));
     frame_arena.init();
 
-    CREATE_SCOPED_ARENA(allocator, temp_alloc, MEGABYTES(5));
+    CREATE_SCOPED_ARENA(allocator, temp_alloc, MEGABYTES(1));
 
     Slice<const char*> required_window_ext = window->get_required_extensions();
     window->on_resized.bind_raw(this, &Renderer::on_resize_presentation);
