@@ -31,7 +31,9 @@ struct ShaderEffect {
         VkDescriptorType overriden_type;
     };
 
-    VkPipelineLayout built_layout;
+    void init(Allocator& allocator);
+
+    VkPipelineLayout               built_layout;
     TArr<VkDescriptorSetLayout, 4> set_layouts;
     TArr<u64, 4>                   set_hashes;
     TMap<Str, BindingMetadata>     bindings;
@@ -39,5 +41,6 @@ struct ShaderEffect {
     TArray<Stage> stages;
 
     void add_stage(ShaderModule* mod, VkShaderStageFlagBits flags);
-    // void reflect_layout(VkDevice device, )
+    void reflect_layout(
+        VkDevice device, const Slice<MetadataOverride>& overrides);
 };

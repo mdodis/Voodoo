@@ -13,4 +13,5 @@ target_link_libraries(Renderer
     AssetLibrary
     VulkanCommon
     PRIVATE
-    VulkanMemoryAllocator)
+    VulkanMemoryAllocator
+    SPIRVReflect)

@@ -136,6 +136,8 @@ VkSamplerCreateInfo make_sampler_create_info(
     VkFilter             filters,
     VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
+VkPipelineLayoutCreateInfo make_pipeline_layout_create_info();
+
 VkResult wait_for_fences_indefinitely(
     VkDevice       device,
     u32            fence_count,
