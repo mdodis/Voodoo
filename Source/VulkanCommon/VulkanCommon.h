@@ -138,6 +138,9 @@ VkSamplerCreateInfo make_sampler_create_info(
 
 VkPipelineLayoutCreateInfo make_pipeline_layout_create_info();
 
+VkPipelineShaderStageCreateInfo make_pipeline_shader_stage_create_info(
+    VkShaderStageFlagBits stage, VkShaderModule module);
+
 VkResult wait_for_fences_indefinitely(
     VkDevice       device,
     u32            fence_count,

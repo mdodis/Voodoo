@@ -248,3 +248,35 @@ void ShaderEffect::reflect_layout(
         nullptr,
         &built_layout));
 }
+
+void ShaderEffect::fill_stages(
+    TArray<VkPipelineShaderStageCreateInfo>& pipeline_stages)
+{
+    for (ShaderEffect::Stage& s : stages) {
+        pipeline_stages.add(
+            make_pipeline_shader_stage_create_info(s.stage, s.mod->mod));
+    }
+}
+
+void ShaderCache::init(Allocator& allocator, VkDevice device)
+{
+    module_cache.init(allocator);
+    this->device = device;
+}
+
+ShaderModule* ShaderCache::get_shader(Str path)
+{
+    if (module_cache.contains(path)) {
+        return &module_cache[path];
+    }
+
+    ShaderModule new_shader;
+    new_shader.mod =
+        load_shader_binary(System_Allocator, device, path).unwrap();
+
+    module_cache.add(path.clone(System_Allocator), new_shader);
+
+    return &module_cache[path];
+}
+
+void ShaderCache::deinit() { module_cache.release(); }

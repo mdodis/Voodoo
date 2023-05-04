@@ -43,4 +43,15 @@ struct ShaderEffect {
     void add_stage(ShaderModule* mod, VkShaderStageFlagBits flags);
     void reflect_layout(
         VkDevice device, const Slice<MetadataOverride>& overrides);
+
+    void fill_stages(TArray<VkPipelineShaderStageCreateInfo>& pipeline_stages);
+};
+
+struct ShaderCache {
+    void          init(Allocator& allocator, VkDevice device);
+    ShaderModule* get_shader(Str path);
+    void          deinit();
+
+    VkDevice                device;
+    TMap<Str, ShaderModule> module_cache;
 };
