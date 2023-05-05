@@ -276,6 +276,7 @@ Result<VkDevice, VkResult> create_device_with_queues(
     VkPhysicalDeviceFeatures features = {};
     // @todo: Move this out of here!
     features.multiDrawIndirect        = VK_TRUE;
+    features.fillModeNonSolid         = VK_TRUE;
 
     VkDeviceCreateInfo create_info = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,

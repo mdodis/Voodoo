@@ -1,5 +1,15 @@
 #include "PipelineBuilder.h"
 
+#include "Shader.h"
+
+PipelineBuilder& PipelineBuilder::set_effect(struct ShaderEffect* effect)
+{
+    shader_stages.empty();
+    effect->fill_stages(shader_stages);
+    layout = effect->built_layout;
+    return *this;
+}
+
 void PipelineBuilder::init_defaults()
 {
     vertex_input_info = {
@@ -173,6 +183,12 @@ PipelineBuilder& PipelineBuilder::set_depth_test(
     return *this;
 }
 
+PipelineBuilder& PipelineBuilder::set_cull_mode(VkCullModeFlags mode)
+{
+    rasterizer_state.cullMode = mode;
+    return *this;
+}
+
 PipelineBuilder& PipelineBuilder::add_dynamic_state(
     VkDynamicState dynamic_state)
 {
@@ -182,7 +198,9 @@ PipelineBuilder& PipelineBuilder::add_dynamic_state(
 
 Result<VkPipeline, VkResult> PipelineBuilder::build(VkDevice device)
 {
-    ASSERT(layout != VK_NULL_HANDLE && "set_layout must have been called during build stage");
+    ASSERT(
+        layout != VK_NULL_HANDLE &&
+        "set_layout must have been called during build stage");
 
     VkPipelineViewportStateCreateInfo viewport_info = {
         .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,

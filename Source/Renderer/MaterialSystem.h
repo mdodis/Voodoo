@@ -43,5 +43,13 @@ struct MaterialSystem {
     void init(struct Renderer* renderer);
     void deinit();
 
-    PipelineBuilder forward_builder;
+    PipelineBuilder  forward_builder;
+    struct Renderer* owner;
+
+private:
+    ShaderEffect* build_effect(Str vert_path, Str frag_path);
+    ShaderPass*   build_shader(
+          VkRenderPass     render_pass,
+          PipelineBuilder& builder,
+          ShaderEffect*    effect);
 };

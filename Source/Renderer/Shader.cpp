@@ -75,9 +75,9 @@ struct DescriptorSetLayoutData {
 };
 
 void ShaderEffect::reflect_layout(
-    VkDevice device, const Slice<MetadataOverride>& overrides)
+    VkDevice device, const Slice<MetadataOverride> overrides)
 {
-    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(4));
+    CREATE_SCOPED_ARENA(System_Allocator, temp, MEGABYTES(1));
 
     TArray<DescriptorSetLayoutData> set_layouts(&System_Allocator);
     DEFER(set_layouts.release());
@@ -119,7 +119,11 @@ void ShaderEffect::reflect_layout(
                 layout_binding.descriptorType =
                     (VkDescriptorType)binding.descriptor_type;
 
-                // @todo: overrides
+                for (const MetadataOverride& override : overrides) {
+                    if (Str(binding.name) == override.name) {
+                        layout_binding.descriptorType = override.overriden_type;
+                    }
+                }
 
                 layout_binding.descriptorCount = 1;
                 for (u32 dim_index = 0; dim_index < binding.array.dims_count;
@@ -130,7 +134,7 @@ void ShaderEffect::reflect_layout(
                 }
 
                 layout_binding.stageFlags =
-                    (VkShaderStageFlagBits)spv_mod.shader_stage;
+                    static_cast<VkShaderStageFlagBits>(spv_mod.shader_stage);
 
                 ShaderEffect::BindingMetadata metadata = {
                     .set     = set.set,
@@ -176,29 +180,36 @@ void ShaderEffect::reflect_layout(
 
     for (int i = 0; i < 4; ++i) {
         DescriptorSetLayoutData& ly = merged_layouts[i];
+        ly.bindings.alloc           = &temp;
 
         ly.set_number = i;
         ly.create_info.sType =
             VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 
+        int num_added = 0;
+
         TMap<u32, VkDescriptorSetLayoutBinding> binds(temp);
-        for (auto& s : set_layouts) {
+        for (DescriptorSetLayoutData& s : set_layouts) {
             if (s.set_number == i) {
-                for (auto& b : s.bindings) {
+                for (VkDescriptorSetLayoutBinding& b : s.bindings) {
                     if (binds.contains(b.binding)) {
                         binds[b.binding].stageFlags |= b.stageFlags;
                     } else {
+                        b.pImmutableSamplers = nullptr;
                         binds.add(b.binding, b);
+                        num_added++;
                     }
                 }
             }
         }
 
-        for (TMapPair<u32, VkDescriptorSetLayoutBinding> pair : binds) {
+        for (auto pair : binds) {
             ly.bindings.add(pair.val);
         }
 
-        auto s = slice(ly.bindings);
+        ASSERT(num_added == ly.bindings.size);
+
+        Slice<VkDescriptorSetLayoutBinding> s = slice(ly.bindings);
         sort::quicksort(
             s,
             sort::CompareFunc<VkDescriptorSetLayoutBinding>::create_lambda(
@@ -213,12 +224,13 @@ void ShaderEffect::reflect_layout(
         ly.create_info.pNext        = nullptr;
 
         if (ly.create_info.bindingCount > 0) {
-            set_hashes[i] = hash_of(ly.create_info, 0x1337);
-            vkCreateDescriptorSetLayout(
+            set_hashes[i]                 = hash_of(ly.create_info, 0x1337);
+            VkDescriptorSetLayout& target = this->set_layouts[i];
+            VK_CHECK(vkCreateDescriptorSetLayout(
                 device,
                 &ly.create_info,
                 nullptr,
-                &this->set_layouts[i]);
+                &target));
         } else {
             set_hashes[i]        = 0;
             this->set_layouts[i] = VK_NULL_HANDLE;
@@ -270,10 +282,20 @@ ShaderModule* ShaderCache::get_shader(Str path)
         return &module_cache[path];
     }
 
-    ShaderModule new_shader;
-    new_shader.mod =
-        load_shader_binary(System_Allocator, device, path).unwrap();
+    Raw data = dump_file(path, System_Allocator);
 
+    VkShaderModuleCreateInfo create_info = {
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = data.size,
+        .pCode    = (u32*)data.buffer,
+    };
+
+    VkShaderModule result;
+    VK_CHECK(vkCreateShaderModule(device, &create_info, 0, &result));
+
+    ShaderModule new_shader;
+    new_shader.mod  = result;
+    new_shader.code = slice((u8*)data.buffer, data.size);
     module_cache.add(path.clone(System_Allocator), new_shader);
 
     return &module_cache[path];

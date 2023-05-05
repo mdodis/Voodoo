@@ -7,11 +7,13 @@
 #include "Core/DeletionQueue.h"
 #include "DescriptorBuilder.h"
 #include "ImmediateDrawQueue.h"
+#include "MaterialSystem.h"
 #include "Memory/Base.h"
 #include "Mesh.h"
 #include "MulticastDelegate.h"
 #include "RenderObject.h"
 #include "RendererTypes.h"
+#include "Shader.h"
 #include "VulkanCommon/VulkanCommon.h"
 #include "Window/Window.h"
 #include "vk_mem_alloc.h"
@@ -44,6 +46,9 @@ struct Renderer {
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
     VkDescriptorSetLayout      texture_set_layout;
+
+    MaterialSystem material_system;
+    ShaderCache    shader_cache;
 
     using Hook = MulticastDelegate<Renderer*>;
     struct {

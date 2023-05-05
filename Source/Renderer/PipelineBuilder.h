@@ -28,6 +28,7 @@ struct PipelineBuilder {
 
     PipelineBuilder& add_shader_stage(
         VkShaderStageFlagBits stage, VkShaderModule module);
+    PipelineBuilder& set_effect(struct ShaderEffect* effect);
     PipelineBuilder& set_primitive_topology(VkPrimitiveTopology topology);
     PipelineBuilder& set_polygon_mode(VkPolygonMode mode);
     PipelineBuilder& set_viewport(
@@ -42,6 +43,7 @@ struct PipelineBuilder {
     PipelineBuilder& set_vertex_input_info(VertexInputInfo& info);
     PipelineBuilder& set_depth_test(
         bool enabled, bool write, VkCompareOp compare_op);
+    PipelineBuilder& set_cull_mode(VkCullModeFlags mode);
     PipelineBuilder& add_dynamic_state(VkDynamicState dynamic_state);
 
     void                         init_defaults();

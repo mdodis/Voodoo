@@ -36,7 +36,7 @@ add_custom_target(ECSMetacompilerStep
     DEPENDS ${MODULE_FILES_PATH}
 )
 
-file(STRINGS ${MODULE_FILES_PATH} MODULE_FILES)
+# file(STRINGS ${MODULE_FILES_PATH} MODULE_FILES)
 
 add_dependencies(ECS ECSMetacompilerStep)
 

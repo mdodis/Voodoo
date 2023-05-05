@@ -42,7 +42,7 @@ struct ShaderEffect {
 
     void add_stage(ShaderModule* mod, VkShaderStageFlagBits flags);
     void reflect_layout(
-        VkDevice device, const Slice<MetadataOverride>& overrides);
+        VkDevice device, const Slice<MetadataOverride> overrides);
 
     void fill_stages(TArray<VkPipelineShaderStageCreateInfo>& pipeline_stages);
 };

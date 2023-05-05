@@ -168,6 +168,8 @@ void Renderer::init()
     init_pipelines();
     init_default_meshes();
 
+    shader_cache.init(allocator, device);
+    material_system.init(this);
     imm.init(device, color_pass.render_pass, vma, &desc.cache, &desc.allocator);
 
     hooks.post_init.broadcast(this);
@@ -2056,6 +2058,7 @@ void Renderer::deinit()
     }
 
     imm.deinit();
+    shader_cache.deinit();
 
     desc.cache.deinit();
     desc.allocator.deinit();
