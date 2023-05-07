@@ -2,6 +2,7 @@
 set(SOURCES
     "./BlockList.test.cpp"
     "./Archive.test.cpp"
+    "./Handle.test.cpp"
     "./Tests.cpp"
     )
 
