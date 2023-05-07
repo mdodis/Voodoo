@@ -51,7 +51,7 @@ struct MaterialData {
     bool operator==(const MaterialData& other) const;
 };
 
-_inline bool hash_of(const MaterialData& data, u32 seed)
+_inline u64 hash_of(const MaterialData& data, u32 seed)
 {
     u64 result = hash_of(data.base_template, seed);
 
