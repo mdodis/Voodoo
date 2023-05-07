@@ -46,10 +46,19 @@ void MaterialSystem::init(Renderer* renderer)
         LIT("Shaders/tri_mesh_ssbo_instanced.vert.spv"),
         LIT("Shaders/textured_lit.frag.spv"));
 
+    ShaderEffect* colored_lit = build_effect(
+        LIT("Shaders/tri_mesh_ssbo_instanced.vert.spv"),
+        LIT("Shaders/colored_lit.frag.spv"));
+
     ShaderPass* textured_lit_pass = build_shader(
         renderer->color_pass.render_pass,
         forward_builder,
         textured_lit);
+
+    ShaderPass* colored_lit_pass = build_shader(
+        renderer->color_pass.render_pass,
+        forward_builder,
+        colored_lit);
 
     // Build Default textured template
     {
@@ -57,6 +66,13 @@ void MaterialSystem::init(Renderer* renderer)
         effect_template.pass_shaders = textured_lit_pass;
 
         template_cache.add(LIT("default-opaque-textured"), effect_template);
+    }
+
+    {
+        EffectTemplate effect_template;
+        effect_template.pass_shaders = colored_lit_pass;
+
+        template_cache.add(LIT("default-opaque-colored"), effect_template);
     }
 }
 

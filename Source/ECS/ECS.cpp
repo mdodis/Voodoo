@@ -29,7 +29,11 @@ void ECS::init(struct Renderer* r)
     {
         rendering.objects.alloc = &System_Allocator;
         rendering.transform_view_query =
-            world.query_builder<TransformComponent, MeshMaterialComponent>()
+            world
+                .query_builder<
+                    TransformComponent,
+                    StaticMeshComponent,
+                    MaterialComponent>()
                 .build();
     }
 
@@ -103,30 +107,31 @@ void ECS::run()
 
         rendering.transform_view_query.each(
             [this](
-                flecs::entity          e,
-                TransformComponent&    transform,
-                MeshMaterialComponent& meshmat) {
+                flecs::entity        e,
+                TransformComponent&  transform,
+                StaticMeshComponent& mesh,
+                MaterialComponent&   material) {
                 // Compute transform
                 glm::mat4 object_transform =
                     glm::translate(glm::mat4(1.0f), transform.world_position) *
                     glm::toMat4(transform.world_rotation) *
                     glm::scale(glm::mat4(1.0f), transform.world_scale);
 
-                if (meshmat.mesh == 0) {
-                    meshmat.mesh = renderer->get_mesh(meshmat.mesh_name);
+                if (mesh.mesh == 0) {
+                    mesh.mesh = renderer->get_mesh(mesh.name);
                 }
 
-                ASSERT(meshmat.mesh);
+                ASSERT(mesh.mesh);
 
-                if (meshmat.material == 0) {
-                    meshmat.material =
-                        renderer->get_material(meshmat.material_name);
+                if (material.material == 0) {
+                    material.material =
+                        renderer->material_system.find_material(material.name);
                 }
-                ASSERT(meshmat.material);
+                ASSERT(material.material);
 
                 rendering.objects.add(RenderObject{
-                    .mesh      = meshmat.mesh,
-                    .material  = meshmat.material,
+                    .mesh      = mesh.mesh,
+                    .material  = material.material,
                     .transform = object_transform,
                 });
             });

@@ -108,6 +108,8 @@ void InspectorEditorWindow::draw()
             ImGui::Text("Name: %s", t->name.data);
             ImGui::Text("Data: 0x%x", (u64)t->material);
         }
+
+        ImGui::Separator();
     });
     ImGui::PopID();
 }

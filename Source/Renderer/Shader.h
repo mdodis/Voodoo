@@ -45,6 +45,15 @@ struct ShaderEffect {
         VkDevice device, const Slice<MetadataOverride> overrides);
 
     void fill_stages(TArray<VkPipelineShaderStageCreateInfo>& pipeline_stages);
+
+    u32 num_valid_layouts() const
+    {
+        u32 result = 0;
+        for (const VkDescriptorSetLayout& set_layout : set_layouts) {
+            if (set_layout != VK_NULL_HANDLE) result++;
+        }
+        return result;
+    }
 };
 
 struct ShaderCache {

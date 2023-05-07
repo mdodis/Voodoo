@@ -129,6 +129,44 @@ static void populate_demo_scene()
     empire.set<MaterialComponent>({
         .name = LIT("lost-empire-albedo"),
     });
+
+    const int monke_count = 10;
+
+    flecs::entity last_monke;
+    CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
+    for (int i = 0; i < monke_count; ++i) {
+        SAVE_ARENA(temp);
+
+        Str  entity_name = format(temp, LIT("Entity #{}\0"), i);
+        auto ent         = G.engine.ecs->create_entity(entity_name);
+        ent.set<TransformComponent>(
+            {{i * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
+        ent.set<StaticMeshComponent>({
+            .name = LIT("monke"),
+        });
+        ent.set<MaterialComponent>({
+            .name = LIT("default-colored"),
+        });
+        ent.child_of(empire);
+
+        if (i == 5) last_monke = ent;
+    }
+
+    {
+        SAVE_ARENA(temp);
+
+        Str  entity_name = format(temp, LIT("Entity #{}\0"), monke_count);
+        auto ent         = G.engine.ecs->create_entity(entity_name);
+        ent.set<TransformComponent>(
+            {{monke_count * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
+        ent.set<StaticMeshComponent>({
+            .name = LIT("monke"),
+        });
+        ent.set<MaterialComponent>({
+            .name = LIT("default-colored"),
+        });
+        ent.child_of(last_monke);
+    }
 }
 
 static void on_engine_pre_init(Engine* engine)

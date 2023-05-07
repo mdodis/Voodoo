@@ -515,6 +515,14 @@ void Renderer::init_pipelines()
         material_system
             .build_material(LIT("lost-empire-albedo"), material_data);
     }
+
+    {
+        MaterialData material_data = {
+            .base_template = LIT("default-opaque-colored"),
+        };
+
+        material_system.build_material(LIT("default-colored"), material_data);
+    }
 }
 
 void Renderer::init_present_render_pass()
@@ -1756,15 +1764,19 @@ void Renderer::draw_color_pass(
                 0,
                 nullptr);
 
-            vkCmdBindDescriptorSets(
-                cmd,
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                batch.material->base->pass_shaders->layout,
-                2,
-                1,
-                &batch.material->pass_sets,
-                0,
-                nullptr);
+            if (batch.material->base->pass_shaders->effect
+                    ->num_valid_layouts() > 2)
+            {
+                vkCmdBindDescriptorSets(
+                    cmd,
+                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                    batch.material->base->pass_shaders->layout,
+                    2,
+                    1,
+                    &batch.material->pass_sets,
+                    0,
+                    nullptr);
+            }
 
             // Bind mesh
             VkDeviceSize offset = 0;
