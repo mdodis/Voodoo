@@ -29,7 +29,7 @@ add_custom_command(
     COMMAND metacompiler
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
     COMMENT "Run pre-compile step"
-    SOURCES ${HEADERS}
+    DEPENDS ${HEADERS}
 )
 
 add_custom_target(ECSMetacompilerStep
