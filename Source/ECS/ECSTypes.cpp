@@ -3,6 +3,7 @@
 #define ALL_DEFAULT_ECS_TYPES    \
     X(TransformComponent)        \
     X(MeshMaterialComponent)     \
+    X(StaticMeshComponent)       \
     X(EditorSelectableComponent) \
     X(EditorGizmoShapeComponent)
 

@@ -14,6 +14,19 @@ TEST_CASE("Core/Handle", "Handle Example")
     THandleSystem<Str, SimpleResource> handle_system;
     handle_system.init(System_Allocator);
 
+    bool freed_100 = false, freed_200 = false;
+    bool valid_100 = true, valid_200 = true;
+
+    handle_system.on_release.bind_lambda([&](SimpleResource& resource) {
+        if (resource.data == 100) {
+            valid_100 = !freed_100;
+            freed_100 = true;
+        } else if (resource.data == 200) {
+            valid_200 = !freed_200;
+            freed_200 = true;
+        }
+    });
+
     {
         SimpleResource resource = {
             .data = 100,
@@ -43,6 +56,11 @@ TEST_CASE("Core/Handle", "Handle Example")
 
         REQUIRE(resource.data == 200, "");
     }
+
+    handle_system.deinit();
+
+    REQUIRE(freed_100 && freed_200, "");
+    REQUIRE(valid_100 && valid_200, "");
 
     return MPASSED();
 }

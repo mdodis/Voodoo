@@ -14,6 +14,7 @@
 #include "RenderObject.h"
 #include "RendererTypes.h"
 #include "Shader.h"
+#include "TextureSystem.h"
 #include "VulkanCommon/VulkanCommon.h"
 #include "Window/Window.h"
 #include "vk_mem_alloc.h"
@@ -48,6 +49,7 @@ struct Renderer {
     VkDescriptorSetLayout      texture_set_layout;
 
     MaterialSystem material_system;
+    TextureSystem  texture_system;
     ShaderCache    shader_cache;
 
     using Hook = MulticastDelegate<Renderer*>;

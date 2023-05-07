@@ -44,7 +44,7 @@ struct THandleSystem {
     {
         handles.release();
 
-        for (TMapPair<u32, THandleAttachment<ResourceType>>& pair : resources) {
+        for (TMapPair<u32, THandleAttachment<ResourceType>> pair : resources) {
             on_release.call_safe(pair.val.data);
         }
 

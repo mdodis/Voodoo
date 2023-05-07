@@ -164,12 +164,15 @@ void Renderer::init()
     init_framebuffers();
     init_sync_objects();
     init_descriptors();
+
+    texture_system.init(allocator, this);
+    shader_cache.init(allocator, device);
+    material_system.init(this);
+
     init_default_images();
     init_pipelines();
     init_default_meshes();
 
-    shader_cache.init(allocator, device);
-    material_system.init(this);
     imm.init(device, color_pass.render_pass, vma, &desc.cache, &desc.allocator);
 
     hooks.post_init.broadcast(this);
@@ -405,18 +408,16 @@ void Renderer::init_pipelines()
             VkSamplerCreateInfo sampler_create_info =
                 make_sampler_create_info(VK_FILTER_NEAREST);
 
-            VkSampler blocky_sampler;
-            VK_CHECK(vkCreateSampler(
-                device,
-                &sampler_create_info,
-                0,
-                &blocky_sampler));
+            THandle<Texture> texture_handle =
+                texture_system.get_handle(LIT("Assets/lost-empire-rgba.asset"));
 
-            auto& t = textures.at(LIT("empire.diffuse"));
+            ASSERT(texture_handle.valid());
+            Texture* t = texture_system.resolve_handle(texture_handle);
+            DEFER(texture_system.release_handle(texture_handle));
 
             VkDescriptorImageInfo image_info = {
-                .sampler     = blocky_sampler,
-                .imageView   = t.view,
+                .sampler     = texture_system.samplers.pixel,
+                .imageView   = t->view,
                 .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             };
 
@@ -427,12 +428,6 @@ void Renderer::init_pipelines()
                     VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                     VK_SHADER_STAGE_FRAGMENT_BIT)
                 .build(texture_set, texture_set_layout);
-
-            main_deletion_queue.add(
-                DeletionQueue::DeletionDelegate::create_lambda(
-                    [this, blocky_sampler]() {
-                        vkDestroySampler(device, blocky_sampler, 0);
-                    }));
         }
 
         VkPipelineLayout pipeline_layout;
@@ -496,6 +491,29 @@ void Renderer::init_pipelines()
         m->texture_set = texture_set;
         vkDestroyShaderModule(device, basic_shader_vert, 0);
         vkDestroyShaderModule(device, basic_shader_frag, 0);
+    }
+
+    // Textured new
+    {
+        THandle<Texture> texture_handle =
+            texture_system.get_handle(LIT("Assets/lost-empire-rgba.asset"));
+
+        ASSERT(texture_handle.valid());
+        Texture* t = texture_system.resolve_handle(texture_handle);
+        DEFER(texture_system.release_handle(texture_handle));
+
+        auto sampled_textures = arr<SampledTexture>(SampledTexture{
+            .sampler = texture_system.samplers.pixel,
+            .view    = t->view,
+        });
+
+        MaterialData material_data = {
+            .textures      = slice(sampled_textures),
+            .base_template = LIT("default-opaque-textured"),
+        };
+
+        material_system
+            .build_material(LIT("lost-empire-albedo"), material_data);
     }
 }
 
@@ -2059,6 +2077,8 @@ void Renderer::deinit()
 
     imm.deinit();
     shader_cache.deinit();
+    material_system.deinit();
+    texture_system.deinit();
 
     desc.cache.deinit();
     desc.allocator.deinit();
@@ -2143,37 +2163,5 @@ void Renderer::init_default_meshes()
 
 void Renderer::init_default_images()
 {
-    {
-        AllocatedImage image =
-            upload_image_from_file("Assets/lost-empire-rgba.asset").unwrap();
-
-        VkImageView           view;
-        VkImageViewCreateInfo create_info = {
-            .sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .pNext    = 0,
-            .flags    = 0,
-            .image    = image.image,
-            .viewType = VK_IMAGE_VIEW_TYPE_2D,
-            .format   = VK_FORMAT_R8G8B8A8_SRGB,
-            .subresourceRange =
-                {
-                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                    .baseMipLevel   = 0,
-                    .levelCount     = 1,
-                    .baseArrayLayer = 0,
-                    .layerCount     = 1,
-                },
-        };
-        VK_CHECK(vkCreateImageView(device, &create_info, 0, &view));
-
-        Texture new_texture = {
-            .image = image,
-            .view  = view,
-        };
-
-        textures.add(LIT("empire.diffuse"), new_texture);
-
-        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-            [this, view]() { vkDestroyImageView(device, view, 0); }));
-    }
+    texture_system.create_texture("Assets/lost-empire-rgba.asset");
 }

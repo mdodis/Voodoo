@@ -120,19 +120,15 @@ static int convert(Slice<Str> args)
 
 static void populate_demo_scene()
 {
-    {
-        MaterialSystem& ms = G.engine.renderer->material_system;
-        MaterialData    data;
-        data.base_template = LIT("default-opaque-textured");
-
-        ms.build_material(LIT("lost-empire-albedo"), data);
-    }
-
     auto empire = G.engine.ecs->create_entity(LIT("Lost Empire"));
     empire.set<TransformComponent>({{0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
     empire.set<MeshMaterialComponent>({
         .mesh_name     = LIT("lost_empire"),
         .material_name = LIT("default.mesh.textured"),
+    });
+
+    empire.set<StaticMeshComponent>({
+        .name = LIT("lost_empire"),
     });
 
     const int monke_count = 10;

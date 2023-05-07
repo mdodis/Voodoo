@@ -113,6 +113,14 @@ struct MeshMaterialComponentDescriptor : public IDescriptor {
 };
 DEFINE_DESCRIPTOR_OF_INL(MeshMaterialComponent);
 
+struct StaticMeshComponent {
+    Str name;
+
+    // Not Serialized
+    Mesh* mesh = nullptr;
+};
+extern ECS_COMPONENT_DECLARE(StaticMeshComponent);
+
 // Editor-only Components (Not Serialized)
 
 struct EditorSelectableComponent {
