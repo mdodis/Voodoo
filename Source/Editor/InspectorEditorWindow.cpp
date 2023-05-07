@@ -85,6 +85,28 @@ void InspectorEditorWindow::draw()
                 glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1)) *
                 glm::angleAxis(glm::radians(euler.y), glm::vec3(0, 1, 0)) *
                 glm::angleAxis(glm::radians(euler.x), glm::vec3(1, 0, 0));
+
+            ImGui::Text(
+                "%f %f %f",
+                t->world_position.x,
+                t->world_position.y,
+                t->world_position.z);
+
+            ImGui::Text(
+                "%f %f %f",
+                t->world_scale.x,
+                t->world_scale.y,
+                t->world_scale.z);
+
+        } else if (comp.raw_id() == ecs_id(StaticMeshComponent)) {
+            auto* t = entity.get<StaticMeshComponent>();
+
+            ImGui::Text("Name: %s", t->name.data);
+            ImGui::Text("Data: 0x%x", (u64)t->mesh);
+        } else if (comp.raw_id() == ecs_id(MaterialComponent)) {
+            auto* t = entity.get<MaterialComponent>();
+            ImGui::Text("Name: %s", t->name.data);
+            ImGui::Text("Data: 0x%x", (u64)t->material);
         }
     });
     ImGui::PopID();

@@ -52,8 +52,8 @@ struct UploadContext {
 };
 
 struct IndirectBatch {
-    struct Mesh*     mesh;
-    struct Material* material;
-    u32              first;
-    u32              count;
+    struct Mesh*             mesh;
+    struct MaterialInstance* material;
+    u32                      first;
+    u32                      count;
 };

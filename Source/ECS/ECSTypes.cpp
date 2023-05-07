@@ -4,6 +4,7 @@
     X(TransformComponent)        \
     X(MeshMaterialComponent)     \
     X(StaticMeshComponent)       \
+    X(MaterialComponent)         \
     X(EditorSelectableComponent) \
     X(EditorGizmoShapeComponent)
 

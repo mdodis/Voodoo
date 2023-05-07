@@ -121,6 +121,14 @@ struct StaticMeshComponent {
 };
 extern ECS_COMPONENT_DECLARE(StaticMeshComponent);
 
+struct MaterialComponent {
+    Str name;
+
+    // Not Serialized
+    struct MaterialInstance* material = nullptr;
+};
+extern ECS_COMPONENT_DECLARE(MaterialComponent);
+
 // Editor-only Components (Not Serialized)
 
 struct EditorSelectableComponent {

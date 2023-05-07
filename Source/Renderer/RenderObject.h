@@ -16,7 +16,7 @@ static _inline bool operator==(Material& left, Material& right)
 }
 
 struct RenderObject {
-    Mesh*     mesh;
-    Material* material;
-    glm::mat4 transform;
+    Mesh*                    mesh;
+    struct MaterialInstance* material;
+    glm::mat4                transform;
 };

@@ -34,8 +34,7 @@ void MaterialSystem::init(Renderer* renderer)
         forward_builder.set_primitive_topology(
             VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
         forward_builder.set_polygon_mode(VK_POLYGON_MODE_FILL);
-        forward_builder
-            .set_depth_test(true, true, VK_COMPARE_OP_GREATER_OR_EQUAL);
+        forward_builder.set_depth_test(true, true, VK_COMPARE_OP_LESS);
         forward_builder.set_cull_mode(VK_CULL_MODE_NONE);
         forward_builder.add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
         forward_builder.add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
@@ -82,10 +81,13 @@ ShaderEffect* MaterialSystem::build_effect(Str vert_path, Str frag_path)
             VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
-    auto overrides =
-        arr<ShaderEffect::MetadataOverride>(ShaderEffect::MetadataOverride{
+    auto overrides = arr<ShaderEffect::MetadataOverride>(
+        ShaderEffect::MetadataOverride{
             LIT("globalData"),
-            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC});
+            VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC},
+        ShaderEffect::MetadataOverride{
+            LIT("objectBuffer"),
+            VK_DESCRIPTOR_TYPE_STORAGE_BUFFER});
 
     effect->reflect_layout(owner->device, slice(overrides));
 
@@ -139,7 +141,7 @@ MaterialInstance* MaterialSystem::build_material(
             VK_SHADER_STAGE_FRAGMENT_BIT);
     }
 
-    builder.build(result->pass_sets);
+    ASSERT(builder.build(result->pass_sets));
 
     print(LIT("Built new material {}\n"), material_name);
 
@@ -147,4 +149,13 @@ MaterialInstance* MaterialSystem::build_material(
     materials.add(material_name, result);
 
     return result;
+}
+
+MaterialInstance* MaterialSystem::find_material(Str name)
+{
+    if (materials.contains(name)) {
+        return materials[name];
+    }
+
+    return nullptr;
 }

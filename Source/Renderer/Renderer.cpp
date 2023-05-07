@@ -1728,7 +1728,7 @@ void Renderer::draw_color_pass(
             vkCmdBindPipeline(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                batch.material->pipeline);
+                batch.material->base->pass_shaders->pipeline);
 
             u32 uniform_offsets[] = {
                 // Global
@@ -1739,7 +1739,7 @@ void Renderer::draw_color_pass(
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                batch.material->pipeline_layout,
+                batch.material->base->pass_shaders->layout,
                 0,
                 1,
                 &frame.global_descriptor,
@@ -1749,24 +1749,22 @@ void Renderer::draw_color_pass(
             vkCmdBindDescriptorSets(
                 cmd,
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                batch.material->pipeline_layout,
+                batch.material->base->pass_shaders->layout,
                 1,
                 1,
                 &frame.object_descriptor,
                 0,
                 nullptr);
 
-            if (batch.material->texture_set != VK_NULL_HANDLE) {
-                vkCmdBindDescriptorSets(
-                    cmd,
-                    VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    batch.material->pipeline_layout,
-                    2,
-                    1,
-                    &batch.material->texture_set,
-                    0,
-                    nullptr);
-            }
+            vkCmdBindDescriptorSets(
+                cmd,
+                VK_PIPELINE_BIND_POINT_GRAPHICS,
+                batch.material->base->pass_shaders->layout,
+                2,
+                1,
+                &batch.material->pass_sets,
+                0,
+                nullptr);
 
             // Bind mesh
             VkDeviceSize offset = 0;

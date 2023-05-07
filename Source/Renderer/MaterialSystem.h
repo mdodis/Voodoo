@@ -81,6 +81,8 @@ struct MaterialSystem {
     MaterialInstance* build_material(
         Str material_name, const MaterialData& material_data);
 
+    MaterialInstance* find_material(Str name);
+
 private:
     TMap<Str, EffectTemplate>             template_cache;
     TMap<Str, MaterialInstance*>          materials;
