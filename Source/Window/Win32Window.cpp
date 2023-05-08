@@ -36,7 +36,7 @@ namespace win {
         hwnd = Win32::CreateWindowExA(
             0,
             wnd_class.class_name,
-            "VKX",
+            "Voodoo",
             style,
             Win32::DefaultWindowPos,
             Win32::DefaultWindowPos,

@@ -2,6 +2,8 @@
 
 A simplistic ECS engine, with just one Vulkan renderer, primarily focused on experimentation and ease of use.
 
+![Editor screenshot](EditorScreenshot.png)
+
 ## Platforms
 
 | Platform        | Supported |
