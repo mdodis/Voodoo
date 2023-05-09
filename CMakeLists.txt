@@ -15,6 +15,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL "glfw")
 set(GLFW_INSTALL OFF CACHE BOOL "glfw")
 
 set(MOKLIB_COMPILE_STATIC ON CACHE BOOL "Compile MokLib as static library")
+add_subdirectory("ThirdParty/SFL")
 add_subdirectory("ThirdParty/flecs")
 add_subdirectory("ThirdParty/glm")
 add_subdirectory("ThirdParty/SPIRVReflect")

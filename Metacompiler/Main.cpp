@@ -390,31 +390,6 @@ static void write_module(Str target)
     write_generated_files_list(genlist);
 }
 
-struct FmtPath {
-    Str in;
-    FmtPath(Str in) : in(in) {}
-};
-
-PROC_FMT_IMPL(FmtPath)
-{
-    u64 i = 0;
-
-    auto is_sep = [](char c) { return (c == '\\') || (c == '/'); };
-
-    while (i < type.in.len) {
-        if (is_sep(type.in[i])) {
-            tape->write_char('/');
-
-            while ((i < type.in.len) && is_sep(type.in[i])) {
-                i++;
-            }
-        } else {
-            tape->write_char(type.in[i]);
-            i++;
-        }
-    }
-}
-
 static void write_generated_files_list(Str path)
 {
     CREATE_SCOPED_ARENA(G.allocator, temp, KILOBYTES(1));
