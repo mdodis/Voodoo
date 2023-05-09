@@ -1,6 +1,6 @@
 #include "Engine.h"
 
-#include "AssetManager.h"
+#include "AssetSystem.h"
 #include "ECS/ECS.h"
 #include "Memory/Extras.h"
 #include "Renderer/Renderer.h"
@@ -18,7 +18,7 @@ void Engine::init()
     renderer->validation_layers = true;
     renderer->allocator         = allocator;
     ecs                         = alloc<ECS>(allocator);
-    asset_manager               = alloc<AssetManager>(allocator);
+    asset_system                = alloc<AssetSystem>(allocator);
 
     hooks.pre_init.broadcast(this);
 
@@ -29,7 +29,7 @@ void Engine::init()
     renderer->init();
 
     // Initialize asset manager
-    asset_manager->init(allocator);
+    asset_system->init(allocator);
 
     // Initialize ECS
     ecs->init(renderer);
@@ -60,5 +60,5 @@ void Engine::loop()
 void Engine::deinit()
 {
     renderer->deinit();
-    asset_manager->deinit();
+    asset_system->deinit();
 }

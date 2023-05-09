@@ -50,9 +50,8 @@ TEST_CASE("AssetLibrary/Main", "Write/Read asset basic")
     {
         CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
 
-        auto ft = open_read_tape(LIT("./asset.test.asset"));
-
-        Asset asset = asset.load(temp, &ft).unwrap();
+        BufferedReadTape<true> ft(open_file_read(LIT("./asset.test.asset")));
+        Asset                  asset = asset.load(temp, &ft).unwrap();
 
         REQUIRE(
             memcmp(blob.elements, asset.blob.ptr, asset.blob.size()) == 0,

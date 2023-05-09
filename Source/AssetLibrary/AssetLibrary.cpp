@@ -149,6 +149,12 @@ Result<Asset, EAssetLoadError> Asset::load(
     return Ok(result);
 }
 
+Result<Asset, EAssetLoadError> Asset::load(Allocator& allocator, Str path)
+{
+    BufferedReadTape<true> t(open_file_read(path));
+    return Asset::load(allocator, &t);
+}
+
 void ImporterRegistry::register_importer(const Importer& importer)
 {
     for (const Importer& imp : importers) {

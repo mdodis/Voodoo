@@ -8,6 +8,7 @@ target_include_directories(Engine PRIVATE "." PUBLIC "..")
 target_link_libraries(Engine
     PUBLIC
     ECS
+    SflUUID
     PRIVATE
     core
     AssetLibrary

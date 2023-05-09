@@ -25,7 +25,7 @@ void TextureSystem::init(Allocator& allocator, Renderer* renderer)
 AllocatedImage TextureSystem::load_texture_from_file(Str path)
 {
     CREATE_SCOPED_ARENA(System_Allocator, temp, MEGABYTES(5));
-    auto read_tape = open_read_tape(path);
+    BufferedReadTape<true> read_tape(open_file_read(path));
 
     AssetInfo info = Asset::probe(temp, &read_tape).unwrap();
     ASSERT(info.kind == AssetKind::Texture);

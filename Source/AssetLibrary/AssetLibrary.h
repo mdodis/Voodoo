@@ -154,11 +154,7 @@ struct Asset {
 
     static Result<Asset, EAssetLoadError> load(
         Allocator& allocator, ReadTape* input);
-    static Result<Asset, EAssetLoadError> load(Allocator& allocator, Str path)
-    {
-        auto t = open_read_tape(path);
-        return load(allocator, &t);
-    }
+    static Result<Asset, EAssetLoadError> load(Allocator& allocator, Str path);
 
     static Result<AssetInfo, EAssetLoadError> probe(
         Allocator& allocator, ReadTape* input);

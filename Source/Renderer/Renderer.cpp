@@ -1345,8 +1345,8 @@ Result<AllocatedImage, VkResult> Renderer::upload_image_from_file(Str path)
 {
     CREATE_SCOPED_ARENA(allocator, temp, MEGABYTES(5));
 
-    auto      read_tape = open_read_tape(path);
-    AssetInfo info      = Asset::probe(temp, &read_tape).unwrap();
+    BufferedReadTape<true> read_tape(open_file_read(path));
+    AssetInfo              info = Asset::probe(temp, &read_tape).unwrap();
     ASSERT(info.kind == AssetKind::Texture);
     ASSERT(info.texture.format == TextureFormat::R8G8B8A8UInt);
 
