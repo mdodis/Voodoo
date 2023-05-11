@@ -3,6 +3,7 @@
 #include "AssetLibrary/AssetLibrary.h"
 #include "FileSystem/FileSystem.h"
 #include "Renderer.h"
+#include "tracy/Tracy.hpp"
 
 void TextureSystem::init(Allocator& allocator, Renderer* renderer)
 {
@@ -24,12 +25,18 @@ void TextureSystem::init(Allocator& allocator, Renderer* renderer)
 
 AllocatedImage TextureSystem::load_texture_from_file(Str path)
 {
+    ZoneScoped;
+
     CREATE_SCOPED_ARENA(System_Allocator, temp, MEGABYTES(5));
     BufferedReadTape<true> read_tape(open_file_read(path));
 
-    AssetInfo info = Asset::probe(temp, &read_tape).unwrap();
-    ASSERT(info.kind == AssetKind::Texture);
-    ASSERT(info.texture.format == TextureFormat::R8G8B8A8UInt);
+    AssetInfo info;
+    {
+        ZoneScopedN("Probe texture asset");
+        info = Asset::probe(temp, &read_tape).unwrap();
+        ASSERT(info.kind == AssetKind::Texture);
+        ASSERT(info.texture.format == TextureFormat::R8G8B8A8UInt);
+    }
 
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
     VkDeviceSize image_size   = info.actual_size;
@@ -42,10 +49,13 @@ AllocatedImage TextureSystem::load_texture_from_file(Str path)
             VMA_MEMORY_USAGE_CPU_ONLY)
             .unwrap();
 
-    void*     data = VMA_MAP(owner->vma, staging_buffer);
-    Slice<u8> buffer_ptr((u8*)data, image_size);
-    Asset::unpack(temp, info, &read_tape, buffer_ptr).unwrap();
-    VMA_UNMAP(owner->vma, staging_buffer);
+    {
+        ZoneScopedN("Unpack texture");
+        void*     data = VMA_MAP(owner->vma, staging_buffer);
+        Slice<u8> buffer_ptr((u8*)data, image_size);
+        Asset::unpack(temp, info, &read_tape, buffer_ptr).unwrap();
+        VMA_UNMAP(owner->vma, staging_buffer);
+    }
 
     VkExtent3D image_extent = {
         .width  = (u32)info.texture.width,

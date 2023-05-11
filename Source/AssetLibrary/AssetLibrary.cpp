@@ -5,6 +5,7 @@
 #include "Memory/AllocTape.h"
 #include "Serialization/JSON.h"
 #include "lz4.h"
+#include "tracy/Tracy.hpp"
 
 bool Asset::write(Allocator& allocator, WriteTape* output, bool compress)
 {
@@ -76,6 +77,8 @@ Result<void, EAssetLoadError> Asset::unpack(
     ReadTape*        input,
     Slice<u8>&       buffer)
 {
+    ZoneScoped;
+
     if (info.actual_size > buffer.size()) {
         return Err(AssetLoadError::Unknown);
     }
@@ -96,11 +99,16 @@ Result<void, EAssetLoadError> Asset::unpack(
         }
 
         // @note: For now we only have LZ4 compression
-        int result = LZ4_decompress_safe(
-            (const char*)compressed_blob.ptr,
-            (char*)buffer.ptr,
-            compressed_blob.size(),
-            (int)buffer.size());
+        int result = 0;
+
+        {
+            ZoneScopedN("LZ4_decompress_safe");
+            result = LZ4_decompress_safe(
+                (const char*)compressed_blob.ptr,
+                (char*)buffer.ptr,
+                compressed_blob.size(),
+                (int)buffer.size());
+        }
 
         if (result <= 0) {
             return Err(AssetLoadError::CompressionFailed);
@@ -108,6 +116,8 @@ Result<void, EAssetLoadError> Asset::unpack(
 
         return Ok<void>();
     } else {
+        ZoneScopedN("Static Load");
+
         if (!input->read(buffer.ptr, info.actual_size) == info.actual_size) {
             return Err(AssetLoadError::InvalidFormat);
         }

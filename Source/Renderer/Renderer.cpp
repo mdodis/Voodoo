@@ -26,13 +26,14 @@ static VK_PROC_DEBUG_CALLBACK(debug_callback)
 
 void Renderer::init()
 {
+    ZoneScopedN("Renderer.init");
+
     present_pass.images.alloc       = &allocator;
     present_pass.image_views.alloc  = &allocator;
     present_pass.framebuffers.alloc = &allocator;
     main_deletion_queue             = DeletionQueue(allocator);
     swap_chain_deletion_queue       = DeletionQueue(allocator);
     meshes.init(allocator);
-    materials.init(allocator);
     textures.init(allocator);
 
     frame_arena = Arena<ArenaMode::Dynamic>(allocator, KILOBYTES(8));
@@ -45,6 +46,8 @@ void Renderer::init()
 
     // Instance
     {
+        ZoneScopedN("Create Instance");
+
         SAVE_ARENA(temp_alloc);
 
         VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {
@@ -91,6 +94,8 @@ void Renderer::init()
 
     // Pick physical device
     {
+        ZoneScopedN("Pick Physical Device");
+
         SAVE_ARENA(temp_alloc);
 
         PickPhysicalDeviceInfo pick_info = {
@@ -106,6 +111,8 @@ void Renderer::init()
 
     // Create logical device
     {
+        ZoneScopedN("Build Logical Device");
+
         SAVE_ARENA(temp_alloc);
         auto requirements = arr<CreateDeviceFamilyRequirement>(
             CreateDeviceFamilyRequirement{
@@ -337,162 +344,6 @@ void Renderer::init_descriptors()
 void Renderer::init_pipelines()
 {
     CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(5));
-
-    // Untextured
-    {
-        VkPipelineLayout pipeline_layout;
-        // Create layout
-        {
-            auto layouts = arr<VkDescriptorSetLayout>(
-                global_set_layout,
-                object_set_layout);
-
-            VkPipelineLayoutCreateInfo create_info = {
-                .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                .setLayoutCount = layouts.count(),
-                .pSetLayouts    = layouts.elements,
-                .pushConstantRangeCount = 0,
-                .pPushConstantRanges    = 0,
-            };
-
-            VK_CHECK(vkCreatePipelineLayout(
-                device,
-                &create_info,
-                0,
-                &pipeline_layout));
-        }
-
-        // Load shaders
-        VkShaderModule basic_shader_vert, basic_shader_frag;
-
-        basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
-        basic_shader_frag = load_shader(LIT("Shaders/Basic.frag.spv"));
-
-        CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(1));
-
-        VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
-
-        VkPipeline pipeline =
-            PipelineBuilder(temp_alloc)
-                .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
-                .add_shader_stage(
-                    VK_SHADER_STAGE_FRAGMENT_BIT,
-                    basic_shader_frag)
-                .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
-                .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
-                .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .set_polygon_mode(VK_POLYGON_MODE_FILL)
-                .set_render_pass(color_pass.render_pass)
-                .set_layout(pipeline_layout)
-                .set_vertex_input_info(vertex_input_info)
-                .set_depth_test(true, true, VK_COMPARE_OP_LESS)
-                .build(device)
-                .unwrap();
-
-        main_deletion_queue.add(DeletionQueue::DeletionDelegate::create_lambda(
-            [this, pipeline, pipeline_layout]() {
-                vkDestroyPipeline(device, pipeline, 0);
-                vkDestroyPipelineLayout(device, pipeline_layout, 0);
-            }));
-
-        create_material(pipeline, pipeline_layout, LIT("default.mesh"));
-
-        vkDestroyShaderModule(device, basic_shader_vert, 0);
-        vkDestroyShaderModule(device, basic_shader_frag, 0);
-    }
-    // Textured
-    {
-        CREATE_SCOPED_ARENA(allocator, temp_alloc, KILOBYTES(5));
-
-        VkDescriptorSet texture_set;
-        {
-            VkSamplerCreateInfo sampler_create_info =
-                make_sampler_create_info(VK_FILTER_NEAREST);
-
-            THandle<Texture> texture_handle =
-                texture_system.get_handle(LIT("Assets/lost-empire-rgba.asset"));
-
-            ASSERT(texture_handle.valid());
-            Texture* t = texture_system.resolve_handle(texture_handle);
-            DEFER(texture_system.release_handle(texture_handle));
-
-            VkDescriptorImageInfo image_info = {
-                .sampler     = texture_system.samplers.pixel,
-                .imageView   = t->view,
-                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            };
-
-            DescriptorBuilder::create(temp_alloc, &desc.cache, &desc.allocator)
-                .bind_image(
-                    0,
-                    &image_info,
-                    VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                    VK_SHADER_STAGE_FRAGMENT_BIT)
-                .build(texture_set, texture_set_layout);
-        }
-
-        VkPipelineLayout pipeline_layout;
-        // Create layout
-        {
-            auto layouts = arr<VkDescriptorSetLayout>(
-                global_set_layout,
-                object_set_layout,
-                texture_set_layout);
-
-            VkPipelineLayoutCreateInfo create_info = {
-                .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-                .setLayoutCount = layouts.count(),
-                .pSetLayouts    = layouts.elements,
-                .pushConstantRangeCount = 0,
-                .pPushConstantRanges    = 0,
-            };
-
-            VK_CHECK(vkCreatePipelineLayout(
-                device,
-                &create_info,
-                0,
-                &pipeline_layout));
-        }
-
-        // Load shaders
-        VkShaderModule basic_shader_vert, basic_shader_frag;
-
-        basic_shader_vert = load_shader(LIT("Shaders/Basic.vert.spv"));
-        basic_shader_frag = load_shader(LIT("Shaders/Textured.frag.spv"));
-
-        VertexInputInfo vertex_input_info = Vertex::get_input_info(temp_alloc);
-
-        VkPipeline pipeline =
-            PipelineBuilder(temp_alloc)
-                .add_shader_stage(VK_SHADER_STAGE_VERTEX_BIT, basic_shader_vert)
-                .add_shader_stage(
-                    VK_SHADER_STAGE_FRAGMENT_BIT,
-                    basic_shader_frag)
-                .add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT)
-                .add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR)
-                .set_primitive_topology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST)
-                .set_polygon_mode(VK_POLYGON_MODE_FILL)
-                .set_render_pass(color_pass.render_pass)
-                .set_layout(pipeline_layout)
-                .set_vertex_input_info(vertex_input_info)
-                .set_depth_test(true, true, VK_COMPARE_OP_LESS)
-                .build(device)
-                .unwrap();
-
-        main_deletion_queue.add_lambda([this, pipeline, pipeline_layout]() {
-            vkDestroyPipeline(device, pipeline, 0);
-            vkDestroyPipelineLayout(device, pipeline_layout, 0);
-        });
-
-        Material* m = create_material(
-            pipeline,
-            pipeline_layout,
-            LIT("default.mesh.textured"));
-
-        m->texture_set = texture_set;
-        vkDestroyShaderModule(device, basic_shader_vert, 0);
-        vkDestroyShaderModule(device, basic_shader_frag, 0);
-    }
 
     // Textured new
     {
@@ -2104,18 +1955,6 @@ void Renderer::deinit()
     vkDestroyInstance(instance, 0);
 }
 
-Material* Renderer::create_material(
-    VkPipeline pipeline, VkPipelineLayout layout, Str id)
-{
-    Material mt = {
-        .pipeline        = pipeline,
-        .pipeline_layout = layout,
-    };
-    materials.add(id, mt);
-
-    return &materials[id];
-}
-
 Mesh* Renderer::get_mesh(Str id)
 {
     if (meshes.contains(id)) {
@@ -2124,16 +1963,9 @@ Mesh* Renderer::get_mesh(Str id)
     return 0;
 }
 
-Material* Renderer::get_material(Str id)
-{
-    if (materials.contains(id)) {
-        return &materials[id];
-    }
-    return 0;
-}
-
 void Renderer::init_default_meshes()
 {
+    ZoneScoped;
     Vertex* vertices = alloc_array<Vertex>(allocator, 3);
 
     vertices[0] = {
@@ -2176,5 +2008,6 @@ void Renderer::init_default_meshes()
 
 void Renderer::init_default_images()
 {
+    ZoneScoped;
     texture_system.create_texture("Assets/lost-empire-rgba.asset");
 }

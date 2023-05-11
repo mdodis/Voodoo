@@ -4,6 +4,7 @@
 #include "Containers/Extras.h"
 #include "DescriptorBuilder.h"
 #include "Renderer.h"
+#include "tracy/Tracy.hpp"
 
 bool MaterialData::operator==(const MaterialData& other) const
 {
@@ -18,6 +19,7 @@ bool MaterialData::operator==(const MaterialData& other) const
 
 void MaterialSystem::init(Renderer* renderer)
 {
+    ZoneScopedN("MaterialSystem.init");
     owner = renderer;
     template_cache.init(System_Allocator);
     materials.init(System_Allocator);

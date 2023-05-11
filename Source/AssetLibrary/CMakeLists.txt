@@ -13,6 +13,7 @@ target_link_libraries(AssetLibrary
     PRIVATE
     LZ4
     stb_image
-    tinyobjloader)
+    tinyobjloader
+    Tracy::TracyClient)
 
 add_subdirectory(Tests)

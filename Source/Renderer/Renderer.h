@@ -46,7 +46,6 @@ struct Renderer {
     FrameData                  frames[num_overlap_frames];
     VkDescriptorSetLayout      global_set_layout;
     VkDescriptorSetLayout      object_set_layout;
-    VkDescriptorSetLayout      texture_set_layout;
 
     MaterialSystem material_system;
     TextureSystem  texture_system;
@@ -101,7 +100,6 @@ struct Renderer {
 
     // Scene Management
     TMap<Str, Mesh>     meshes;
-    TMap<Str, Material> materials;
     TMap<Str, Texture>  textures;
     Slice<RenderObject> render_objects;
 
@@ -159,12 +157,9 @@ struct Renderer {
     /**
      * Used to update debug camera
      */
-    void           update();
-    VkShaderModule load_shader(Str path);
-    Material*      create_material(
-             VkPipeline pipeline, VkPipelineLayout layout, Str id);
+    void                             update();
+    VkShaderModule                   load_shader(Str path);
     Mesh*                            get_mesh(Str id);
-    Material*                        get_material(Str id);
     void                             upload_mesh(Mesh& mesh);
     Result<AllocatedImage, VkResult> upload_image_from_file(Str path);
     Result<AllocatedImage, VkResult> upload_image(const Asset& asset);
