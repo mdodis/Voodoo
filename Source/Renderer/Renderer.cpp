@@ -8,6 +8,7 @@
 #include "Memory/Extras.h"
 #include "PipelineBuilder.h"
 #include "RendererConfig.h"
+#include "tracy/Tracy.hpp"
 
 static auto Validation_Layers = arr<const char*>("VK_LAYER_KHRONOS_validation");
 static auto Device_Extensions =
@@ -1945,6 +1946,8 @@ void Renderer::draw()
     VK_CHECK(vkQueuePresentKHR(presentation.queue, &present_info));
 
     frame_num += 1;
+
+    FrameMark;
 }
 
 void Renderer::update()

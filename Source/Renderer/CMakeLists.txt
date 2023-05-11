@@ -14,4 +14,5 @@ target_link_libraries(Renderer
     VulkanCommon
     PRIVATE
     VulkanMemoryAllocator
-    SPIRVReflect)
+    SPIRVReflect
+    Tracy::TracyClient)
