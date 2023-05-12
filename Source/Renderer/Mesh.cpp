@@ -20,28 +20,28 @@ VertexInputInfo Vertex::get_input_info(Allocator& allocator)
         .location = 0,
         .binding  = 0,
         .format   = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset   = OFFSET_OF(Vertex, position),
+        .offset   = (u32)OFFSET_OF(Vertex, position),
     };
 
     result.attributes[1] = {
         .location = 1,
         .binding  = 0,
         .format   = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset   = OFFSET_OF(Vertex, normal),
+        .offset   = (u32)OFFSET_OF(Vertex, normal),
     };
 
     result.attributes[2] = {
         .location = 2,
         .binding  = 0,
         .format   = VK_FORMAT_R32G32B32_SFLOAT,
-        .offset   = OFFSET_OF(Vertex, color),
+        .offset   = (u32)OFFSET_OF(Vertex, color),
     };
 
     result.attributes[3] = {
         .location = 3,
         .binding  = 0,
         .format   = VK_FORMAT_R32G32_SFLOAT,
-        .offset   = OFFSET_OF(Vertex, uv),
+        .offset   = (u32)OFFSET_OF(Vertex, uv),
     };
 
     return result;

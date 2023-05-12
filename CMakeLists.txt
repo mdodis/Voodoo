@@ -3,6 +3,10 @@ project(VKX)
 set(CMAKE_CXX_STANDARD 20)
 include(CTest)
 
+# Enable profiler support
+option(TRACY_ENABLE "" OFF)
+
+# Library specific options
 add_compile_definitions(
     GLM_FORCE_DEPTH_ZERO_TO_ONE
     GLM_FORCE_RIGHT_HANDED
@@ -16,9 +20,17 @@ set(GLFW_INSTALL OFF CACHE BOOL "glfw")
 
 set(MOKLIB_COMPILE_STATIC ON CACHE BOOL "Compile MokLib as static library")
 
-option(TRACY_ENABLE "" ON)
-option(TRACY_ENABLE "" ON)
 option(TRACY_STATIC "" ON)
+
+# Add a test with the default properties already specified
+function(v_add_test test_target)
+    add_test(
+        NAME ${test_target}_test
+        COMMAND ${test_target}
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+    set_property(TEST ${test_target}_test PROPERTY PASS_REGULAR_EXPRESSION "Passed")
+    set_property(TEST ${test_target}_test PROPERTY FAIL_REGULAR_EXPRESSION "Failed")
+endfunction()
 
 add_subdirectory("ThirdParty/SFL")
 add_subdirectory("ThirdParty/flecs")
