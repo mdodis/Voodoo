@@ -44,6 +44,8 @@ struct AssetSystem {
 
     void refresh_registry();
 
+    AssetID resolve_reference(const AssetReference& reference) const;
+
     TMap<AssetReference, AssetID> registry;
     TMap<AssetID, Asset>          asset_states;
     SflUUIDContext                uuid_context;

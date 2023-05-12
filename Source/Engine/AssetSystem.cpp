@@ -36,4 +36,6 @@ void AssetSystem::refresh_registry()
     }
 }
 
+AssetID AssetSystem::resolve_reference(const AssetReference& reference) const {}
+
 void AssetSystem::deinit() {}
