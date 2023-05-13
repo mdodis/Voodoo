@@ -1,5 +1,4 @@
 #pragma once
-#include <glm/glm.hpp>
 
 #include "Mesh.h"
 #include "VulkanCommon/VulkanCommon.h"

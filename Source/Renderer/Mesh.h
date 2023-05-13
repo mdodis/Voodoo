@@ -1,7 +1,6 @@
 #pragma once
-#include <glm/glm.hpp>
-
 #include "AssetLibrary/AssetLibrary.h"
+#include "Core/MathTypes.h"
 #include "Result.h"
 #include "VMA.h"
 #include "VulkanCommon/VulkanCommon.h"
@@ -23,6 +22,8 @@ struct Mesh {
 
     static Result<Mesh, EAssetLoadError> load_from_asset(
         Allocator& allocator, Str path);
+
+    static Mesh from_asset(const Asset& asset);
 };
 
 static _inline bool operator==(Mesh& left, Mesh& right)

@@ -1,10 +1,5 @@
 #include "Renderer.h"
 
-#include <glm/ext/scalar_constants.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/compatibility.hpp>
-#include <glm/gtx/norm.hpp>
-
 #include "Memory/Extras.h"
 #include "PipelineBuilder.h"
 #include "RendererConfig.h"
@@ -350,7 +345,7 @@ void Renderer::init_pipelines()
         THandle<Texture> texture_handle =
             texture_system.get_handle(LIT("Assets/lost-empire-rgba.asset"));
 
-        ASSERT(texture_handle.valid());
+        ASSERT(texture_handle.is_valid());
         Texture* t = texture_system.resolve_handle(texture_handle);
         DEFER(texture_system.release_handle(texture_handle));
 

@@ -1,13 +1,19 @@
 #include "Engine.h"
 
+#include <flecs.h>
+
 #include "AssetSystem.h"
 #include "ECS/ECS.h"
 #include "Memory/Extras.h"
 #include "Renderer/Renderer.h"
 #include "Window/Window.h"
 
+static Engine* The_Engine;
+
 void Engine::init()
 {
+    The_Engine = this;
+
     // Allocate subsystems
     input                       = alloc<Input>(allocator);
     window                      = win::create_window(allocator);
@@ -62,3 +68,5 @@ void Engine::deinit()
     renderer->deinit();
     asset_system->deinit();
 }
+
+Engine* Engine::instance() { return The_Engine; }

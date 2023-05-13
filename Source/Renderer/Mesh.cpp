@@ -75,3 +75,22 @@ Result<Mesh, EAssetLoadError> Mesh::load_from_asset(
         .indices  = indices,
     });
 }
+
+Mesh Mesh::from_asset(const Asset& asset)
+{
+    ASSERT(asset.info.kind == AssetKind::Mesh);
+    ASSERT(asset.info.mesh.format == VertexFormat::P3fN3fC3fU2f);
+
+    Slice<Vertex> vertices = slice<Vertex>(
+        (Vertex*)asset.blob.ptr,
+        asset.info.mesh.vertex_buffer_size);
+
+    Slice<u32> indices = slice<u32>(
+        (u32*)(asset.blob.ptr + asset.info.mesh.vertex_buffer_size * sizeof(Vertex)),
+        asset.info.mesh.index_buffer_size);
+
+    return Mesh{
+        .vertices = vertices,
+        .indices  = indices,
+    };
+}

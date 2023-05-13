@@ -1,6 +1,5 @@
 #pragma once
-#include <glm/glm.hpp>
-
+#include "Core/MathTypes.h"
 #include "VMA.h"
 #include "VulkanCommon/VulkanCommon.h"
 

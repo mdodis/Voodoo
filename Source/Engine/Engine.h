@@ -1,5 +1,4 @@
 #pragma once
-#include <flecs.h>
 
 #include "Base.h"
 #include "Delegates.h"
@@ -35,4 +34,6 @@ struct Engine {
     void init();
     void loop();
     void deinit();
+
+    static Engine* instance();
 };

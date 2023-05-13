@@ -1,10 +1,8 @@
 #pragma once
-#include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
-
 #include "AssetLibrary/AssetLibrary.h"
 #include "Containers/Map.h"
 #include "Core/DeletionQueue.h"
+#include "Core/MathTypes.h"
 #include "DescriptorBuilder.h"
 #include "ImmediateDrawQueue.h"
 #include "MaterialSystem.h"
