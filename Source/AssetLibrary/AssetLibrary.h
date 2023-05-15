@@ -1,7 +1,6 @@
 #pragma once
-#include <glm/glm.hpp>
-
 #include "Base.h"
+#include "Core/MathTypes.h"
 #include "Core/Utility.h"
 #include "Reflection.h"
 #include "Result.h"

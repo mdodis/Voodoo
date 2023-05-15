@@ -7,7 +7,12 @@ template <typename T>
 struct THandle {
     u32 id;
 
-    bool valid() const { return id != 0; }
+    bool is_valid() const { return id != 0; }
+
+    static _inline constexpr THandle<T> invalid()
+    {
+        return THandle<T>{.id = 0};
+    }
 };
 
 template <typename T>
@@ -85,6 +90,9 @@ struct THandleSystem {
 
     THandle<ResourceType> get_handle(const KeyType& key)
     {
+        if (!handles.contains(key)) {
+            return THandle<ResourceType>::invalid();
+        }
         u32 id = handles[key];
         return THandle<ResourceType>{id};
     }

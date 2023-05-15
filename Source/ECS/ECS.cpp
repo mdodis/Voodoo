@@ -47,6 +47,33 @@ void ECS::init(struct Renderer* r)
         register_default_ecs_descriptors(register_func);
     }
 
+    {
+        ECS_COMPONENT(world.m_world, Vec3);
+
+        ecs_struct_desc_t struct_desc = {
+            .entity = ecs_id(Vec3),
+            .members =
+                {
+                    {
+                        .name   = "x",
+                        .type   = ecs_id(ecs_f32_t),
+                        .offset = (i32)OFFSET_OF(Vec3, x),
+                    },
+                    {
+                        .name   = "y",
+                        .type   = ecs_id(ecs_f32_t),
+                        .offset = (i32)OFFSET_OF(Vec3, y),
+                    },
+                    {
+                        .name   = "z",
+                        .type   = ecs_id(ecs_f32_t),
+                        .offset = (i32)OFFSET_OF(Vec3, z),
+                    },
+                },
+        };
+        ecs_struct_init(world.m_world, &struct_desc);
+    }
+
     // System registrar
     {
         system_registrar = SystemDescriptorRegistrar{
@@ -57,6 +84,7 @@ void ECS::init(struct Renderer* r)
     // ecs_log_set_level(2);
 
     import_module_Engine(&system_registrar);
+    world.set<flecs::Rest>({});
 }
 
 flecs::entity ECS::create_entity(Str name)

@@ -1,3 +1,4 @@
+add_subdirectory("Doll")
 add_subdirectory("Core")
 add_subdirectory("AssetLibrary")
 add_subdirectory("VulkanCommon")

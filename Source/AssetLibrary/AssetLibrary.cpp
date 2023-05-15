@@ -118,7 +118,7 @@ Result<void, EAssetLoadError> Asset::unpack(
     } else {
         ZoneScopedN("Static Load");
 
-        if (!input->read(buffer.ptr, info.actual_size) == info.actual_size) {
+        if (input->read(buffer.ptr, info.actual_size) != info.actual_size) {
             return Err(AssetLoadError::InvalidFormat);
         }
         return Ok<void>();

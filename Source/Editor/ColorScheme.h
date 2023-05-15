@@ -1,11 +1,8 @@
 #pragma once
-#include <glm/glm.hpp>
-
+#include "Core/MathTypes.h"
 #include "Reflection.h"
 
 struct EditorColorScheme {
-    using Vec4 = glm::vec4;
-
     Vec4 window_bg;
     Vec4 border;
     Vec4 border_shadow;
@@ -61,8 +58,7 @@ struct EditorStyle {
  * @todo Update color scheme descriptor
  */
 struct EditorColorSchemeDescriptor : IDescriptor {
-    using Vec4Descriptor =
-        FixedArrayDescriptor<EditorColorScheme::Vec4, float, 4>;
+    using Vec4Descriptor = FixedArrayDescriptor<Vec4, float, 4>;
     // clang-format off
     Vec4Descriptor border_desc                 = { OFFSET_OF(EditorColorScheme, border),                 LIT("border"),                 };
     Vec4Descriptor frame_bg_desc               = { OFFSET_OF(EditorColorScheme, frame_bg),               LIT("frame_bg"),               };

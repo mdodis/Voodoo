@@ -1,7 +1,6 @@
 #pragma once
-#include <glm/glm.hpp>
-
 #include "Containers/Slice.h"
+#include "MathTypes.h"
 #include "Types.h"
 
 namespace core {
