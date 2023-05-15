@@ -7,6 +7,7 @@
 #include "Memory/Extras.h"
 #include "Renderer/Renderer.h"
 #include "Window/Window.h"
+#include "WorldRenderSystem.h"
 
 static Engine* The_Engine;
 
@@ -25,6 +26,7 @@ void Engine::init()
     renderer->allocator         = allocator;
     ecs                         = alloc<ECS>(allocator);
     asset_system                = alloc<AssetSystem>(allocator);
+    world_render_system         = alloc<WorldRenderSystem>(allocator);
 
     hooks.pre_init.broadcast(this);
 
@@ -39,6 +41,8 @@ void Engine::init()
 
     // Initialize ECS
     ecs->init(renderer);
+
+    world_render_system->init(allocator);
 
     hooks.post_init.broadcast(this);
 }

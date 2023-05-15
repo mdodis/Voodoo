@@ -1,5 +1,3 @@
-#pragma once
-
 #include "Arg.h"
 #include "ECS.h"
 #include "Editor.h"

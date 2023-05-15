@@ -62,7 +62,7 @@ void InspectorEditorWindow::draw()
     }
 
     ImGui::SameLine();
-    ImGui::Text("%u", entity.id());
+    ImGui::Text("%llu", entity.id());
     ImGui::EndGroup();
 
     ImGui::SeparatorText("Components");
@@ -102,11 +102,11 @@ void InspectorEditorWindow::draw()
             auto* t = entity.get<StaticMeshComponent>();
 
             ImGui::Text("Name: %s", t->name.data);
-            ImGui::Text("Data: 0x%x", (u64)t->mesh);
+            ImGui::Text("Data: 0x%llx", (u64)t->mesh);
         } else if (comp.raw_id() == ecs_id(MaterialComponent)) {
             auto* t = entity.get<MaterialComponent>();
             ImGui::Text("Name: %s", t->name.data);
-            ImGui::Text("Data: 0x%x", (u64)t->material);
+            ImGui::Text("Data: 0x%llx", (u64)t->material);
         }
 
         ImGui::Separator();

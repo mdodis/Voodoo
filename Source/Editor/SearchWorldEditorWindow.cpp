@@ -1,20 +1,19 @@
-#include "QueryEditorWindow.h"
+#include "SearchWorldEditorWindow.h"
 
 #include <imgui.h>
 
 #include "MenuRegistrar.h"
 
-void QueryEditorWindow::init()
+void SearchWorldEditorWindow::init()
 {
-    query_results.alloc = &System_Allocator;
-    query_results.add((flecs::entity_t)0);
+    search_results.alloc = &System_Allocator;
 }
 
-void QueryEditorWindow::draw()
+void SearchWorldEditorWindow::draw()
 {
-    static char buffer[1024];
+    static thread_local char buffer[1024];
 
-    ImGui::InputText("##query", buffer, sizeof(buffer));
+    ImGui::InputText("##search", buffer, sizeof(buffer));
 
     ImGui::SameLine();
     if (ImGui::Button("Run")) {
@@ -22,23 +21,24 @@ void QueryEditorWindow::draw()
             .expr = buffer,
         };
 
-        ecs_filter_t* filter =
-            ecs_filter_init(ecs().world.m_world, &filter_desc);
+        ecs_rule_t* rule = ecs_rule_init(ecs().world.m_world, &filter_desc);
 
-        if (filter) {
-            query_results.empty();
-            ecs_iter_t it = ecs_filter_iter(ecs().world.m_world, filter);
+        if (rule) {
+            search_results.empty();
+            ecs_iter_t it = ecs_rule_iter(ecs().world.m_world, rule);
 
-            while (ecs_filter_next(&it)) {
+            while (ecs_rule_next(&it)) {
                 for (int i = 0; i < it.count; ++i) {
                     ecs_entity_t entity = it.entities[i];
-                    query_results.add(entity);
+                    search_results.add(entity);
                 }
             }
+
+            ecs_rule_fini(rule);
         }
     }
 
-    ImGui::Text("%llu Results", query_results.size);
+    ImGui::Text("%llu Results", search_results.size);
     static ImGuiTableFlags flags =
         ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
         ImGuiTableFlags_Borders | ImGuiTableFlags_Resizable |
@@ -52,7 +52,7 @@ void QueryEditorWindow::draw()
             ImGuiTableColumnFlags_WidthStretch);
         ImGui::TableHeadersRow();
 
-        for (flecs::entity_t eid : query_results) {
+        for (flecs::entity_t eid : search_results) {
             if (eid == 0) continue;
             flecs::entity entity(ecs().world, eid);
             if (!entity.is_valid()) continue;
@@ -72,7 +72,9 @@ void QueryEditorWindow::draw()
     }
 }
 
-void QueryEditorWindow::deinit() { query_results.release(); }
+void SearchWorldEditorWindow::deinit() { search_results.release(); }
 
 STATIC_MENU_ITEM(
-    "Help/Query Runner", { The_Editor.create_window<QueryEditorWindow>(); }, 0);
+    "Tools/Search World",
+    { The_Editor.create_window<SearchWorldEditorWindow>(); },
+    0);

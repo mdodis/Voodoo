@@ -144,3 +144,17 @@ private:
     TMap<AssetID, AssetState> asset_states;
     SflUUIDContext            uuid_context;
 };
+
+/**
+ * This struct stores both a reference and the ID.
+ * The reference is used as the display object and the ID is cached every time
+ * the reference is changed.
+ */
+struct AssetProxy {
+    AssetReference ref;
+    AssetID        cached_id = AssetID::invalid();
+
+    bool is_resolved() const { return cached_id.is_valid(); }
+
+    bool resolve();
+};
