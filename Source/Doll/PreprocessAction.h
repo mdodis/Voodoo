@@ -3,6 +3,7 @@
 #include "Str.h"
 #include "StringFormat.h"
 #include "Types.h"
+#include "Variant.h"
 
 namespace MetaTermAccess {
     enum Type : u32
@@ -131,4 +132,45 @@ struct MetaSystemDescriptor {
     Str                              name;
     Str                              phase;
     TArray<MetaSystemDescriptorTerm> terms;
+};
+
+namespace MetaComponentFlag {
+    enum Type : u32
+    {
+        NoDefine = 1 << 0,
+    };
+}
+typedef MetaComponentFlag::Type EMetaComponentFlag;
+typedef u32                     MetaComponentFlags;
+
+PROC_FMT_ENUM(MetaComponentFlag, {
+    FMT_ENUM_CASE2(MetaComponentFlag, NoDefine, "NoDefine");
+})
+
+PROC_PARSE_ENUM(MetaComponentFlag, {
+    PARSE_ENUM_CASE2(MetaComponentFlag, NoDefine, "nodefine");
+})
+
+struct MetaArray {
+    Str type;
+    Str count;
+};
+
+struct MetaPrimitive {
+    Str type;
+};
+
+struct MetaType {
+    TVariant<MetaPrimitive, MetaArray> value;
+};
+
+struct MetaComponentProperty {
+    Str      name;
+    MetaType type;
+};
+
+struct MetaComponentDescriptor {
+    Str                           name;
+    MetaComponentFlags            flags;
+    TArray<MetaComponentProperty> properties;
 };

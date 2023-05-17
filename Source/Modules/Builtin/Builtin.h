@@ -28,7 +28,7 @@ Quat: {
 
 @component(nodefine)
 Mat4: {
-    m: f32[16];
+    m: Array: [f32, 16];
 }
 
 @component(nodefine)
