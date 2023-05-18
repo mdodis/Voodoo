@@ -1,9 +1,10 @@
 #include "Core/MathTypes.h"
+#include "Builtin.generated.h"
 
 #if METADESK
 // clang-format off
 
-@component(nodefine, descriptor: "FixedArrayDescriptor<Vec3, f32, 3>")
+@component(nodefine)
 Vec3: {
     x: f32;
     y: f32;
@@ -32,7 +33,9 @@ Mat4: {
 }
 
 @component(nodefine)
-AssetID: {}
+AssetID: {
+    id: SflUUID;
+}
 
 @component(nodefine)
 AssetReference: {

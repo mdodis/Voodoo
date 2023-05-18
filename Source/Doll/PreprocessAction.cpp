@@ -108,7 +108,8 @@ static void parse_system(WriteTape& out, MD_Node* node);
 static void parse_component(WriteTape& out, MD_Node* node);
 static void parse_component_property(
     MetaComponentDescriptor& desc, MD_Node* node);
-static void     parse_term_source(MD_Node* node, MetaTermID& source);
+static void write_component(WriteTape& out, MetaComponentDescriptor& component);
+static void parse_term_source(MD_Node* node, MetaTermID& source);
 static MD_Node* find_tag(MD_Node* node, Str name);
 static MD_Node* find_child(MD_Node* node, Str name);
 static void     write_module(Str directory);
@@ -366,6 +367,7 @@ static void parse_component(WriteTape& out, MD_Node* node)
                 LIT("Overriding descriptor for {} to {}\n"),
                 result.name,
                 override_desc);
+            result.override_desc = override_desc.clone(System_Allocator);
         }
     }
 
@@ -374,6 +376,111 @@ static void parse_component(WriteTape& out, MD_Node* node)
     }
 
     G.components.add(result);
+
+    write_component(out, result);
+}
+
+static void write_component_idescriptor(
+    WriteTape& out, MetaComponentDescriptor& component)
+{
+    format(&out, LIT("// IDescriptor for {}\n"), component.name);
+
+    if (component.override_desc != Str::NullStr) {
+        format(&out, LIT("using "));
+        component.format_descriptor_name(out);
+
+        format(&out, LIT(" = {};\n"), component.override_desc);
+        return;
+    }
+
+    format(&out, LIT("struct "));
+    component.format_descriptor_name(out);
+    format(&out, LIT(" : public IDescriptor {\n"));
+
+    int subdescriptor_count = 0;
+
+    for (const MetaComponentProperty& property : component.properties) {
+        format(&out, LIT("\t"));
+
+        property.format_desc_type(out);
+        format(&out, LIT(" "));
+        property.format_desc_name(out);
+
+        format(&out, LIT(" = {"));
+        format(
+            &out,
+            LIT("OFFSET_OF({}, {}), LIT(\"{}\")"),
+            component.name,
+            property.name,
+            property.name);
+        format(&out, LIT("};\n"));
+
+        subdescriptor_count++;
+    }
+
+    // Write subdescriptor array
+    format(&out, LIT("\n"));
+    format(&out, LIT("\tIDescriptor* descs[{}] = {\n"), subdescriptor_count);
+
+    for (const MetaComponentProperty& property : component.properties) {
+        format(&out, LIT("\t\t&"));
+        property.format_desc_name(out);
+        format(&out, LIT(",\n"));
+    }
+
+    format(&out, LIT("\t};"));
+    format(&out, LIT("\n"));
+
+    // Implement IDescriptor
+
+    // >> Constructor
+    format(&out, LIT("\tCUSTOM_DESC_DEFAULT("));
+    component.format_descriptor_name(out);
+    format(&out, LIT(")\n"));
+
+    // >> type_name()
+    format(
+        &out,
+        LIT("\tvirtual Str type_name() const override { return "
+            "LIT(\"{}\"); }\n"),
+        component.name);
+
+    // >> subdescriptors()
+    format(
+        &out,
+        LIT("\tvirtual Slice<IDescriptor*> subdescriptors(umm self) "
+            "override { return Slice<IDescriptor*>(descs, "
+            "ARRAY_COUNT(descs)); }\n"));
+
+    format(&out, LIT("};\n"));
+
+    format(&out, LIT("DECLARE_DESCRIPTOR_OF({});\n"), component.name);
+
+    format(&out, LIT("\n"));
+}
+
+static void write_component_struct(
+    WriteTape& out, MetaComponentDescriptor& component)
+{
+    format(&out, LIT("struct {} {\n"), component.name);
+
+    for (const MetaComponentProperty& property : component.properties) {
+        format(&out, LIT("\t{} {};\n"), property.type.to_str(), property.name);
+    }
+
+    format(&out, LIT("};\n"), component.name);
+}
+
+static void write_component(WriteTape& out, MetaComponentDescriptor& component)
+{
+    format(&out, LIT("//\n"));
+    format(&out, LIT("// Component: {}\n"), component.name);
+    format(&out, LIT("//\n"));
+
+    if (!(component.flags & MetaComponentFlag::NoDefine)) {
+        write_component_struct(out, component);
+    }
+    write_component_idescriptor(out, component);
 }
 
 static void parse_component_property(
@@ -476,34 +583,25 @@ static MD_Node* find_child(MD_Node* node, Str name)
     return nullptr;
 }
 
-static void write_component_descriptors_implementation(WriteTape& out)
+static void write_component_descriptors_header(WriteTape& out)
 {
     for (const MetaComponentDescriptor& component : G.components) {
-        format(&out, LIT("// IDescriptor for {}\n"), component.name);
+        // @todo: ComponentDescriptor
+    }
+}
 
-        format(&out, LIT("struct "));
-        component.format_descriptor_name(out);
-        format(&out, LIT(" : public IDescriptor {\n"));
-
-        for (const MetaComponentProperty& property : component.properties) {
-            format(&out, LIT("\t"));
-
-            property.format_desc_type(out);
-            format(&out, LIT(";"));
-            format(&out, LIT("\n"));
-        }
-
-        format(&out, LIT("};\n"));
-
-        format(&out, LIT("\n"));
+static void write_component_descriptors_impl(WriteTape& out)
+{
+    for (const MetaComponentDescriptor& component : G.components) {
+        format(&out, LIT("DEFINE_DESCRIPTOR_OF({});\n"), component.name);
     }
 }
 
 static void write_module(Str directory)
 {
     SAVE_ARENA(G.arena);
-    Str header         = format(G.arena, LIT("{}/Module.h"), directory);
-    Str implementation = format(G.arena, LIT("{}/Module.cpp"), directory);
+    Str header         = format(G.arena, LIT("{}/Mod.h"), directory);
+    Str implementation = format(G.arena, LIT("{}/Mod.cpp"), directory);
     Str genlist        = format(G.arena, LIT("{}/ModuleFiles.txt"), directory);
 
     print(LIT("Writing module {}, {}\n"), header, implementation);
@@ -520,9 +618,12 @@ static void write_module(Str directory)
         format(&out, LIT("#pragma once\n"));
         format(&out, LIT("#include \"ECS/SystemDescriptor.h\"\n"));
         format(&out, LIT("#include \"ECS/ComponentDescriptor.h\"\n"));
+
+        write_component_descriptors_header(out);
+
         format(
             &out,
-            LIT("extern void import_module_{}(SystemDescriptorRegistrar* "
+            LIT("extern \"C\" void import_module_{}(SystemDescriptorRegistrar* "
                 "reg);\n"),
             G.module_name);
 
@@ -535,13 +636,12 @@ static void write_module(Str directory)
         format(&out, LIT("// Metacompiler code-gen\n"));
         format(&out, LIT("// clang-format off\n"));
         format(&out, LIT("\n"));
-        format(&out, LIT("#include \"Module.h\"\n"));
-
+        format(&out, LIT("#include \"Mod.h\"\n"));
         for (const Str& include : G.module_includes) {
             format(&out, LIT("#include \"{}\"\n"), include);
         }
 
-        write_component_descriptors_implementation(out);
+        write_component_descriptors_impl(out);
 
         format(&out, LIT("// clang-format on\n"));
     }

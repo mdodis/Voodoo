@@ -191,6 +191,26 @@ struct MetaType {
             return;
         }
     }
+
+    Str to_str() const
+    {
+        if (value.is<MetaPrimitive>()) {
+            const MetaPrimitive& primitive = *value.get<MetaPrimitive>();
+            return primitive.type;
+        }
+
+        if (value.is<MetaCompound>()) {
+            const MetaCompound& compound = *value.get<MetaCompound>();
+            return compound.type;
+        }
+
+        if (value.is<MetaArray>()) {
+            const MetaArray& array = *value.get<MetaArray>();
+            return array.type;
+        }
+
+        return Str::NullStr;
+    }
 };
 
 struct MetaComponentProperty {
@@ -209,10 +229,11 @@ struct MetaComponentDescriptor {
     Str                           name;
     MetaComponentFlags            flags;
     TArray<MetaComponentProperty> properties;
+    Str                           override_desc = Str::NullStr;
 
     void format_descriptor_name(WriteTape& out) const
     {
-        format(&out, LIT("{}_Descriptor"), name);
+        format(&out, LIT("{}Descriptor"), name);
     }
 };
 
