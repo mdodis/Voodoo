@@ -359,6 +359,14 @@ static void parse_component(WriteTape& out, MD_Node* node)
         if (find_child(tag, LIT("nodefine"))) {
             result.flags |= MetaComponentFlag::NoDefine;
         }
+
+        if (MD_Node* desc = find_child(tag, LIT("descriptor"))) {
+            Str override_desc = mds8_to_str(desc->first_child->string);
+            print(
+                LIT("Overriding descriptor for {} to {}\n"),
+                result.name,
+                override_desc);
+        }
     }
 
     for (MD_EachNode(it, node->first_child)) {
@@ -388,12 +396,21 @@ static void parse_component_property(
 
         property.type.value.set(array);
     } else {
-        MetaPrimitive primitive = {
-            .type = base_type.clone(System_Allocator),
-        };
+        if (is_meta_primitive(base_type)) {
+            MetaPrimitive primitive = {
+                .type = base_type.clone(System_Allocator),
+            };
 
-        property.type.value.set(primitive);
+            property.type.value.set(primitive);
+        } else {
+            MetaCompound compound = {
+                .type = base_type.clone(System_Allocator),
+            };
+            property.type.value.set(compound);
+        }
     }
+
+    desc.properties.add(property);
 }
 
 static void parse_term_source(MD_Node* node, MetaTermID& source)
@@ -459,9 +476,26 @@ static MD_Node* find_child(MD_Node* node, Str name)
     return nullptr;
 }
 
-static void write_component_descriptors(WriteTape& out)
+static void write_component_descriptors_implementation(WriteTape& out)
 {
     for (const MetaComponentDescriptor& component : G.components) {
+        format(&out, LIT("// IDescriptor for {}\n"), component.name);
+
+        format(&out, LIT("struct "));
+        component.format_descriptor_name(out);
+        format(&out, LIT(" : public IDescriptor {\n"));
+
+        for (const MetaComponentProperty& property : component.properties) {
+            format(&out, LIT("\t"));
+
+            property.format_desc_type(out);
+            format(&out, LIT(";"));
+            format(&out, LIT("\n"));
+        }
+
+        format(&out, LIT("};\n"));
+
+        format(&out, LIT("\n"));
     }
 }
 
@@ -507,7 +541,7 @@ static void write_module(Str directory)
             format(&out, LIT("#include \"{}\"\n"), include);
         }
 
-        write_component_descriptors(out);
+        write_component_descriptors_implementation(out);
 
         format(&out, LIT("// clang-format on\n"));
     }

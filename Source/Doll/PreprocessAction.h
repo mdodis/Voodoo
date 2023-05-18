@@ -151,6 +151,10 @@ PROC_PARSE_ENUM(MetaComponentFlag, {
     PARSE_ENUM_CASE2(MetaComponentFlag, NoDefine, "nodefine");
 })
 
+struct MetaCompound {
+    Str type;
+};
+
 struct MetaArray {
     Str type;
     Str count;
@@ -161,16 +165,76 @@ struct MetaPrimitive {
 };
 
 struct MetaType {
-    TVariant<MetaPrimitive, MetaArray> value;
+    TVariant<MetaPrimitive, MetaArray, MetaCompound> value;
+
+    void format_desc_type(WriteTape& out) const
+    {
+        if (value.is<MetaPrimitive>()) {
+            const MetaPrimitive& primitive = *value.get<MetaPrimitive>();
+            format(&out, LIT("PrimitiveDescriptor<{}>"), primitive.type);
+            return;
+        }
+
+        if (value.is<MetaCompound>()) {
+            const MetaCompound& compound = *value.get<MetaCompound>();
+            format(&out, LIT("{}_Descriptor"), compound.type);
+            return;
+        }
+
+        if (value.is<MetaArray>()) {
+            const MetaArray& array = *value.get<MetaArray>();
+            format(
+                &out,
+                LIT("StaticArrayDescriptor<{}, {}>"),
+                array.type,
+                array.count);
+            return;
+        }
+    }
 };
 
 struct MetaComponentProperty {
     Str      name;
     MetaType type;
+
+    void format_desc_type(WriteTape& out) const { type.format_desc_type(out); }
+
+    void format_desc_name(WriteTape& out) const
+    {
+        format(&out, LIT("{}_desc"), name);
+    }
 };
 
 struct MetaComponentDescriptor {
     Str                           name;
     MetaComponentFlags            flags;
     TArray<MetaComponentProperty> properties;
+
+    void format_descriptor_name(WriteTape& out) const
+    {
+        format(&out, LIT("{}_Descriptor"), name);
+    }
 };
+
+static _inline bool is_meta_primitive(Str id)
+{
+    static Str match_table[] = {
+        {LIT("bool")},
+        {LIT("u8")},
+        {LIT("i8")},
+        {LIT("u16")},
+        {LIT("i16")},
+        {LIT("u32")},
+        {LIT("i32")},
+        {LIT("u64")},
+        {LIT("i64")},
+        {LIT("f32")},
+        {LIT("f64")},
+    };
+
+    for (u32 i = 0; i < ARRAY_COUNT(match_table); ++i) {
+        if (match_table[i] == id) return true;
+    }
+
+    return false;
+}

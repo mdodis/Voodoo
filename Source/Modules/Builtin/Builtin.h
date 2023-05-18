@@ -3,7 +3,7 @@
 #if METADESK
 // clang-format off
 
-@component(nodefine)
+@component(nodefine, descriptor: "FixedArrayDescriptor<Vec3, f32, 3>")
 Vec3: {
     x: f32;
     y: f32;
