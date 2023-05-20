@@ -34,8 +34,8 @@ void AssetSystem::refresh_registry()
                 format(System_Allocator, LIT("/{}"), it_data.filename);
 
             AssetReference reference = {
-                .ns   = asset_ns,
-                .path = asset_path,
+                .module = asset_ns,
+                .path   = asset_path,
             };
 
             AssetID asset_id = AssetID::create(uuid_context);
@@ -45,7 +45,7 @@ void AssetSystem::refresh_registry()
 
             print(
                 LIT("[Asset System]: Discovered asset: @{} {} ({})\n"),
-                reference.ns,
+                reference.module,
                 reference.path,
                 asset_id);
         }

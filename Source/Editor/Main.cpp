@@ -1,10 +1,15 @@
 #include "Arg.h"
+#include "Builtin/Builtin.h"
 #include "ECS.h"
 #include "Editor.h"
 #include "Engine/Engine.h"
+#include "Engine/Module.h"
+#include "Engine/ModuleSystem.h"
 #include "Renderer/Renderer.h"
 #include "VulkanCommon/VulkanCommon.h"
 #include "backends/imgui_impl_vulkan.h"
+
+extern "C" void import_module_Builtin(ModuleInitParams* params);
 
 #if OS_MSWINDOWS
 #include <imgui.h>
@@ -21,6 +26,7 @@ static struct {
 } G;
 
 static void on_engine_pre_init(Engine* engine);
+static void on_engine_post_init(Engine* engine);
 static void on_engine_post_update(Engine* engine);
 static void on_engine_pre_draw(Engine* engine);
 
@@ -69,6 +75,7 @@ static int run(void)
 
     // Initialize hooks
     G.engine.hooks.pre_init.add_static(on_engine_pre_init);
+    G.engine.hooks.post_init.add_static(on_engine_post_init);
     G.engine.hooks.post_update.add_static(on_engine_post_update);
     G.engine.hooks.pre_draw.add_static(on_engine_pre_draw);
 
@@ -179,6 +186,11 @@ static void on_engine_pre_init(Engine* engine)
     engine->renderer->hooks.post_init.add_static(on_renderer_post_init);
     engine->renderer->hooks.post_present_pass.add_static(
         on_renderer_post_present_pass);
+}
+
+static void on_engine_post_init(Engine* engine)
+{
+    G.engine.module_system->load_module(LIT("Builtin"), import_module_Builtin);
 }
 
 static void on_engine_post_update(Engine* engine) {}

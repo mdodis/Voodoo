@@ -13,27 +13,27 @@
  * "@Engine /Primitives/Cube.asset"
  */
 struct AssetReference {
-    Str ns;
+    Str module;
     Str path;
 
     AssetReference clone(Allocator& allocator) const
     {
-        u64   total_len = ns.len + path.len;
+        u64   total_len = module.len + path.len;
         char* buf       = (char*)allocator.reserve(total_len);
 
-        memcpy(buf, ns.data, ns.len);
-        memcpy(buf + ns.len, path.data, path.len);
+        memcpy(buf, module.data, module.len);
+        memcpy(buf + module.len, path.data, path.len);
 
         return AssetReference{
-            .ns   = Str(buf, ns.len),
-            .path = Str(buf + ns.len, path.len),
+            .module = Str(buf, module.len),
+            .path   = Str(buf + module.len, path.len),
         };
     }
 };
 
 static _inline u64 hash_of(const AssetReference& reference, u32 seed)
 {
-    u64 h1 = hash_of(reference.ns, seed);
+    u64 h1 = hash_of(reference.module, seed);
     u64 h2 = hash_of(reference.path, seed);
 
     return h1 ^ h2;
@@ -42,7 +42,7 @@ static _inline u64 hash_of(const AssetReference& reference, u32 seed)
 static _inline bool operator==(
     const AssetReference& left, const AssetReference& right)
 {
-    if (left.ns != right.ns) return false;
+    if (left.module != right.module) return false;
 
     if (left.path.len != right.path.len) return false;
 
@@ -158,3 +158,25 @@ struct AssetProxy {
 
     bool resolve();
 };
+
+//
+// Descriptors
+//
+struct SflUUIDDescriptor : IDescriptor {
+    PrimitiveDescriptor<u64> q0_desc = {
+        OFFSET_OF(SflUUID, qwords[0]), LIT("q0")};
+    PrimitiveDescriptor<u64> q1_desc = {
+        OFFSET_OF(SflUUID, qwords[1]), LIT("q1")};
+
+    IDescriptor* descs[3] = {
+        &q0_desc,
+        &q1_desc,
+    };
+    CUSTOM_DESC_DEFAULT(SflUUIDDescriptor)
+    virtual Str type_name() const override { return LIT("UUID"); }
+    virtual Slice<IDescriptor*> subdescriptors(umm self) override
+    {
+        return Slice<IDescriptor*>(descs, ARRAY_COUNT(descs));
+    }
+};
+DEFINE_DESCRIPTOR_OF_INL(SflUUID);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Containers/Array.h"
 #include "Module.h"
 
 struct ModuleSystem {

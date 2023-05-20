@@ -20,8 +20,10 @@ struct Engine {
     struct Renderer*          renderer;
     struct Input*             input;
     struct ECS*               ecs;
+    struct SubsystemManager*  subsystems;
     struct AssetSystem*       asset_system;
     struct WorldRenderSystem* world_render_system;
+    struct ModuleSystem*      module_system;
 
     using Hook = MulticastDelegate<Engine*>;
 
@@ -37,4 +39,5 @@ struct Engine {
     void deinit();
 
     static Engine* instance();
+    static void    set_instance(Engine* new_instance);
 };

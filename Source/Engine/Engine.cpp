@@ -5,9 +5,10 @@
 #include "AssetSystem.h"
 #include "ECS/ECS.h"
 #include "Memory/Extras.h"
+#include "ModuleSystem.h"
 #include "Renderer/Renderer.h"
+#include "SubsystemManager.h"
 #include "Window/Window.h"
-#include "WorldRenderSystem.h"
 
 static Engine* The_Engine;
 
@@ -25,8 +26,10 @@ void Engine::init()
     renderer->validation_layers = true;
     renderer->allocator         = allocator;
     ecs                         = alloc<ECS>(allocator);
-    asset_system                = alloc<AssetSystem>(allocator);
-    world_render_system         = alloc<WorldRenderSystem>(allocator);
+    subsystems                  = alloc<SubsystemManager>(allocator);
+
+    asset_system  = alloc<AssetSystem>(allocator);
+    module_system = alloc<ModuleSystem>(allocator);
 
     hooks.pre_init.broadcast(this);
 
@@ -36,13 +39,15 @@ void Engine::init()
     // Initialize renderer
     renderer->init();
 
+    subsystems->init();
+
     // Initialize asset manager
     asset_system->init(allocator);
 
     // Initialize ECS
     ecs->init(renderer);
 
-    world_render_system->init(allocator);
+    module_system->init();
 
     hooks.post_init.broadcast(this);
 }
@@ -71,6 +76,8 @@ void Engine::deinit()
 {
     renderer->deinit();
     asset_system->deinit();
+    subsystems->deinit();
 }
 
 Engine* Engine::instance() { return The_Engine; }
+void Engine::set_instance(Engine* new_instance) { The_Engine = new_instance; }
