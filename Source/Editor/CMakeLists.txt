@@ -19,4 +19,5 @@ target_link_libraries(Editor
     ECS
     imgui
     portable_file_dialogs
-    VulkanCommon)
+    VulkanCommon
+    Module_Builtin)

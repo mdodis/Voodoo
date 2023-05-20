@@ -10,8 +10,6 @@ add_library(ECS
 target_include_directories(ECS
     PUBLIC
     "."
-    ${PROJECT_SOURCE_DIR}/Intermediate/Source/
-    ${PROJECT_SOURCE_DIR}/Intermediate/Source/ECS
     PRIVATE
     "..")
 
@@ -22,28 +20,18 @@ target_link_libraries(ECS
     MokLib
     Renderer)
 
-set(MODULE_FILES_PATH "${PROJECT_SOURCE_DIR}/Intermediate/Source/ModuleFiles.txt")
+# set(MODULE_FILES_PATH "${PROJECT_SOURCE_DIR}/Intermediate/Source/ModuleFiles.txt")
 
-add_custom_command(
-    OUTPUT ${MODULE_FILES_PATH}
-    COMMAND metacompiler
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMENT "Run pre-compile step"
-    DEPENDS ${HEADERS}
-)
-
-add_custom_target(ECSMetacompilerStep
-    DEPENDS ${MODULE_FILES_PATH}
-)
-
-# file(STRINGS ${MODULE_FILES_PATH} MODULE_FILES)
-
-add_dependencies(ECS ECSMetacompilerStep)
-
-# add_custom_target(ECSMetacompilerStep
+# add_custom_command(
+#     OUTPUT ${MODULE_FILES_PATH}
 #     COMMAND metacompiler
 #     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 #     COMMENT "Run pre-compile step"
-#     SOURCES ${HEADERS})
+#     DEPENDS ${HEADERS}
+# )
+
+# add_custom_target(ECSMetacompilerStep
+#     DEPENDS ${MODULE_FILES_PATH}
+# )
 
 # add_dependencies(ECS ECSMetacompilerStep)

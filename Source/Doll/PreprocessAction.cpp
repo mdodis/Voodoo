@@ -35,6 +35,7 @@ struct PreprocessContext {
     Arena<ArenaMode::Dynamic>       arena;
     TArray<MetaSystemDescriptor>    systems;
     TArray<MetaComponentDescriptor> components;
+    TArray<MetaHook>                hooks;
     TArray<Str>                     folder_context;
     TArray<Str>                     files_generated;
     TArray<Str>                     module_includes;
@@ -46,6 +47,7 @@ struct PreprocessContext {
         arena.init();
         systems         = TArray<MetaSystemDescriptor>(&System_Allocator);
         components      = TArray<MetaComponentDescriptor>(&System_Allocator);
+        hooks           = TArray<MetaHook>(&System_Allocator);
         folder_context  = TArray<Str>(&System_Allocator);
         files_generated = TArray<Str>(&System_Allocator);
         module_includes = TArray<Str>(&System_Allocator);
@@ -110,6 +112,7 @@ static void parse_component_property(
     MetaComponentDescriptor& desc, MD_Node* node);
 static void write_component(WriteTape& out, MetaComponentDescriptor& component);
 static void parse_term_source(MD_Node* node, MetaTermID& source);
+static void parse_hook(WriteTape& out, MD_Node* node);
 static MD_Node* find_tag(MD_Node* node, Str name);
 static MD_Node* find_child(MD_Node* node, Str name);
 static void     write_module(Str directory);
@@ -143,7 +146,7 @@ static int doll_preprocess(Slice<Str> args)
 
     Str from = to_absolute_path(path_to_parse, G.arena);
     Str path_to_generate =
-        format(G.arena, LIT("{}Intermediate/"), FmtPath(from));
+        format(G.arena, LIT("{}/Intermediate/"), FmtPath(from));
 
     G.module_name = get_file_name(path_to_parse).clone(System_Allocator);
     print(LIT("Module name: {}\n"), G.module_name);
@@ -264,12 +267,15 @@ static bool parse_file(Str from_path, Str to_path)
     BufferedWriteTape<true> out(open_file_write(to_path));
     format(&out, LIT("// Metacompiler code-gen\n"));
     format(&out, LIT("// clang-format off\n"));
+    format(&out, LIT("#include \"Reflection.h\"\n"));
 
     for (MD_EachNode(child, result.node->first_child)) {
         if (MD_NodeHasTag(child, MD_S8Lit("system"), 0)) {
             parse_system(out, child);
         } else if (MD_NodeHasTag(child, MD_S8Lit("component"), 0)) {
             parse_component(out, child);
+        } else if (MD_NodeHasTag(child, MD_S8Lit("hook"), 0)) {
+            parse_hook(out, child);
         }
     }
     format(&out, LIT("// clang-format on\n"));
@@ -361,13 +367,8 @@ static void parse_component(WriteTape& out, MD_Node* node)
             result.flags |= MetaComponentFlag::NoDefine;
         }
 
-        if (MD_Node* desc = find_child(tag, LIT("descriptor"))) {
-            Str override_desc = mds8_to_str(desc->first_child->string);
-            print(
-                LIT("Overriding descriptor for {} to {}\n"),
-                result.name,
-                override_desc);
-            result.override_desc = override_desc.clone(System_Allocator);
+        if (find_child(tag, LIT("nodescriptor"))) {
+            result.flags |= MetaComponentFlag::NoDescriptor;
         }
     }
 
@@ -380,22 +381,30 @@ static void parse_component(WriteTape& out, MD_Node* node)
     write_component(out, result);
 }
 
+static void parse_hook(WriteTape& out, MD_Node* node)
+{
+    MD_Node* hook_tag = find_tag(node, LIT("hook"));
+    Str      hook_name =
+        mds8_to_str(hook_tag->first_child->string).clone(System_Allocator);
+    Str function = mds8_to_str(node->string).clone(System_Allocator);
+
+    format(&out, LIT("// Hook {} -> {}\n"), hook_name, function);
+    format(&out, LIT("void {}();\n"), function);
+
+    G.hooks.add(MetaHook{
+        .hook     = hook_name,
+        .function = function,
+    });
+}
+
 static void write_component_idescriptor(
     WriteTape& out, MetaComponentDescriptor& component)
 {
     format(&out, LIT("// IDescriptor for {}\n"), component.name);
 
-    if (component.override_desc != Str::NullStr) {
-        format(&out, LIT("using "));
-        component.format_descriptor_name(out);
-
-        format(&out, LIT(" = {};\n"), component.override_desc);
-        return;
-    }
-
     format(&out, LIT("struct "));
     component.format_descriptor_name(out);
-    format(&out, LIT(" : public IDescriptor {\n"));
+    format(&out, LIT(" : IDescriptor {\n"));
 
     int subdescriptor_count = 0;
 
@@ -480,7 +489,10 @@ static void write_component(WriteTape& out, MetaComponentDescriptor& component)
     if (!(component.flags & MetaComponentFlag::NoDefine)) {
         write_component_struct(out, component);
     }
-    write_component_idescriptor(out, component);
+
+    if (component.has_generated_descriptor()) {
+        write_component_idescriptor(out, component);
+    }
 }
 
 static void parse_component_property(
@@ -593,7 +605,180 @@ static void write_component_descriptors_header(WriteTape& out)
 static void write_component_descriptors_impl(WriteTape& out)
 {
     for (const MetaComponentDescriptor& component : G.components) {
-        format(&out, LIT("DEFINE_DESCRIPTOR_OF({});\n"), component.name);
+        if (component.has_generated_descriptor()) {
+            format(&out, LIT("DEFINE_DESCRIPTOR_OF({});\n"), component.name);
+        }
+    }
+
+    format(&out, LIT("\n"));
+
+    for (const MetaComponentDescriptor& component : G.components) {
+        format(&out, LIT("static ComponentDescriptor "));
+        component.format_ecs_descriptor_name(out);
+        format(&out, LIT(" = {\n"));
+        format(&out, LIT("\t.name = LIT(\"{}\"),\n"), component.name);
+        format(&out, LIT("\t.size = sizeof({}),\n"), component.name);
+        format(
+            &out,
+            LIT("\t.alignment = static_cast<i64>(alignof({})),\n"),
+            component.name);
+        format(
+            &out,
+            LIT("\t.descriptor = descriptor_of<{}>(nullptr),\n"),
+            component.name);
+        format(&out, LIT("};\n"));
+    }
+    format(&out, LIT("\n"));
+}
+
+static void write_system_descriptors_impl(WriteTape& out)
+{
+    int i = 0;
+    for (const auto& system : G.systems) {
+        Str system_id = format(G.arena, LIT("_system_{}"), i);
+        Str invoke_id = format(G.arena, LIT("{}_invoke"), system_id);
+
+        format(&out, LIT("// System {}\n"), system.name);
+        format(&out, LIT("static void {}(ecs_iter_t* it)\n"), invoke_id);
+        format(&out, LIT("{\n"), invoke_id);
+
+        // Get Fields
+        for (int term_index = 0; term_index < system.terms.size; ++term_index) {
+            const MetaSystemDescriptorTerm& term = system.terms[term_index];
+
+            format(
+                &out,
+                LIT("\t{}* c{} = ecs_field(it, {}, {});\n"),
+                term.component_type,
+                term_index,
+                term.component_type,
+                term_index + 1);
+        }
+
+        // Invoke actual function
+        {
+            format(&out, LIT("\tfor (int i = 0; i < it->count; ++i)\n"));
+            format(&out, LIT("\t{\n"));
+            format(
+                &out,
+                LIT("\tflecs::entity entity(it->world, it->entities[i]);\n"));
+
+            format(&out, LIT("\t\t{}(\n"), system.name);
+            format(&out, LIT("\t\t\tentity,\n"));
+
+            for (int term_index = 0; term_index < system.terms.size;
+                 ++term_index)
+
+            {
+                const MetaSystemDescriptorTerm& term = system.terms[term_index];
+
+                if (term.is_pointer()) {
+                    format(&out, LIT("\t\t\t&c{}[i]"), term_index);
+                } else {
+                    format(&out, LIT("\t\t\tc{}[i]"), term_index);
+                }
+
+                if (term_index != (system.terms.size - 1)) {
+                    format(&out, LIT(",\n"));
+                }
+            }
+            format(&out, LIT(");\n"), system.name);
+
+            format(&out, LIT("\t}\n"));
+        }
+
+        format(&out, LIT("}\n"), invoke_id);
+
+        format(&out, LIT("static SystemDescriptor {}_desc = {\n"), system_id);
+
+        format(&out, LIT("\t.name = \"{}\",\n"), system.name);
+        format(&out, LIT("\t.invoke = {},\n"), invoke_id);
+
+        format(&out, LIT("\t.filter_desc = {\n"));
+
+        // Terms
+        {
+            format(&out, LIT("\t\t.terms = {\n"));
+
+            for (int term_index = 0; term_index < system.terms.size;
+                 ++term_index)
+            {
+                const MetaSystemDescriptorTerm& term = system.terms[term_index];
+                format(&out, LIT("\t\t\t{\n"));
+
+                // Component ID
+                // format(
+                //     &out,
+                //     LIT("\t\t\t\t.id = ecs_id({}),\n"),
+                //     term.component_type);
+
+                // Source
+                format(&out, LIT("\t\t\t\t.src = {\n"));
+                {
+                    // ID
+                    format(
+                        &out,
+                        LIT("\t\t\t\t\t.id = {},\n"),
+                        term.source.entity);
+
+                    // Name
+                    format(&out, LIT("\t\t\t\t\t.name = nullptr,\n"));
+
+                    // Relationship
+                    if (term.source.relationship.is_default()) {
+                        format(
+                            &out,
+                            LIT("\t\t\t\t\t.trav = Ecs{},\n"),
+                            term.source.relationship.name);
+                    } else {
+                        format(
+                            &out,
+                            LIT("\t\t\t\t\t.trav = ecs_id({}),\n"),
+                            term.source.relationship.name);
+                    }
+
+                    // Flags
+                    format(
+                        &out,
+                        LIT("\t\t\t\t\t.flags = {}, "),
+                        term.source.flags.f);
+                    term.source.flags.print_ors(out);
+
+                    format(&out, LIT("\n"));
+                }
+                format(&out, LIT("\t\t\t\t},\n"));
+
+                // First
+                format(&out, LIT("\t\t\t\t.first = {\n"));
+                {
+                    // @todo: need to move this to .first property of term!
+                    format(
+                        &out,
+                        LIT("\t\t\t\t\t.name = (char*)\"{}\",\n"),
+                        term.component_type);
+                }
+                format(&out, LIT("\t\t\t\t},\n"));
+
+                // Inout
+                format(&out, LIT("\t\t\t\t.inout = {},\n"), term.access);
+
+                // Operator
+                format(&out, LIT("\t\t\t\t.oper = {},\n"), term.op);
+
+                format(&out, LIT("\t\t\t},\n"));
+            }
+
+            format(&out, LIT("\t\t},\n"));
+        }
+
+        format(&out, LIT("\t},\n"));
+        format(&out, LIT("\t.phase = Ecs{},\n"), system.phase);
+
+        format(&out, LIT("};\n"));
+
+        format(&out, LIT("\n"));
+
+        ++i;
     }
 }
 
@@ -602,7 +787,7 @@ static void write_module(Str directory)
     SAVE_ARENA(G.arena);
     Str header         = format(G.arena, LIT("{}/Mod.h"), directory);
     Str implementation = format(G.arena, LIT("{}/Mod.cpp"), directory);
-    Str genlist        = format(G.arena, LIT("{}/ModuleFiles.txt"), directory);
+    Str genlist        = format(G.arena, LIT("{}/ModFiles.txt"), directory);
 
     print(LIT("Writing module {}, {}\n"), header, implementation);
     G.files_generated.add(header);
@@ -616,15 +801,14 @@ static void write_module(Str directory)
         format(&out, LIT("// clang-format off\n"));
 
         format(&out, LIT("#pragma once\n"));
-        format(&out, LIT("#include \"ECS/SystemDescriptor.h\"\n"));
-        format(&out, LIT("#include \"ECS/ComponentDescriptor.h\"\n"));
+        format(&out, LIT("#include \"Engine/Module.h\"\n"));
 
         write_component_descriptors_header(out);
 
         format(
             &out,
-            LIT("extern \"C\" void import_module_{}(SystemDescriptorRegistrar* "
-                "reg);\n"),
+            LIT("extern \"C\" void import_module_{}(ModuleInitParams* "
+                "params);\n"),
             G.module_name);
 
         format(&out, LIT("// clang-format on\n"));
@@ -637,13 +821,60 @@ static void write_module(Str directory)
         format(&out, LIT("// clang-format off\n"));
         format(&out, LIT("\n"));
         format(&out, LIT("#include \"Mod.h\"\n"));
+        format(&out, LIT("#include \"Engine/Engine.h\"\n"));
         for (const Str& include : G.module_includes) {
             format(&out, LIT("#include \"{}\"\n"), include);
         }
 
+        format(&out, LIT("//\n"));
+        format(&out, LIT("// COMPONENTS\n"));
+        format(&out, LIT("//\n"));
         write_component_descriptors_impl(out);
 
+        format(&out, LIT("//\n"));
+        format(&out, LIT("// SYSTEMS\n"));
+        format(&out, LIT("//\n"));
+        write_system_descriptors_impl(out);
+
+        // Write import_module_<ModuleName>
+
+        format(
+            &out,
+            LIT("void import_module_{}(ModuleInitParams* params) {\n"),
+            G.module_name);
+
+        // Set engine instance ptr
+        format(&out, LIT("\tEngine::set_instance(params->engine_instance);\n"));
+
+        for (const MetaComponentDescriptor& component : G.components) {
+            format(&out, LIT("\tparams->components->add("));
+            component.format_ecs_descriptor_name(out);
+            format(&out, LIT(");\n"));
+        }
+
+        int i = 0;
+        for (const MetaSystemDescriptor& system : G.systems) {
+            format(&out, LIT("\tparams->systems->add(&_system_{}_desc);\n"), i);
+            i++;
+        }
+
+        for (const MetaHook& hook : G.hooks) {
+            if (hook.hook == LIT("init")) {
+                format(&out, LIT("\t{}();\n"), hook.function);
+            }
+        }
+
+        format(&out, LIT("}\n"));
+
         format(&out, LIT("// clang-format on\n"));
+    }
+
+    // Write ModFiles.txt
+    {
+        BufferedWriteTape<true> out(open_file_write(genlist));
+        for (Str file_path : G.files_generated) {
+            format(&out, LIT("{}\n"), FmtPath(file_path));
+        }
     }
 }
 

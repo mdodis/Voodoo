@@ -4,7 +4,6 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 
-#include "Module.h"
 #include "Renderer/Renderer.h"
 #include "StringFormat.h"
 
@@ -47,33 +46,6 @@ void ECS::init(struct Renderer* r)
         register_default_ecs_descriptors(register_func);
     }
 
-    {
-        ECS_COMPONENT(world.m_world, Vec3);
-
-        ecs_struct_desc_t struct_desc = {
-            .entity = ecs_id(Vec3),
-            .members =
-                {
-                    {
-                        .name   = "x",
-                        .type   = ecs_id(ecs_f32_t),
-                        .offset = (i32)OFFSET_OF(Vec3, x),
-                    },
-                    {
-                        .name   = "y",
-                        .type   = ecs_id(ecs_f32_t),
-                        .offset = (i32)OFFSET_OF(Vec3, y),
-                    },
-                    {
-                        .name   = "z",
-                        .type   = ecs_id(ecs_f32_t),
-                        .offset = (i32)OFFSET_OF(Vec3, z),
-                    },
-                },
-        };
-        ecs_struct_init(world.m_world, &struct_desc);
-    }
-
     // System registrar
     {
         system_registrar = SystemDescriptorRegistrar{
@@ -81,9 +53,13 @@ void ECS::init(struct Renderer* r)
         };
     }
 
-    // ecs_log_set_level(2);
+    // Component registrar
+    {
+        component_registrar.world = world.m_world;
 
-    import_module_Engine(&system_registrar);
+        component_registrar.init(System_Allocator);
+    }
+
     world.set<flecs::Rest>({});
 }
 
@@ -180,5 +156,3 @@ void ECS::open_world(Str path)
 }
 
 void ECS::save_world(Str path) { world_serializer.save(world, path); }
-
-#include "Module.cpp"

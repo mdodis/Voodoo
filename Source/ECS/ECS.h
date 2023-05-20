@@ -1,6 +1,7 @@
 #pragma once
 #include <flecs.h>
 
+#include "ComponentDescriptor.h"
 #include "Containers/Array.h"
 #include "Delegates.h"
 #include "ECSTypes.h"
@@ -26,7 +27,8 @@ struct ECS {
     flecs::world     world;
     struct Renderer* renderer;
 
-    SystemDescriptorRegistrar system_registrar;
+    SystemDescriptorRegistrar    system_registrar;
+    ComponentDescriptorRegistrar component_registrar;
 
     struct {
         flecs::query<EditorSelectableComponent> entity_view_query;

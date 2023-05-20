@@ -137,7 +137,8 @@ struct MetaSystemDescriptor {
 namespace MetaComponentFlag {
     enum Type : u32
     {
-        NoDefine = 1 << 0,
+        NoDefine     = 1 << 0,
+        NoDescriptor = 1 << 1,
     };
 }
 typedef MetaComponentFlag::Type EMetaComponentFlag;
@@ -145,10 +146,12 @@ typedef u32                     MetaComponentFlags;
 
 PROC_FMT_ENUM(MetaComponentFlag, {
     FMT_ENUM_CASE2(MetaComponentFlag, NoDefine, "NoDefine");
+    FMT_ENUM_CASE2(MetaComponentFlag, NoDescriptor, "nodescriptor");
 })
 
 PROC_PARSE_ENUM(MetaComponentFlag, {
     PARSE_ENUM_CASE2(MetaComponentFlag, NoDefine, "nodefine");
+    PARSE_ENUM_CASE2(MetaComponentFlag, NoDescriptor, "nodescriptor");
 })
 
 struct MetaCompound {
@@ -177,7 +180,13 @@ struct MetaType {
 
         if (value.is<MetaCompound>()) {
             const MetaCompound& compound = *value.get<MetaCompound>();
-            format(&out, LIT("{}_Descriptor"), compound.type);
+
+            if (compound.type == LIT("Str")) {
+                format(&out, LIT("StrDescriptor"));
+            } else {
+                format(&out, LIT("{}Descriptor"), compound.type);
+            }
+
             return;
         }
 
@@ -229,11 +238,20 @@ struct MetaComponentDescriptor {
     Str                           name;
     MetaComponentFlags            flags;
     TArray<MetaComponentProperty> properties;
-    Str                           override_desc = Str::NullStr;
 
     void format_descriptor_name(WriteTape& out) const
     {
         format(&out, LIT("{}Descriptor"), name);
+    }
+
+    void format_ecs_descriptor_name(WriteTape& out) const
+    {
+        format(&out, LIT("__ECSCD_{}"), name);
+    }
+
+    bool has_generated_descriptor() const
+    {
+        return !(flags & MetaComponentFlag::NoDescriptor);
     }
 };
 
@@ -259,3 +277,8 @@ static _inline bool is_meta_primitive(Str id)
 
     return false;
 }
+
+struct MetaHook {
+    Str hook;
+    Str function;
+};

@@ -7,9 +7,6 @@
 #include "Str.h"
 #include "flecs.h"
 
-using Vec3Descriptor = FixedArrayDescriptor<glm::vec3, float, 3>;
-using QuatDescriptor = FixedArrayDescriptor<glm::quat, float, 4>;
-
 /**
  * Transform Component
  *
@@ -68,24 +65,6 @@ struct TransformComponent {
     }
 };
 extern ECS_COMPONENT_DECLARE(TransformComponent);
-
-struct TransformComponentDescriptor : public IDescriptor {
-    Vec3Descriptor position_desc = {
-        OFFSET_OF(TransformComponent, position), LIT("position")};
-    QuatDescriptor rotation_desc = {
-        OFFSET_OF(TransformComponent, rotation), LIT("rotation")};
-    Vec3Descriptor scale_desc = {
-        OFFSET_OF(TransformComponent, scale), LIT("scale")};
-
-    IDescriptor* descs[3] = {
-        &position_desc,
-        &rotation_desc,
-        &scale_desc,
-    };
-
-    CUSTOM_DESC_OBJECT_DEFAULT(TransformComponent, descs)
-};
-DEFINE_DESCRIPTOR_OF_INL(TransformComponent);
 
 struct MeshMaterialComponent {
     Str mesh_name;
