@@ -1,7 +1,6 @@
 #include "ECSTypes.h"
 
 #define ALL_DEFAULT_ECS_TYPES    \
-    X(TransformComponent)        \
     X(MeshMaterialComponent)     \
     X(StaticMeshComponent)       \
     X(MaterialComponent)         \

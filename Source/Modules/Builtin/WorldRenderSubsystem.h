@@ -1,14 +1,16 @@
 #pragma once
+#include "Builtin.h"
 #include "Containers/Array.h"
 #include "Core/Handle.h"
 #include "ECS.h"
 #include "Engine/AssetSystem.h"
+#include "Engine/SubsystemManager.h"
 #include "Renderer/Mesh.h"
 #include "Renderer/RenderObject.h"
 
-struct WorldRenderSystem {
-    void init(Allocator& allocator);
-    void deinit();
+struct WorldRenderSubsystem : ISubsystem {
+    void init() override;
+    void deinit() override;
 
     THandle<Mesh> resolve(const AssetID& id);
     Mesh*         get(THandle<Mesh> handle);

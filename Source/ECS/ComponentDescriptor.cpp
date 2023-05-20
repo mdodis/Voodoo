@@ -9,7 +9,7 @@ void ComponentDescriptorRegistrar::init(Allocator& allocator)
     type_name_to_id.init(allocator);
 }
 
-void ComponentDescriptorRegistrar::add(ComponentDescriptor& component)
+ecs_entity_t ComponentDescriptorRegistrar::add(ComponentDescriptor& component)
 {
     Str type_name = format(System_Allocator, LIT("{}\0"), component.name);
 
@@ -38,5 +38,19 @@ void ComponentDescriptorRegistrar::add(ComponentDescriptor& component)
     id_to_desc.add(cid, component);
     type_name_to_id.add(type_name, cid);
 
-    print(LIT("[Component Registrar] Registered component {}\n"), type_name);
+    print(
+        LIT("[Component Registrar] Registered component {} with id {}\n"),
+        type_name,
+        cid);
+
+    return cid;
+}
+
+ComponentDescriptor* ComponentDescriptorRegistrar::get_descriptor(u64 id)
+{
+    if (id_to_desc.contains(id)) {
+        return &id_to_desc[id];
+    }
+
+    return nullptr;
 }

@@ -6,4 +6,5 @@ target_link_libraries(Standalone
     PRIVATE
     Engine
     Renderer
-    ECS)
+    ECS
+    Module_Builtin)

@@ -49,6 +49,8 @@ struct Vec3 : public glm::vec3 {
     static inline Vec3 left() { return Vec3(-1, 0, 0); }
     static inline Vec3 forward() { return Vec3(0, 0, -1); }
     static inline Vec3 back() { return Vec3(0, 0, 1); }
+
+    float* ptr() { return glm::value_ptr(*((glm::vec3*)this)); }
 };
 
 static _inline Vec3 operator+(const Vec3& left, const Vec3& right)

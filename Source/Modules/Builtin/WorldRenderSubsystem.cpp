@@ -1,11 +1,12 @@
-#include "WorldRenderSystem.h"
+#include "WorldRenderSubsystem.h"
 
 #include "ECS/ECS.h"
 #include "Engine/Engine.h"
 #include "Renderer/Renderer.h"
 
-void WorldRenderSystem::init(Allocator& allocator)
+void WorldRenderSubsystem::init()
 {
+    Allocator& allocator = System_Allocator;
     meshes.init(allocator);
     render_objects.alloc = (&allocator);
 
@@ -20,9 +21,9 @@ void WorldRenderSystem::init(Allocator& allocator)
             .build();
 }
 
-void WorldRenderSystem::deinit() {}
+void WorldRenderSubsystem::deinit() {}
 
-THandle<Mesh> WorldRenderSystem::resolve(const AssetID& id)
+THandle<Mesh> WorldRenderSubsystem::resolve(const AssetID& id)
 {
     THandle<Mesh> result = meshes.get_handle(id);
 
@@ -33,7 +34,7 @@ THandle<Mesh> WorldRenderSystem::resolve(const AssetID& id)
     return result;
 }
 
-THandle<Mesh> WorldRenderSystem::submit_mesh(const AssetID& id)
+THandle<Mesh> WorldRenderSubsystem::submit_mesh(const AssetID& id)
 {
     Engine* eng   = Engine::instance();
     Asset*  asset = eng->asset_system->load_asset_now(id);
@@ -47,7 +48,7 @@ THandle<Mesh> WorldRenderSystem::submit_mesh(const AssetID& id)
     return THandle<Mesh>{hid};
 }
 
-void WorldRenderSystem::update()
+void WorldRenderSubsystem::update()
 {
     render_objects.empty();
 
@@ -60,7 +61,7 @@ void WorldRenderSystem::update()
     });
 }
 
-void WorldRenderSystem::update_render_object(
+void WorldRenderSubsystem::update_render_object(
     TransformComponent&  transform,
     StaticMeshComponent& mesh,
     MaterialComponent&   material)

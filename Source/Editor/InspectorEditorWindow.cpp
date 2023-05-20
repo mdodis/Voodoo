@@ -2,6 +2,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Builtin/Builtin.h"
 #include "MenuRegistrar.h"
 #include "imgui.h"
 
@@ -72,14 +73,19 @@ void InspectorEditorWindow::draw()
         flecs::entity comp = id.entity();
         ImGui::Text("%s", comp.name().c_str());
 
-        if (comp.raw_id() == ecs_id(TransformComponent)) {
+        auto& components = ecs().component_registrar;
+
+        ComponentDescriptor* desc = components.get_descriptor(comp.id());
+        if (desc == nullptr) return;
+
+        if (desc->name == LIT("TransformComponent")) {
             auto* t = entity.get_mut<TransformComponent>();
 
             glm::vec3 euler = glm::degrees(glm::eulerAngles(t->rotation));
 
-            ImGui::DragFloat3("Position", glm::value_ptr(t->position), 0.01f);
+            ImGui::DragFloat3("Position", t->position.ptr(), 0.01f);
             ImGui::DragFloat3("Rotation", glm::value_ptr(euler), 0.01f);
-            ImGui::DragFloat3("Scale", glm::value_ptr(t->scale), 0.01f);
+            ImGui::DragFloat3("Scale", t->scale.ptr(), 0.01f);
 
             t->rotation =
                 glm::angleAxis(glm::radians(euler.z), glm::vec3(0, 0, 1)) *

@@ -5,6 +5,7 @@
 #include "MenuRegistrar.h"
 #include <imgui.h>
 #include "backends/imgui_impl_vulkan.h"
+#include "Builtin/Builtin.h"
 
 // clang-format on
 
@@ -51,25 +52,25 @@ void WorldViewEditorWindow::init()
         });
 
     gizmo_entity = ecs().world.entity("Gizmo");
-    gizmo_entity.set(TransformComponent::zero());
+    gizmo_entity.set(make_transform_zero());
     gizmo_entity.set(EditorSyncTransformPositionComponent{});
 
     {
         auto gizmo_axis = ecs().world.entity("X").child_of(gizmo_entity);
-        gizmo_axis.set(TransformComponent::pos(0.5f, 0, 0));
+        gizmo_axis.set(make_transform_position(0.5f, 0, 0));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(1.0f, 0.1f, 0.1f));
         gizmo_axis.set(
             EditorGizmoDraggableComponent{.drag_axis = Vec3::right()});
     }
     {
         auto gizmo_axis = ecs().world.entity("Y").child_of(gizmo_entity);
-        gizmo_axis.set(TransformComponent::pos(0, 0.5f, 0));
+        gizmo_axis.set(make_transform_position(0, 0.5f, 0));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 1.0f, 0.1f));
         gizmo_axis.set(EditorGizmoDraggableComponent{.drag_axis = Vec3::up()});
     }
     {
         auto gizmo_axis = ecs().world.entity("Z").child_of(gizmo_entity);
-        gizmo_axis.set(TransformComponent::pos(0, 0, -0.5f));
+        gizmo_axis.set(make_transform_position(0, 0, -0.5f));
         gizmo_axis.set(EditorGizmoShapeComponent::make_obb(0.1f, 0.1f, 1.0f));
         gizmo_axis.set(
             EditorGizmoDraggableComponent{.drag_axis = Vec3::forward()});
@@ -216,8 +217,10 @@ void WorldViewEditorWindow::init()
             TransformComponent* sync =
                 gizmo_entity.get_mut<TransformComponent>();
 
-            sync->position = transform->get_world_position();
-            sync->rotation = transform->get_world_rotation();
+            if (!transform) return;
+
+            sync->position = get_world_position(*transform);
+            sync->rotation = get_world_rotation(*transform);
         });
 
     editor_world()
@@ -238,10 +241,11 @@ void WorldViewEditorWindow::init()
             flecs::entity e(editor_world().m_world, sync.target);
             if (data.dragging) {
                 TransformComponent* et = e.get_mut<TransformComponent>();
-                et->set_world_position(Vec3(transform.world_position));
+                set_world_position(*et, Vec3(transform.world_position));
             } else {
                 const TransformComponent* et = e.get<TransformComponent>();
-                transform.set_world_position(et->world_position);
+                if (!et) return;
+                set_world_position(transform, et->world_position);
             }
         });
 }

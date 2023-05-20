@@ -14,8 +14,8 @@ struct SubsystemManager {
     template <typename T>
     void register_subsystem()
     {
-        subsystem = alloc<T>(System_Allocator);
-        Str name  = Str(typeid(T).name());
+        T*  subsystem = alloc<T>(System_Allocator);
+        Str name      = Str(typeid(T).name());
         _register_subsystem(subsystem, name);
     }
 

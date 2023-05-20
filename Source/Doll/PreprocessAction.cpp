@@ -493,6 +493,8 @@ static void write_component(WriteTape& out, MetaComponentDescriptor& component)
     if (component.has_generated_descriptor()) {
         write_component_idescriptor(out, component);
     }
+
+    format(&out, LIT("extern ecs_entity_t ecs_id({});\n"), component.name);
 }
 
 static void parse_component_property(
@@ -629,6 +631,10 @@ static void write_component_descriptors_impl(WriteTape& out)
         format(&out, LIT("};\n"));
     }
     format(&out, LIT("\n"));
+
+    for (const MetaComponentDescriptor& component : G.components) {
+        format(&out, LIT("ecs_entity_t ecs_id({});\n"), component.name);
+    }
 }
 
 static void write_system_descriptors_impl(WriteTape& out)
@@ -847,7 +853,10 @@ static void write_module(Str directory)
         format(&out, LIT("\tEngine::set_instance(params->engine_instance);\n"));
 
         for (const MetaComponentDescriptor& component : G.components) {
-            format(&out, LIT("\tparams->components->add("));
+            format(
+                &out,
+                LIT("\tecs_id({}) = params->components->add("),
+                component.name);
             component.format_ecs_descriptor_name(out);
             format(&out, LIT(");\n"));
         }

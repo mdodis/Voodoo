@@ -21,6 +21,7 @@ DECLARE_DESCRIPTOR_OF(Mat4);
 #if METADESK
 // clang-format off
 
+
 @component(nodefine)
 Vec3: {
     x: f32;
@@ -65,7 +66,7 @@ AssetProxy: {
 }
 
 @component()
-TransformComponent2: {
+TransformComponent: {
 
     position: Vec3;
     rotation: Quat;
@@ -92,9 +93,9 @@ apply_transform: {
     @access(in)
     @source(id: this, trav: ChildOf, flags: (up, cascade))
     @op(optional)
-    parent: TransformComponent2;
+    parent: TransformComponent;
 
-    transform: TransformComponent2;
+    transform: TransformComponent;
 }
 
 @hook(init) builtin_init;
@@ -102,11 +103,19 @@ apply_transform: {
 // clang-format on
 #endif
 
-Vec3 get_world_position(const TransformComponent2& transform);
-Quat get_world_rotation(const TransformComponent2& transform);
-Vec3 get_world_scale(const TransformComponent2& transform);
+TransformComponent                make_transform_zero();
+TransformComponent                make_transform_position(const Vec3& position);
+static _inline TransformComponent make_transform_position(
+    float x, float y, float z)
+{
+    return make_transform_position(Vec3(x, y, z));
+}
 
-void set_world_position(TransformComponent2& transform, Vec3 position);
-void set_world_rotation(TransformComponent2& transform, Quat rotation);
-void set_world_scale(TransformComponent2& transform, Vec3 scale);
-Mat4 get_local_matrix(const TransformComponent2& transform);
+Vec3 get_world_position(const TransformComponent& transform);
+Quat get_world_rotation(const TransformComponent& transform);
+Vec3 get_world_scale(const TransformComponent& transform);
+
+void set_world_position(TransformComponent& transform, Vec3 position);
+void set_world_rotation(TransformComponent& transform, Quat rotation);
+void set_world_scale(TransformComponent& transform, Vec3 scale);
+Mat4 get_local_matrix(const TransformComponent& transform);

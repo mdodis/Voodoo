@@ -18,6 +18,8 @@
 #include "InspectorEditorWindow.h"
 // clang-format on
 
+#include "Builtin/Builtin.h"
+
 // clang-format off
 static EditorColorScheme Default_Color_Scheme = {
     .window_bg              = {0.04f, 0.04f, 0.04f, 1.00f},

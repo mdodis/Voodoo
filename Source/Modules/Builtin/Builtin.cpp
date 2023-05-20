@@ -1,13 +1,15 @@
 #include "Builtin.h"
 
 #include "Engine/Engine.h"
+#include "Engine/SubsystemManager.h"
 #include "Renderer/Renderer.h"
+#include "WorldRenderSubsystem.h"
 DEFINE_DESCRIPTOR_OF(Mat4);
 
 void apply_transform(
-    flecs::entity              entity,
-    const TransformComponent2* parent,
-    TransformComponent2&       transform)
+    flecs::entity             entity,
+    const TransformComponent* parent,
+    TransformComponent&       transform)
 {
     if (parent) {
         Mat4 parent_matrix = Mat4::make_transform(
@@ -47,36 +49,54 @@ void apply_transform(
     }
 }
 
-Vec3 get_world_position(const TransformComponent2& transform)
+TransformComponent make_transform_zero()
+{
+    return TransformComponent{
+        .position = Vec3::zero(),
+        .rotation = Quat::identity(),
+        .scale    = Vec3::one(),
+    };
+}
+
+TransformComponent make_transform_position(const Vec3& position)
+{
+    return TransformComponent{
+        .position = position,
+        .rotation = Quat::identity(),
+        .scale    = Vec3::one(),
+    };
+}
+
+Vec3 get_world_position(const TransformComponent& transform)
 {
     return transform.world_position;
 }
-Quat get_world_rotation(const TransformComponent2& transform)
+Quat get_world_rotation(const TransformComponent& transform)
 {
     return transform.world_rotation;
 }
-Vec3 get_world_scale(const TransformComponent2& transform)
+Vec3 get_world_scale(const TransformComponent& transform)
 {
     return transform.world_scale;
 }
 
-void set_world_position(TransformComponent2& transform, Vec3 position)
+void set_world_position(TransformComponent& transform, Vec3 position)
 {
     transform.position = transform.world_to_local.transform_point(position);
 }
 
-void set_world_rotation(TransformComponent2& transform, Quat rotation)
+void set_world_rotation(TransformComponent& transform, Quat rotation)
 {
     transform.rotation =
         glm::quat_cast(transform.world_to_local * rotation.matrix());
 }
 
-void set_world_scale(TransformComponent2& transform, Vec3 scale)
+void set_world_scale(TransformComponent& transform, Vec3 scale)
 {
     transform.scale = transform.world_to_local * transform.scale;
 }
 
-Mat4 get_local_matrix(const TransformComponent2& transform)
+Mat4 get_local_matrix(const TransformComponent& transform)
 {
     return Mat4::make_transform(
         transform.position,
@@ -84,6 +104,9 @@ Mat4 get_local_matrix(const TransformComponent2& transform)
         transform.scale);
 }
 
-void builtin_init() {}
+void builtin_init()
+{
+    Engine* engine = Engine::instance();
 
-void submit_render_objects(Engine* engine) {}
+    engine->subsystems->register_subsystem<WorldRenderSubsystem>();
+}

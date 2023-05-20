@@ -7,65 +7,6 @@
 #include "Str.h"
 #include "flecs.h"
 
-/**
- * Transform Component
- *
- * Represents the transform of an entity
- */
-struct TransformComponent {
-    glm::vec3 position;
-    glm::quat rotation;
-    glm::vec3 scale;
-
-    Vec3 world_position;
-    Quat world_rotation;
-    Vec3 world_scale;
-    Mat4 world_to_local;
-
-    _inline Vec3 get_world_position() const { return world_position; }
-    _inline Quat get_world_rotation() const { return world_rotation; }
-    _inline Vec3 get_world_scale() const { return world_scale; }
-
-    _inline void set_world_position(Vec3 new_position)
-    {
-        position = world_to_local.transform_point(new_position);
-    }
-
-    _inline void set_world_rotation(Quat new_rotation)
-    {
-        rotation = glm::quat_cast(world_to_local * new_rotation.matrix());
-    }
-
-    _inline void set_world_scale(Vec3 new_scale)
-    {
-        scale = world_to_local * new_scale;
-    }
-
-    static _inline TransformComponent zero()
-    {
-        return TransformComponent{
-            .position = glm::vec3(0, 0, 0),
-            .rotation = glm::quat(1, 0, 0, 0),
-            .scale    = glm::vec3(1, 1, 1),
-        };
-    }
-
-    static _inline TransformComponent pos(float x, float y, float z)
-    {
-        return TransformComponent{
-            .position = glm::vec3(x, y, z),
-            .rotation = glm::quat(1, 0, 0, 0),
-            .scale    = glm::vec3(1, 1, 1),
-        };
-    }
-
-    _inline Mat4 local_matrix() const
-    {
-        return Mat4::make_transform(position, rotation, scale);
-    }
-};
-extern ECS_COMPONENT_DECLARE(TransformComponent);
-
 struct MeshMaterialComponent {
     Str mesh_name;
     Str material_name;

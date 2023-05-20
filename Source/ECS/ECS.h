@@ -37,8 +37,6 @@ struct ECS {
     } editor;
 
     struct {
-        flecs::query<TransformComponent, StaticMeshComponent, MaterialComponent>
-                             transform_view_query;
         TArray<RenderObject> objects;
     } rendering;
 };

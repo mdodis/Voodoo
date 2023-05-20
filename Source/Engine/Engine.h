@@ -16,14 +16,13 @@ struct Engine {
      */
     Allocator& allocator = System_Allocator;
 
-    struct win::Window*       window;
-    struct Renderer*          renderer;
-    struct Input*             input;
-    struct ECS*               ecs;
-    struct SubsystemManager*  subsystems;
-    struct AssetSystem*       asset_system;
-    struct WorldRenderSystem* world_render_system;
-    struct ModuleSystem*      module_system;
+    struct win::Window*      window;
+    struct Renderer*         renderer;
+    struct Input*            input;
+    struct ECS*              ecs;
+    struct SubsystemManager* subsystems;
+    struct AssetSystem*      asset_system;
+    struct ModuleSystem*     module_system;
 
     using Hook = MulticastDelegate<Engine*>;
 

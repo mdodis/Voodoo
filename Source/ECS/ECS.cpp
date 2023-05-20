@@ -27,13 +27,6 @@ void ECS::init(struct Renderer* r)
     // Rendering queries
     {
         rendering.objects.alloc = &System_Allocator;
-        rendering.transform_view_query =
-            world
-                .query_builder<
-                    TransformComponent,
-                    StaticMeshComponent,
-                    MaterialComponent>()
-                .build();
     }
 
     // Serializer
@@ -107,40 +100,40 @@ void ECS::run()
 
     // Update render objects
     {
-        rendering.objects.empty();
+        // rendering.objects.empty();
 
-        rendering.transform_view_query.each(
-            [this](
-                flecs::entity        e,
-                TransformComponent&  transform,
-                StaticMeshComponent& mesh,
-                MaterialComponent&   material) {
-                // Compute transform
-                glm::mat4 object_transform =
-                    glm::translate(glm::mat4(1.0f), transform.world_position) *
-                    glm::toMat4(transform.world_rotation) *
-                    glm::scale(glm::mat4(1.0f), transform.world_scale);
+        // rendering.transform_view_query.each(
+        //     [this](
+        //         flecs::entity        e,
+        //         TransformComponent&  transform,
+        //         StaticMeshComponent& mesh,
+        //         MaterialComponent&   material) {
+        //         // Compute transform
+        //         glm::mat4 object_transform =
+        //             glm::translate(glm::mat4(1.0f), transform.world_position)
+        //             * glm::toMat4(transform.world_rotation) *
+        //             glm::scale(glm::mat4(1.0f), transform.world_scale);
 
-                if (mesh.mesh == 0) {
-                    mesh.mesh = renderer->get_mesh(mesh.name);
-                }
+        //         if (mesh.mesh == 0) {
+        //             mesh.mesh = renderer->get_mesh(mesh.name);
+        //         }
 
-                ASSERT(mesh.mesh);
+        //         ASSERT(mesh.mesh);
 
-                if (material.material == 0) {
-                    material.material =
-                        renderer->material_system.find_material(material.name);
-                }
-                ASSERT(material.material);
+        //         if (material.material == 0) {
+        //             material.material =
+        //                 renderer->material_system.find_material(material.name);
+        //         }
+        //         ASSERT(material.material);
 
-                rendering.objects.add(RenderObject{
-                    .mesh      = mesh.mesh,
-                    .material  = material.material,
-                    .transform = object_transform,
-                });
-            });
+        //         rendering.objects.add(RenderObject{
+        //             .mesh      = mesh.mesh,
+        //             .material  = material.material,
+        //             .transform = object_transform,
+        //         });
+        //     });
 
-        renderer->render_objects = slice(rendering.objects);
+        // renderer->render_objects = slice(rendering.objects);
     }
 }
 
