@@ -133,6 +133,16 @@ struct Mat4 : public glm::mat4 {
     static _inline Mat4 make_transform(
         const Vec3& position, const struct Quat& rotation, const Vec3& scale);
 
+    static _inline Mat4 make_translate(const Vec3& position)
+    {
+        return Mat4(glm::translate(glm::mat4(1.0f), position));
+    }
+
+    static _inline Mat4 make_scale(const Vec3& scale)
+    {
+        return Mat4(glm::scale(glm::mat4(1.0f), scale));
+    }
+
     _inline Mat4 inverse() const { return glm::inverse(*this); }
 
     void decompose(Vec3& position, struct Quat& rotation, Vec3& scale) const;

@@ -15,10 +15,10 @@ int main(int argc, char* argv[])
         auto empire = G.engine.ecs->create_entity(LIT("Lost Empire"));
         empire.set<TransformComponent>({{0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
 
-        empire.set<StaticMeshComponent>({
-            .name = LIT("lost_empire"),
+        empire.set<StaticMeshComponent2>({
+            .asset = AssetProxy::from_path(LIT("@Engine /lost-empire.asset")),
         });
-        empire.set<MaterialComponent>({
+        empire.set<MaterialComponent2>({
             .name = LIT("lost-empire-albedo"),
         });
 
@@ -33,10 +33,11 @@ int main(int argc, char* argv[])
             auto ent         = G.engine.ecs->create_entity(entity_name);
             ent.set<TransformComponent>(
                 {{i * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
-            ent.set<StaticMeshComponent>({
-                .name = LIT("monke"),
+            ent.set<StaticMeshComponent2>({
+                .asset =
+                    AssetProxy::from_path(LIT("@Engine /monkey-smooth.asset")),
             });
-            ent.set<MaterialComponent>({
+            ent.set<MaterialComponent2>({
                 .name = LIT("default-colored"),
             });
             ent.child_of(empire);

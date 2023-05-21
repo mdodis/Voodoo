@@ -7,12 +7,13 @@ template <typename T>
 struct THandle {
     u32 id;
 
+    THandle() : id(0) {}
+    THandle(u32 id) : id(id) {}
+    THandle(const THandle& other) : id(other.id) {}
+
     bool is_valid() const { return id != 0; }
 
-    static _inline constexpr THandle<T> invalid()
-    {
-        return THandle<T>{.id = 0};
-    }
+    static _inline constexpr THandle<T> invalid() { return THandle<T>(); }
 };
 
 template <typename T>

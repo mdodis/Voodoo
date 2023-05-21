@@ -1,5 +1,6 @@
 #include "AssetSystem.h"
 
+#include "Engine.h"
 #include "FileSystem/DirectoryIterator.h"
 
 void AssetSystem::init(Allocator& allocator)
@@ -99,3 +100,37 @@ Str AssetSystem::convert_reference_to_path(
 }
 
 void AssetSystem::deinit() {}
+
+Asset* AssetProxy::get_now()
+{
+    AssetSystem* sys = Engine::instance()->asset_system;
+    if (!is_resolved()) ASSERT(resolve());
+
+    return sys->load_asset_now(cached_id);
+}
+
+bool AssetProxy::resolve()
+{
+    AssetSystem* sys = Engine::instance()->asset_system;
+    cached_id        = sys->resolve_reference(ref);
+    return cached_id.is_valid();
+}
+
+AssetProxy AssetProxy::from_path(Str name)
+{
+    AssetProxy result = {};
+
+    // @todo: This is a bad idea...
+    // Correctly parse it later!!!
+    name.len -= 1;
+    name.data++;
+
+    u64 sep = name.first_of(' ');
+    Str module, path;
+    ASSERT(name.split(sep, &module, &path));
+
+    module.len -= 1;
+    result.ref.module = module;
+    result.ref.path   = path;
+    return result;
+}

@@ -198,7 +198,7 @@ THandle<Texture> TextureSystem::create_texture(Str path)
     };
 
     u32 id = textures.create_resource(path, texture);
-    return THandle<Texture>{.id = id};
+    return THandle<Texture>(id);
 }
 
 THandle<Texture> TextureSystem::get_handle(Str path)

@@ -9,6 +9,11 @@ struct StaticMeshComponent2 {
     THandle<Mesh> mesh;
 };
 
+struct MaterialComponent2 {
+    Str               name;
+    MaterialInstance* instance = nullptr;
+};
+
 struct Mat4Descriptor : FixedArrayDescriptor<Mat4, float, 16> {
     constexpr Mat4Descriptor(u64 offset = 0, Str name = Str::NullStr)
         : FixedArrayDescriptor<Mat4, float, 16>(offset, name)
@@ -83,9 +88,9 @@ StaticMeshComponent2: {
     asset: AssetProxy;
 }
 
-@component()
+@component(nodefine)
 MaterialComponent2: {
-    asset: AssetProxy;
+    name: Str;
 }
 
 @system(OnUpdate)

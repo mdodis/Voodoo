@@ -7,6 +7,7 @@ void SubsystemManager::deinit() { subsystems.deinit(); }
 void SubsystemManager::_register_subsystem(ISubsystem* subsystem, Str name)
 {
     subsystems.create_resource(name, subsystem);
+    subsystem->init();
 }
 
 ISubsystem* SubsystemManager::_get_subsystem(Str name)

@@ -28,8 +28,6 @@ void Renderer::init()
     present_pass.framebuffers.alloc = &allocator;
     main_deletion_queue             = DeletionQueue(allocator);
     swap_chain_deletion_queue       = DeletionQueue(allocator);
-    meshes.init(allocator);
-    textures.init(allocator);
 
     frame_arena = Arena<ArenaMode::Dynamic>(allocator, KILOBYTES(8));
     frame_arena.init();
@@ -174,7 +172,6 @@ void Renderer::init()
 
     init_default_images();
     init_pipelines();
-    init_default_meshes();
 
     imm.init(device, color_pass.render_pass, vma, &desc.cache, &desc.allocator);
 
@@ -1948,57 +1945,6 @@ void Renderer::deinit()
     vkDestroyDevice(device, 0);
     vkDestroySurfaceKHR(instance, surface, 0);
     vkDestroyInstance(instance, 0);
-}
-
-Mesh* Renderer::get_mesh(Str id)
-{
-    if (meshes.contains(id)) {
-        return &meshes[id];
-    }
-    return 0;
-}
-
-void Renderer::init_default_meshes()
-{
-    ZoneScoped;
-    Vertex* vertices = alloc_array<Vertex>(allocator, 3);
-
-    vertices[0] = {
-        .position = {1, 1, 0},
-        .color    = {0, 1, 0},
-    };
-
-    vertices[1] = {
-        .position = {-1, 1, 0},
-        .color    = {0, 1, 0},
-    };
-
-    vertices[2] = {
-        .position = {0, -1, 0},
-        .color    = {0, 1, 0},
-    };
-
-    u32 indices[3] = {0, 1, 2};
-
-    triangle_mesh.vertices = slice(vertices, 3);
-    triangle_mesh.indices  = slice(indices, 3);
-    upload_mesh(triangle_mesh);
-
-    monke_mesh =
-        Mesh::load_from_asset(allocator, "Assets/monkey-smooth.asset").unwrap();
-    upload_mesh(monke_mesh);
-
-    // Lost Empire
-    {
-        Mesh lost_empire =
-            Mesh::load_from_asset(allocator, "Assets/lost-empire.asset")
-                .unwrap();
-        upload_mesh(lost_empire);
-        meshes.add(LIT("lost_empire"), lost_empire);
-    }
-
-    meshes.add(LIT("triangle"), triangle_mesh);
-    meshes.add(LIT("monke"), monke_mesh);
 }
 
 void Renderer::init_default_images()

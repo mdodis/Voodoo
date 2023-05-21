@@ -97,8 +97,6 @@ struct Renderer {
     DeletionQueue swap_chain_deletion_queue;
 
     // Scene Management
-    TMap<Str, Mesh>     meshes;
-    TMap<Str, Texture>  textures;
     Slice<RenderObject> render_objects;
 
     // Immediate
@@ -111,9 +109,6 @@ struct Renderer {
     } global;
 
     UploadContext upload;
-
-    Mesh triangle_mesh;
-    Mesh monke_mesh;  // monke
 
     struct {
         DescriptorAllocator   allocator;
@@ -157,7 +152,6 @@ struct Renderer {
      */
     void                             update();
     VkShaderModule                   load_shader(Str path);
-    Mesh*                            get_mesh(Str id);
     void                             upload_mesh(Mesh& mesh);
     Result<AllocatedImage, VkResult> upload_image_from_file(Str path);
     Result<AllocatedImage, VkResult> upload_image(const Asset& asset);
@@ -182,7 +176,6 @@ private:
     void init_framebuffers();
     void init_descriptors();
     void init_sync_objects();
-    void init_default_meshes();
     void init_default_images();
     void init_commands();
     void init_input();

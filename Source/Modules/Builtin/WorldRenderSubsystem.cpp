@@ -16,9 +16,11 @@ void WorldRenderSubsystem::init()
         eng->ecs->world
             .query_builder<
                 TransformComponent,
-                StaticMeshComponent,
-                MaterialComponent>()
+                StaticMeshComponent2,
+                MaterialComponent2>()
             .build();
+
+    eng->hooks.pre_draw.add_raw(this, &WorldRenderSubsystem::update);
 }
 
 void WorldRenderSubsystem::deinit() {}
@@ -32,6 +34,11 @@ THandle<Mesh> WorldRenderSubsystem::resolve(const AssetID& id)
     }
 
     return result;
+}
+
+Mesh* WorldRenderSubsystem::get(THandle<Mesh> handle)
+{
+    return &meshes.resolve(handle);
 }
 
 THandle<Mesh> WorldRenderSubsystem::submit_mesh(const AssetID& id)
@@ -48,44 +55,50 @@ THandle<Mesh> WorldRenderSubsystem::submit_mesh(const AssetID& id)
     return THandle<Mesh>{hid};
 }
 
-void WorldRenderSubsystem::update()
+void WorldRenderSubsystem::update(Engine* engine)
 {
     render_objects.empty();
 
     collection_query.each([this](
-                              flecs::entity        e,
-                              TransformComponent&  transform,
-                              StaticMeshComponent& mesh,
-                              MaterialComponent&   material) {
+                              flecs::entity         e,
+                              TransformComponent&   transform,
+                              StaticMeshComponent2& mesh,
+                              MaterialComponent2&   material) {
         update_render_object(transform, mesh, material);
     });
+
+    engine->renderer->render_objects = slice(render_objects);
 }
 
 void WorldRenderSubsystem::update_render_object(
-    TransformComponent&  transform,
-    StaticMeshComponent& mesh,
-    MaterialComponent&   material)
+    TransformComponent&   transform,
+    StaticMeshComponent2& mesh,
+    MaterialComponent2&   material)
 {
-    // glm::mat4 object_transform =
-    //     glm::translate(glm::mat4(1.0f), transform.world_position) *
-    //     glm::toMat4(transform.world_rotation) *
-    //     glm::scale(glm::mat4(1.0f), transform.world_scale);
+    Mat4 object_transform = Mat4::make_translate(transform.world_position) *
+                            transform.world_rotation.matrix() *
+                            Mat4::make_scale(transform.world_scale);
 
-    // if (mesh.mesh == 0) {
-    //     mesh.mesh = renderer->get_mesh(mesh.name);
-    // }
+    Engine* engine = Engine::instance();
 
-    // ASSERT(mesh.mesh);
+    if (!mesh.mesh.is_valid()) {
+        mesh.asset.resolve();
+        mesh.mesh = resolve(mesh.asset.cached_id);
+    }
 
-    // if (material.material == 0) {
-    //     material.material =
-    //         renderer->material_system.find_material(material.name);
-    // }
-    // ASSERT(material.material);
+    Mesh* mesh_ptr = get(mesh.mesh);
+    ASSERT(mesh_ptr);
 
-    // render_objects.add(RenderObject{
-    //     .mesh      = mesh.mesh,
-    //     .material  = material.material,
-    //     .transform = object_transform,
-    // });
+    if (material.instance == nullptr) {
+        material.instance =
+            engine->renderer->material_system.find_material(material.name);
+    }
+
+    ASSERT(material.instance);
+
+    render_objects.add(RenderObject{
+        .mesh      = mesh_ptr,
+        .material  = material.instance,
+        .transform = object_transform,
+    });
 }

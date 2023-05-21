@@ -154,9 +154,12 @@ struct AssetProxy {
     AssetReference ref;
     AssetID        cached_id = AssetID::invalid();
 
-    bool is_resolved() const { return cached_id.is_valid(); }
+    Asset* get_now();
+    bool   is_resolved() const { return cached_id.is_valid(); }
 
     bool resolve();
+
+    static AssetProxy from_path(Str name);
 };
 
 //

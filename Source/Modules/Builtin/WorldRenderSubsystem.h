@@ -15,16 +15,16 @@ struct WorldRenderSubsystem : ISubsystem {
     THandle<Mesh> resolve(const AssetID& id);
     Mesh*         get(THandle<Mesh> handle);
 
-    void update();
+    void update(struct Engine* engine);
 
 private:
-    flecs::query<TransformComponent, StaticMeshComponent, MaterialComponent>
+    flecs::query<TransformComponent, StaticMeshComponent2, MaterialComponent2>
         collection_query;
 
     void update_render_object(
-        TransformComponent&  transform,
-        StaticMeshComponent& mesh,
-        MaterialComponent&   material);
+        TransformComponent&   transform,
+        StaticMeshComponent2& mesh,
+        MaterialComponent2&   material);
 
     /**
      * Loads mesh to GPU
