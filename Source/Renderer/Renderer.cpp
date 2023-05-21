@@ -1,5 +1,6 @@
 #include "Renderer.h"
 
+#include "Core/MathTypes.h"
 #include "Memory/Extras.h"
 #include "PipelineBuilder.h"
 #include "RendererConfig.h"
@@ -1062,12 +1063,15 @@ bool Renderer::compact_render_objects(
 
     result.add(first_draw);
 
-    for (u64 i = 1; i < objects.count; ++i) {
+    u64 objects_count = glm::min(objects.count, 10000ull);
+
+    for (u64 i = 1; i < objects_count; ++i) {
         bool same_mesh     = objects[i].mesh == result.last()->mesh;
         bool same_material = objects[i].material == result.last()->material;
 
         if (same_mesh && same_material) {
             result.last()->count++;
+
         } else {
             IndirectBatch new_draw = {
                 .mesh     = objects[i].mesh,
@@ -1552,7 +1556,9 @@ void Renderer::draw_color_pass(
         GPUObjectData* object_ssbo =
             (GPUObjectData*)VMA_MAP(vma, frame.object_buffer);
 
-        for (u64 i = 0; i < render_objects.count; ++i) {
+        u64 render_objects_count = glm::min(render_objects.count, 10000ull);
+
+        for (u64 i = 0; i < render_objects_count; ++i) {
             RenderObject& ro     = render_objects[i];
             object_ssbo[i].model = ro.transform;
         }
@@ -1564,18 +1570,19 @@ void Renderer::draw_color_pass(
         VkDrawIndexedIndirectCommand* icmd =
             (VkDrawIndexedIndirectCommand*)VMA_MAP(vma, frame.indirect_buffer);
 
-        for (int i = 0; i < render_objects.count; ++i) {
-            RenderObject& obj     = render_objects[i];
-            icmd[i].indexCount    = obj.mesh->indices.count;
-            icmd[i].instanceCount = 1;
+        u64 batch_count = glm::min(batches.size, (u64)num_indirect_commands);
+        for (int i = 0; i < batch_count; ++i) {
+            icmd[i].indexCount    = batches[i].mesh->indices.count;
+            icmd[i].instanceCount = batches[i].count;
             icmd[i].firstIndex    = 0;
             icmd[i].vertexOffset  = 0;
-            icmd[i].firstInstance = i;
+            icmd[i].firstInstance = batches[i].first;
         }
 
         VMA_UNMAP(vma, frame.indirect_buffer);
 
-        for (const IndirectBatch& batch : batches) {
+        for (u64 i = 0; i < batch_count; ++i) {
+            const IndirectBatch& batch = batches[i];
             // Bind material
             vkCmdBindPipeline(
                 cmd,
@@ -1643,7 +1650,7 @@ void Renderer::draw_color_pass(
                 cmd,
                 frame.indirect_buffer.buffer,
                 indirect_offset,
-                batch.count,
+                1,
                 draw_stride);
         }
     }

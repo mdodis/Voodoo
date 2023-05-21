@@ -135,7 +135,7 @@ static void populate_demo_scene()
         .name = LIT("lost-empire-albedo"),
     });
 
-    const int monke_count = 10;
+    const int monke_count = 99;
 
     flecs::entity last_monke;
     CREATE_SCOPED_ARENA(System_Allocator, temp, KILOBYTES(1));
