@@ -1,9 +1,6 @@
 #include "ECSTypes.h"
 
 #define ALL_DEFAULT_ECS_TYPES    \
-    X(MeshMaterialComponent)     \
-    X(StaticMeshComponent)       \
-    X(MaterialComponent)         \
     X(EditorSelectableComponent) \
     X(EditorGizmoShapeComponent)
 

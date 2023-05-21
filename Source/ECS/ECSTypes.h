@@ -7,48 +7,6 @@
 #include "Str.h"
 #include "flecs.h"
 
-struct MeshMaterialComponent {
-    Str mesh_name;
-    Str material_name;
-    Str asset_path;
-
-    // Not Serialized
-    Mesh*     mesh     = 0;
-    Material* material = 0;
-};
-extern ECS_COMPONENT_DECLARE(MeshMaterialComponent);
-
-struct MeshMaterialComponentDescriptor : public IDescriptor {
-    StrDescriptor mesh_name_desc = {
-        OFFSET_OF(MeshMaterialComponent, mesh_name), LIT("mesh_name")};
-    StrDescriptor material_name_desc = {
-        OFFSET_OF(MeshMaterialComponent, material_name), LIT("material_name")};
-
-    IDescriptor* descs[2] = {
-        &mesh_name_desc,
-        &material_name_desc,
-    };
-
-    CUSTOM_DESC_OBJECT_DEFAULT(MeshMaterialComponent, descs)
-};
-DEFINE_DESCRIPTOR_OF_INL(MeshMaterialComponent);
-
-struct StaticMeshComponent {
-    Str name;
-
-    // Not Serialized
-    Mesh* mesh = nullptr;
-};
-extern ECS_COMPONENT_DECLARE(StaticMeshComponent);
-
-struct MaterialComponent {
-    Str name;
-
-    // Not Serialized
-    struct MaterialInstance* material = nullptr;
-};
-extern ECS_COMPONENT_DECLARE(MaterialComponent);
-
 // Editor-only Components (Not Serialized)
 
 struct EditorSelectableComponent {

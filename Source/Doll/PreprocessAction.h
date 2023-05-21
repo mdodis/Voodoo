@@ -132,6 +132,7 @@ struct MetaSystemDescriptor {
     Str                              name;
     Str                              phase;
     TArray<MetaSystemDescriptorTerm> terms;
+    bool                             multi_threaded = false;
 };
 
 namespace MetaComponentFlag {

@@ -4,12 +4,12 @@
 #include "ECS/ECS.h"
 #include "Engine/AssetSystem.h"
 
-struct StaticMeshComponent2 {
+struct StaticMeshComponent {
     AssetProxy    asset;
     THandle<Mesh> mesh;
 };
 
-struct MaterialComponent2 {
+struct MaterialComponent {
     Str               name;
     MaterialInstance* instance = nullptr;
 };
@@ -84,16 +84,16 @@ TransformComponent: {
 }
 
 @component(nodefine)
-StaticMeshComponent2: {
+StaticMeshComponent: {
     asset: AssetProxy;
 }
 
 @component(nodefine)
-MaterialComponent2: {
+MaterialComponent: {
     name: Str;
 }
 
-@system(OnUpdate)
+@system(phase: OnUpdate, multi_threaded: true)
 apply_transform: {
     @access(in)
     @source(id: this, trav: ChildOf, flags: (up, cascade))

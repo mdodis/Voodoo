@@ -103,16 +103,6 @@ void InspectorEditorWindow::draw()
                 t->world_scale.x,
                 t->world_scale.y,
                 t->world_scale.z);
-
-        } else if (comp.raw_id() == ecs_id(StaticMeshComponent)) {
-            auto* t = entity.get<StaticMeshComponent>();
-
-            ImGui::Text("Name: %s", t->name.data);
-            ImGui::Text("Data: 0x%llx", (u64)t->mesh);
-        } else if (comp.raw_id() == ecs_id(MaterialComponent)) {
-            auto* t = entity.get<MaterialComponent>();
-            ImGui::Text("Name: %s", t->name.data);
-            ImGui::Text("Data: 0x%llx", (u64)t->material);
         }
 
         ImGui::Separator();

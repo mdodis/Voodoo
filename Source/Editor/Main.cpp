@@ -128,10 +128,10 @@ static void populate_demo_scene()
     auto empire = G.engine.ecs->create_entity(LIT("Lost Empire"));
     empire.set<TransformComponent>({{0, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
 
-    empire.set<StaticMeshComponent2>({
+    empire.set<StaticMeshComponent>({
         .asset = AssetProxy::from_path(LIT("@Engine /lost-empire.asset")),
     });
-    empire.set<MaterialComponent2>({
+    empire.set<MaterialComponent>({
         .name = LIT("lost-empire-albedo"),
     });
 
@@ -146,10 +146,10 @@ static void populate_demo_scene()
         auto ent         = G.engine.ecs->create_entity(entity_name);
         ent.set<TransformComponent>(
             {{i * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
-        ent.set<StaticMeshComponent2>({
+        ent.set<StaticMeshComponent>({
             .asset = AssetProxy::from_path(LIT("@Engine /monkey-smooth.asset")),
         });
-        ent.set<MaterialComponent2>({
+        ent.set<MaterialComponent>({
             .name = LIT("default-colored"),
         });
         ent.child_of(empire);
@@ -165,7 +165,7 @@ static void populate_demo_scene()
         ent.set<TransformComponent>(
             {{monke_count * 5.0f, 0, 0}, {1, 0, 0, 0}, {1, 1, 1}});
         ent.set<StaticMeshComponent>({
-            .name = LIT("monke"),
+            .asset = AssetProxy::from_path(LIT("@Engine /monkey-smooth.asset")),
         });
         ent.set<MaterialComponent>({
             .name = LIT("default-colored"),

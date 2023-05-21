@@ -22,7 +22,8 @@ void SystemDescriptorRegistrar::add(SystemDescriptor* system)
             {
                 .filter = system->filter_desc,
             },
-        .callback = system->invoke,
+        .callback       = system->invoke,
+        .multi_threaded = system->multi_threaded,
     };
 
     ASSERT(ecs_system_init(world, &desc) != 0);

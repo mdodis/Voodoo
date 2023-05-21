@@ -294,8 +294,17 @@ static void parse_system(WriteTape& out, MD_Node* node)
         MD_Node* tag = find_tag(node, LIT("system"));
         ASSERT(tag);
 
-        result.phase =
-            mds8_to_str(tag->first_child->string).clone(System_Allocator);
+        result.phase = LIT("OnUpdate");
+
+        if (MD_Node* phase_node = find_child(tag, LIT("phase"))) {
+            result.phase = mds8_to_str(phase_node->first_child->string)
+                               .clone(System_Allocator);
+        }
+
+        if (MD_Node* mt_node = find_child(tag, LIT("multi_threaded"))) {
+            Str mts               = mds8_to_str(mt_node->first_child->string);
+            result.multi_threaded = mts == LIT("true");
+        }
     }
 
     for (MD_EachNode(it, node->first_child)) {
@@ -779,6 +788,10 @@ static void write_system_descriptors_impl(WriteTape& out)
 
         format(&out, LIT("\t},\n"));
         format(&out, LIT("\t.phase = Ecs{},\n"), system.phase);
+        format(
+            &out,
+            LIT("\t.multi_threaded = {},\n"),
+            system.multi_threaded ? LIT("true") : LIT("false"));
 
         format(&out, LIT("};\n"));
 

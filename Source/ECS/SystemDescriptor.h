@@ -11,6 +11,7 @@ struct SystemDescriptor {
     ProcSystemDescriptorInvoke* invoke;
     ecs_filter_desc_t           filter_desc;
     ecs_entity_t                phase;
+    bool                        multi_threaded;
 };
 
 struct SystemDescriptorRegistrar {

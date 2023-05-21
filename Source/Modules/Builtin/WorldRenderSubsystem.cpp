@@ -16,8 +16,8 @@ void WorldRenderSubsystem::init()
         eng->ecs->world
             .query_builder<
                 TransformComponent,
-                StaticMeshComponent2,
-                MaterialComponent2>()
+                StaticMeshComponent,
+                MaterialComponent>()
             .build();
 
     eng->hooks.pre_draw.add_raw(this, &WorldRenderSubsystem::update);
@@ -60,10 +60,10 @@ void WorldRenderSubsystem::update(Engine* engine)
     render_objects.empty();
 
     collection_query.each([this](
-                              flecs::entity         e,
-                              TransformComponent&   transform,
-                              StaticMeshComponent2& mesh,
-                              MaterialComponent2&   material) {
+                              flecs::entity        e,
+                              TransformComponent&  transform,
+                              StaticMeshComponent& mesh,
+                              MaterialComponent&   material) {
         update_render_object(transform, mesh, material);
     });
 
@@ -71,9 +71,9 @@ void WorldRenderSubsystem::update(Engine* engine)
 }
 
 void WorldRenderSubsystem::update_render_object(
-    TransformComponent&   transform,
-    StaticMeshComponent2& mesh,
-    MaterialComponent2&   material)
+    TransformComponent&  transform,
+    StaticMeshComponent& mesh,
+    MaterialComponent&   material)
 {
     Mat4 object_transform = Mat4::make_translate(transform.world_position) *
                             transform.world_rotation.matrix() *

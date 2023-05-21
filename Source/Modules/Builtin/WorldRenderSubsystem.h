@@ -18,13 +18,13 @@ struct WorldRenderSubsystem : ISubsystem {
     void update(struct Engine* engine);
 
 private:
-    flecs::query<TransformComponent, StaticMeshComponent2, MaterialComponent2>
+    flecs::query<TransformComponent, StaticMeshComponent, MaterialComponent>
         collection_query;
 
     void update_render_object(
-        TransformComponent&   transform,
-        StaticMeshComponent2& mesh,
-        MaterialComponent2&   material);
+        TransformComponent&  transform,
+        StaticMeshComponent& mesh,
+        MaterialComponent&   material);
 
     /**
      * Loads mesh to GPU
