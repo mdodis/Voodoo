@@ -1618,6 +1618,9 @@ void Renderer::draw_color_pass(
             if (batch.material->base->pass_shaders->effect
                     ->num_valid_layouts() > 2)
             {
+                // @todo: we have the benefit of knowing that the
+                // descriptorSetCount is 1 But I don't think we'll have that
+                // once we start adding more shaders.
                 vkCmdBindDescriptorSets(
                     cmd,
                     VK_PIPELINE_BIND_POINT_GRAPHICS,
