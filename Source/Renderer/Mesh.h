@@ -15,10 +15,10 @@ struct Vertex {
 };
 
 struct Mesh {
-    Slice<Vertex>   vertices;
-    Slice<u32>      indices;
-    AllocatedBuffer gpu_buffer;
-    AllocatedBuffer gpu_index_buffer;
+    Slice<Vertex>     vertices;
+    Slice<u32>        indices;
+    AllocatedBuffer<> gpu_buffer;
+    AllocatedBuffer<> gpu_index_buffer;
 
     static Result<Mesh, EAssetLoadError> load_from_asset(
         Allocator& allocator, Str path);

@@ -29,7 +29,7 @@ void VMA::deinit()
     vmaDestroyAllocator(gpu_allocator);
 }
 
-Result<VMA::Buffer, VkResult> VMA::create_buffer(
+Result<AllocatedBufferBase, VkResult> VMA::create_buffer(
     size_t             alloc_size,
     VkBufferUsageFlags usage,
     VmaMemoryUsage     memory_usage,
@@ -47,7 +47,7 @@ Result<VMA::Buffer, VkResult> VMA::create_buffer(
         .pUserData = nullptr,
     };
 
-    VMA::Buffer result;
+    AllocatedBufferBase result;
     VK_RETURN_IF_ERR(vmaCreateBuffer(
         gpu_allocator,
         &buffer_info,
@@ -63,7 +63,7 @@ Result<VMA::Buffer, VkResult> VMA::create_buffer(
     return Ok(result);
 }
 
-void VMA::destroy_buffer(const VMA::Buffer& buffer)
+void VMA::destroy_buffer(const AllocatedBufferBase& buffer)
 {
 #if VMA_TRACK_ALLOCATIONS
     check_and_free_allocation(buffer.allocation);
@@ -107,21 +107,22 @@ void VMA::destroy_image(const Image& image)
     vmaDestroyImage(gpu_allocator, image.image, image.allocation);
 }
 
-void* VMA::map(const Buffer& buffer)
+void* VMA::map(const AllocatedBufferBase& buffer)
 {
     void* result;
     VK_CHECK(vmaMapMemory(gpu_allocator, buffer.allocation, &result));
     return result;
 }
 
-void VMA::unmap(const Buffer& buffer)
+void VMA::unmap(const AllocatedBufferBase& buffer)
 {
     vmaUnmapMemory(gpu_allocator, buffer.allocation);
 }
 
 #if VMA_TRACK_ALLOCATIONS
 
-void VMA::track_allocation(const Buffer& buffer, const char* file, size_t line)
+void VMA::track_allocation(
+    const AllocatedBufferBase& buffer, const char* file, size_t line)
 {
     VMA::Metadata metadata = {
         .file   = file,

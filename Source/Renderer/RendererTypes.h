@@ -34,14 +34,14 @@ struct GPUGlobalInstanceData {
 };
 
 struct FrameData {
-    VkSemaphore     sem_present, sem_render;
-    VkFence         fnc_render;
-    VkCommandPool   pool;
-    VkCommandBuffer main_cmd_buffer;
-    VkDescriptorSet global_descriptor;
-    AllocatedBuffer object_buffer;
-    VkDescriptorSet object_descriptor;
-    AllocatedBuffer indirect_buffer;
+    VkSemaphore       sem_present, sem_render;
+    VkFence           fnc_render;
+    VkCommandPool     pool;
+    VkCommandBuffer   main_cmd_buffer;
+    VkDescriptorSet   global_descriptor;
+    AllocatedBuffer<> object_buffer;
+    VkDescriptorSet   object_descriptor;
+    AllocatedBuffer<> indirect_buffer;
 };
 
 struct UploadContext {
@@ -55,4 +55,12 @@ struct IndirectBatch {
     struct MaterialInstance* material;
     u32                      first;
     u32                      count;
+};
+
+enum class MeshPassType : u8
+{
+    None              = 0,
+    Forward           = 1,
+    Transparency      = 2,
+    DirectionalShadow = 3,
 };

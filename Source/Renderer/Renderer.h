@@ -104,8 +104,8 @@ struct Renderer {
 
     /** GPU Global Instance Data */
     struct {
-        AllocatedBuffer buffer;
-        u32             total_buffer_size;
+        AllocatedBuffer<> buffer;
+        u32               total_buffer_size;
     } global;
 
     UploadContext upload;

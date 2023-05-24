@@ -41,7 +41,7 @@ AllocatedImage TextureSystem::load_texture_from_file(Str path)
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
     VkDeviceSize image_size   = info.actual_size;
 
-    AllocatedBuffer staging_buffer =
+    AllocatedBuffer<> staging_buffer =
         VMA_CREATE_BUFFER(
             owner->vma,
             image_size,

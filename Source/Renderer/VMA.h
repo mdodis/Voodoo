@@ -19,6 +19,39 @@ namespace AllocationKind {
 }
 typedef AllocationKind::Type EAllocationKind;
 
+struct AllocatedBufferBase {
+    VkBuffer      buffer     = VK_NULL_HANDLE;
+    VmaAllocation allocation = VK_NULL_HANDLE;
+    VkDeviceSize  size       = 0;
+
+    VkDescriptorBufferInfo get_buffer_info(VkDeviceSize offset = 0)
+    {
+        return VkDescriptorBufferInfo{
+            .buffer = buffer,
+            .offset = offset,
+            .range  = size,
+        };
+    }
+};
+
+template <typename T = u8>
+struct AllocatedBuffer : AllocatedBufferBase {
+    AllocatedBuffer() = default;
+    AllocatedBuffer(const AllocatedBufferBase& other)
+    {
+        buffer     = other.buffer;
+        allocation = other.allocation;
+        size       = other.size;
+    }
+
+    void operator=(const AllocatedBufferBase& other)
+    {
+        buffer     = other.buffer;
+        allocation = other.allocation;
+        size       = other.size;
+    }
+};
+
 /**
  * Thin abstraction over vk_mem_alloc.
  *
@@ -27,11 +60,6 @@ typedef AllocationKind::Type EAllocationKind;
  * @todo: Only take in file/line if VMA_TRACK_ALLOCATIONS is enabled
  */
 struct VMA {
-    struct Buffer {
-        VkBuffer      buffer     = VK_NULL_HANDLE;
-        VmaAllocation allocation = VK_NULL_HANDLE;
-    };
-
     struct Image {
         VkImage       image      = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
@@ -43,8 +71,8 @@ struct VMA {
         bool            valid;
         EAllocationKind kind;
         union {
-            Buffer buffer;
-            Image  image;
+            AllocatedBufferBase buffer;
+            Image               image;
         };
 
         _inline VmaAllocation allocation() const
@@ -68,14 +96,14 @@ struct VMA {
         VkInstance       instance);
     void deinit();
 
-    Result<Buffer, VkResult> create_buffer(
+    Result<AllocatedBufferBase, VkResult> create_buffer(
         size_t             alloc_size,
         VkBufferUsageFlags usage,
         VmaMemoryUsage     memory_usage,
         const char*        file = 0,
         size_t             line = 0);
 
-    void destroy_buffer(const Buffer& buffer);
+    void destroy_buffer(const AllocatedBufferBase& buffer);
 
     Result<Image, VkResult> create_image(
         const VkImageCreateInfo& info,
@@ -86,8 +114,8 @@ struct VMA {
 
     void destroy_image(const Image& image);
 
-    void* map(const Buffer& buffer);
-    void  unmap(const Buffer& buffer);
+    void* map(const AllocatedBufferBase& buffer);
+    void  unmap(const AllocatedBufferBase& buffer);
 
 private:
     VmaAllocator gpu_allocator;
@@ -95,7 +123,8 @@ private:
 #if VMA_TRACK_ALLOCATIONS
     TArray<Metadata*> allocations;
 
-    void track_allocation(const Buffer& buffer, const char* file, size_t line);
+    void track_allocation(
+        const AllocatedBufferBase& buffer, const char* file, size_t line);
 
     void track_allocation(const Image& image, const char* file, size_t line);
 
@@ -125,5 +154,4 @@ private:
 #define VMA_MAP(vma, buffer) (vma).map(buffer)
 #define VMA_UNMAP(vma, buffer) (vma).unmap(buffer)
 
-using AllocatedBuffer = VMA::Buffer;
-using AllocatedImage  = VMA::Image;
+using AllocatedImage = VMA::Image;

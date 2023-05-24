@@ -83,12 +83,12 @@ struct ImmediateDrawQueue {
     TArray<Box>      boxes{&System_Allocator};
     TArray<Cylinder> cylinders{&System_Allocator};
 
-    AllocatedBuffer object_buffer;
-    AllocatedBuffer global_buffer;
+    AllocatedBuffer<> object_buffer;
+    AllocatedBuffer<> global_buffer;
 
-    AllocatedBuffer cube_buffer;
-    AllocatedBuffer cylinder_buffer;
-    AllocatedBuffer line_buffer;
+    AllocatedBuffer<> cube_buffer;
+    AllocatedBuffer<> cylinder_buffer;
+    AllocatedBuffer<> line_buffer;
 
     VMA*                  pvma;
     VkDevice              device;

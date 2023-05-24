@@ -1112,7 +1112,7 @@ void Renderer::upload_mesh(Mesh& mesh)
     const size_t staging_buffer_size =
         mesh.vertices.size() + mesh.indices.size();
 
-    AllocatedBuffer staging_buffer =
+    AllocatedBuffer<> staging_buffer =
         VMA_CREATE_BUFFER(
             vma,
             staging_buffer_size,
@@ -1201,7 +1201,7 @@ Result<AllocatedImage, VkResult> Renderer::upload_image_from_file(Str path)
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
     VkDeviceSize image_size   = info.actual_size;
 
-    AllocatedBuffer staging_buffer =
+    AllocatedBuffer<> staging_buffer =
         VMA_CREATE_BUFFER(
             vma,
             image_size,
@@ -1344,7 +1344,7 @@ Result<AllocatedImage, VkResult> Renderer::upload_image(const Asset& asset)
     VkFormat     image_format = VK_FORMAT_R8G8B8A8_SRGB;
     VkDeviceSize image_size   = info.actual_size;
 
-    AllocatedBuffer staging_buffer =
+    AllocatedBuffer<> staging_buffer =
         VMA_CREATE_BUFFER(
             vma,
             image_size,

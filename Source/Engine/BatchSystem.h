@@ -37,6 +37,11 @@ struct RenderObject {
     RenderBounds                 bounds;
 };
 
+struct GPUInstance {
+    u32 object_id;
+    u32 batch_id;
+};
+
 struct BatchSystem {
     struct PassMaterial {
         VkDescriptorSet material_set;
@@ -88,5 +93,16 @@ struct BatchSystem {
         TArray<PassObject>               objects;
         TArray<NamedIndex<PassObject>>   resuable_objects;
         TArray<NamedIndex<PassObject>>   objects_to_delete;
+
+        AllocatedBuffer<u32>               compacted_instance_buffer;
+        AllocatedBuffer<GPUInstance>       pass_objects_buffer;
+        AllocatedBuffer<GPUIndirectObject> draw_indirect_buffer;
+        AllocatedBuffer<GPUIndirectObject> clear_indirect_buffer;
+
+        PassObject*  get(NamedIndex<PassObject> index);
+        MeshPassType type;
+
+        bool needs_indirect_refresh = true;
+        bool needs_instance_refresh = true;
     };
 };
